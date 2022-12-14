@@ -1,0 +1,18 @@
+### gas adjustment - multiplier for the expected amount of gas
+gas_adjustment = 1
+
+### account & chain-id for the wasmd relayer account
+[account]
+address = "wasmd1zypqa76je7pxsdwkfah6mu9a583sju6xjavygg"
+chain_id = "wasmd-local-testnet"
+
+### keyring for the relayer account on the wasmd chain
+[keyring]
+backend = "test"
+dir = "/Users/username/.wasmd"
+
+### rpc endpoint for the Ojo Chain
+[rpc]
+grpc_endpoint = "localhost:9090"
+rpc_timeout = "100ms"
+tmrpc_endpoint = "http://localhost:26657"
