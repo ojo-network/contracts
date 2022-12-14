@@ -1,6 +1,6 @@
-BINARY=./build/wasmd
+BINARY=wasmd
 CHAINID_1="wasm-test"
-CONTRACT_PATH=./cosmwasm/artifacts/std_reference-aarch64.wasm
+CONTRACT_PATH=./cosmwasm/artifacts/std_reference.wasm
 DEMO_MNEMONIC_1="banner spread envelope side kite person disagree path silver will brother under couch edit food venture squirrel civil budget number acquire point work mass"
 RPC="http://0.0.0.0:26657"
 

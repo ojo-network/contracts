@@ -1,3 +1,7 @@
+install:
+	@echo "installing wasmd"
+	./scripts/install.sh
+
 init: kill-dev
 	@echo "init wasm chain"
 	./scripts/init.sh
