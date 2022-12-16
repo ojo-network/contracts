@@ -9,14 +9,17 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
-	input "github.com/cosmos/cosmos-sdk/client/input"
+	"github.com/cosmos/cosmos-sdk/client/input"
 
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/ojo-network/cw-relayer/config"
+	"github.com/ojo-network/cw-relayer/oracle"
+	oracleclient "github.com/ojo-network/cw-relayer/oracle/client"
 )
 
 const (
@@ -84,7 +87,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 
 	logger := zerolog.New(logWriter).Level(logLvl).With().Timestamp().Logger()
 
-	_, err = config.ParseConfig(args[0])
+	cfg, err := config.ParseConfig(args[0])
 	if err != nil {
 		return err
 	}
@@ -94,8 +97,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 
 	// listen for and trap any OS signal to gracefully shutdown and exit
 	trapSignal(cancel, logger)
-
-	/***
+	//
 	rpcTimeout, err := time.ParseDuration(cfg.RPC.RPCTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to parse RPC timeout: %w", err)
@@ -106,10 +108,9 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
-
-	// client for interacting with the ojo & wasmd chain
-	client, err := client.NewClient(
+	//
+	//// client for interacting with the ojo & wasmd chain
+	client, err := oracleclient.NewOracleClient(
 		ctx,
 		logger,
 		cfg.Account.ChainID,
@@ -119,21 +120,22 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		cfg.RPC.TMRPCEndpoint,
 		rpcTimeout,
 		cfg.Account.Address,
-		cfg.Account.Validator,
 		cfg.RPC.GRPCEndpoint,
 		cfg.GasAdjustment,
-		accPrefix,
 	)
 	if err != nil {
 		return err
 	}
 
-	voter := voter.New(ctx, logger, client)
-	***/
+	providerTimeout, err := time.ParseDuration(cfg.ProviderTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to parse provider timeout: %w", err)
+	}
 
+	newOracle := oracle.New(logger, client, cfg, providerTimeout, cfg.QueryRPC)
 	g.Go(func() error {
 		// start the process that queries the prices on Ojo & submits them on Wasmd
-		// return startPriceVoter(ctx, logger, voter)
+		return startPriceOracle(ctx, logger, newOracle)
 		return nil
 	})
 
@@ -167,8 +169,7 @@ func trapSignal(cancel context.CancelFunc, logger zerolog.Logger) {
 	}()
 }
 
-/***
-func startPriceVoter(ctx context.Context, logger zerolog.Logger, voter *voter.Voter) error {
+func startPriceOracle(ctx context.Context, logger zerolog.Logger, oracle *oracle.Oracle) error {
 	srvErrCh := make(chan error, 1)
 
 	go func() {
@@ -189,4 +190,3 @@ func startPriceVoter(ctx context.Context, logger zerolog.Logger, voter *voter.Vo
 		}
 	}
 }
-***/
