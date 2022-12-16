@@ -19,7 +19,6 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	ojoparams "github.com/ojo-network/ojo/app/params"
 	"github.com/rs/zerolog"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	tmjsonclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
@@ -64,7 +63,6 @@ func NewOracleClient(
 	grpcEndpoint string,
 	gasAdjustment float64,
 ) (OracleClient, error) {
-	ojoparams.MakeEncodingConfig()
 	oracleAddr, err := sdk.AccAddressFromBech32(oracleAddrString)
 	if err != nil {
 		return OracleClient{}, err
@@ -100,6 +98,8 @@ func NewOracleClient(
 		clientCtx.Client,
 		oracleClient.Logger,
 		blockHeight,
+		// change to previous block time
+		time.Now(),
 	)
 	if err != nil {
 		return OracleClient{}, err

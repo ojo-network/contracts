@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/rs/zerolog"
 	tmrpcclient "github.com/tendermint/tendermint/rpc/client"
@@ -24,9 +25,11 @@ var (
 type ChainHeight struct {
 	Logger zerolog.Logger
 
-	mtx               sync.RWMutex
-	errGetChainHeight error
-	lastChainHeight   int64
+	mtx                  sync.RWMutex
+	errGetChainHeight    error
+	errGetChainTimestamp error
+	lastChainHeight      int64
+	lastBlockTimestamp   time.Time
 }
 
 // NewChainHeight returns a new ChainHeight struct that
@@ -36,6 +39,7 @@ func NewChainHeight(
 	rpcClient tmrpcclient.Client,
 	logger zerolog.Logger,
 	initialHeight int64,
+	initialTimeStamp time.Time,
 ) (*ChainHeight, error) {
 	if initialHeight < 1 {
 		return nil, fmt.Errorf("expected positive initial block height")
@@ -54,9 +58,10 @@ func NewChainHeight(
 	}
 
 	chainHeight := &ChainHeight{
-		Logger:            logger.With().Str("oracle_client", "chain_height").Logger(),
-		errGetChainHeight: nil,
-		lastChainHeight:   initialHeight,
+		Logger:             logger.With().Str("oracle_client", "chain_height").Logger(),
+		errGetChainHeight:  nil,
+		lastChainHeight:    initialHeight,
+		lastBlockTimestamp: initialTimeStamp,
 	}
 
 	go chainHeight.subscribe(ctx, rpcClient, newBlockHeaderSubscription)
@@ -65,11 +70,12 @@ func NewChainHeight(
 }
 
 // updateChainHeight receives the data to be updated thread safe.
-func (chainHeight *ChainHeight) updateChainHeight(blockHeight int64, err error) {
+func (chainHeight *ChainHeight) updateChainHeight(blockHeight int64, timeStamp time.Time, err error) {
 	chainHeight.mtx.Lock()
 	defer chainHeight.mtx.Unlock()
 
 	chainHeight.lastChainHeight = blockHeight
+	chainHeight.lastBlockTimestamp = timeStamp
 	chainHeight.errGetChainHeight = err
 }
 
@@ -86,7 +92,7 @@ func (chainHeight *ChainHeight) subscribe(
 			err := eventsClient.Unsubscribe(ctx, tmtypes.EventNewBlockHeader, queryEventNewBlockHeader.String())
 			if err != nil {
 				chainHeight.Logger.Err(err)
-				chainHeight.updateChainHeight(chainHeight.lastChainHeight, err)
+				chainHeight.updateChainHeight(chainHeight.lastChainHeight, chainHeight.lastBlockTimestamp, err)
 			}
 			chainHeight.Logger.Info().Msg("closing the ChainHeight subscription")
 			return
@@ -95,10 +101,11 @@ func (chainHeight *ChainHeight) subscribe(
 			eventDataNewBlockHeader, ok := resultEvent.Data.(tmtypes.EventDataNewBlockHeader)
 			if !ok {
 				chainHeight.Logger.Err(errParseEventDataNewBlockHeader)
-				chainHeight.updateChainHeight(chainHeight.lastChainHeight, errParseEventDataNewBlockHeader)
+				chainHeight.updateChainHeight(chainHeight.lastChainHeight, chainHeight.lastBlockTimestamp, errParseEventDataNewBlockHeader)
 				continue
 			}
-			chainHeight.updateChainHeight(eventDataNewBlockHeader.Header.Height, nil)
+
+			chainHeight.updateChainHeight(eventDataNewBlockHeader.Header.Height, eventDataNewBlockHeader.Header.Time, nil)
 		}
 	}
 }
@@ -109,4 +116,12 @@ func (chainHeight *ChainHeight) GetChainHeight() (int64, error) {
 	defer chainHeight.mtx.RUnlock()
 
 	return chainHeight.lastChainHeight, chainHeight.errGetChainHeight
+}
+
+// GetChainTimestamp returns the last block timestamp
+func (chainHeight *ChainHeight) GetChainTimestamp() (time.Time, error) {
+	chainHeight.mtx.RLock()
+	defer chainHeight.mtx.RUnlock()
+
+	return chainHeight.lastBlockTimestamp, chainHeight.errGetChainTimestamp
 }

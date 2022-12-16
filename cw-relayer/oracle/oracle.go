@@ -17,6 +17,7 @@ import (
 
 	"github.com/ojo-network/cw-relayer/config"
 	"github.com/ojo-network/cw-relayer/oracle/client"
+	psync "github.com/ojo-network/cw-relayer/pkg/sync"
 )
 
 const (
@@ -24,8 +25,8 @@ const (
 )
 
 type Oracle struct {
-	logger zerolog.Logger
-
+	logger        zerolog.Logger
+	closer        *psync.Closer
 	oracleClient  client.OracleClient
 	config        config.Config
 	ExchangeRates types.DecCoins
@@ -33,7 +34,6 @@ type Oracle struct {
 	pricesMutex   sync.RWMutex
 	prices        map[string]types.Dec
 	requestID     uint64
-	resolveTime   uint64
 	timeoutHeight int64
 }
 
@@ -53,7 +53,7 @@ func (o *Oracle) Start(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			//o.closer.Close()
+			o.closer.Close()
 
 		default:
 			o.logger.Debug().Msg("starting oracle tick")
@@ -77,8 +77,8 @@ func (o *Oracle) Start(ctx context.Context) error {
 
 // Stop stops the oracle process and waits for it to gracefully exit.
 func (o *Oracle) Stop() {
-	//o.closer.Close()
-	//<-o.closer.Done()
+	o.closer.Close()
+	<-o.closer.Done()
 }
 
 func (o *Oracle) SetActiveDenomPrices(ctx context.Context) error {
@@ -89,18 +89,20 @@ func (o *Oracle) SetActiveDenomPrices(ctx context.Context) error {
 		grpc.WithContextDialer(dialerFunc),
 	)
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
+
 	defer grpcConn.Close()
+
 	queryClient := oracletypes.NewQueryClient(grpcConn)
 
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
 	queryResponse, err := queryClient.ExchangeRates(ctx, &oracletypes.QueryExchangeRates{})
-
-	o.pricesMutex.RLock()
-	defer o.pricesMutex.RUnlock()
+	if err != nil {
+		return err
+	}
 
 	o.ExchangeRates = queryResponse.ExchangeRates
 
@@ -118,13 +120,21 @@ func (o *Oracle) tick(ctx context.Context) error {
 		return fmt.Errorf("expected positive block height")
 	}
 
+	blockTimestamp, err := o.oracleClient.ChainHeight.GetChainTimestamp()
+	if err != nil {
+		return err
+	}
+	if blockTimestamp.Unix() < 1 {
+		return fmt.Errorf("expected positive blocktimestamp")
+	}
+
 	if err := o.SetActiveDenomPrices(ctx); err != nil {
 		return err
 	}
 
 	nextBlockHeight := blockHeight + 1
 
-	msg, err := generateContractMsg(o.requestID, o.resolveTime, o.ExchangeRates)
+	msg, err := generateContractMsg(o.requestID, blockTimestamp.Unix()+int64(tickerSleep.Seconds()), o.ExchangeRates)
 	if err != nil {
 		return err
 	}
@@ -148,7 +158,7 @@ func (o *Oracle) tick(ctx context.Context) error {
 	return nil
 }
 
-func generateContractMsg(requestID uint64, resolveTime uint64, exchangeRates types.DecCoins) ([]byte, error) {
+func generateContractMsg(requestID uint64, resolveTime int64, exchangeRates types.DecCoins) ([]byte, error) {
 	msg := config.Relay{
 		SymbolRates: nil,
 		ResolveTime: resolveTime,

@@ -57,7 +57,7 @@ type (
 
 	Relay struct {
 		SymbolRates [][2]string `json:"symbol_rates,omitempty"`
-		ResolveTime uint64      `json:"resolve_time,omitempty"`
+		ResolveTime int64       `json:"resolve_time,omitempty"`
 		RequestID   uint64      `json:"request_id,omitempty"`
 	}
 )
