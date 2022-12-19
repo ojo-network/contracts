@@ -93,13 +93,17 @@ func NewOracleClient(
 		return OracleClient{}, err
 	}
 
+	blockTime, err := GetChainTimestamp(clientCtx)
+	if err != nil {
+		return OracleClient{}, err
+	}
+
 	chainHeight, err := NewChainHeight(
 		ctx,
 		clientCtx.Client,
 		oracleClient.Logger,
 		blockHeight,
-		// change to previous block time
-		time.Now(),
+		blockTime,
 	)
 	if err != nil {
 		return OracleClient{}, err
@@ -275,4 +279,19 @@ func (oc OracleClient) CreateTxFactory() (tx.Factory, error) {
 		WithSimulateAndExecute(true)
 
 	return txFactory, nil
+}
+
+func GetChainTimestamp(clientCtx client.Context) (time.Time, error) {
+	node, err := clientCtx.GetNode()
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	status, err := node.Status(context.Background())
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	blockTime := status.SyncInfo.LatestBlockTime
+	return blockTime, nil
 }

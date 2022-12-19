@@ -5,8 +5,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ojo-network/cw-relayer/config"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ojo-network/cw-relayer/config"
 )
 
 func TestValidate(t *testing.T) {
@@ -58,7 +59,6 @@ gas_adjustment = 1.5
 
 [account]
 address = "wasm15nejfgcaanqpw25ru4arvfd0fwy6j8clccvwx4"
-validator = "wasmvalcons14rjlkfzp56733j5l5nfk6fphjxymgf8mj04d5p"
 chain_id = "wasm-local-testnet"
 
 [keyring]

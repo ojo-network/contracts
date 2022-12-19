@@ -11,9 +11,9 @@ import (
 
 const (
 	defaultListenAddr      = "0.0.0.0:7171"
-	defaultSrvWriteTimeout = 15 * time.Second
-	defaultSrvReadTimeout  = 15 * time.Second
 	defaultProviderTimeout = 100 * time.Millisecond
+	//TODO: add default ojo rpc
+	defaultQueryRPC = ""
 )
 
 var (
@@ -30,9 +30,10 @@ type (
 		Keyring         Keyring `mapstructure:"keyring" validate:"required,gt=0,dive,required"`
 		RPC             RPC     `mapstructure:"rpc" validate:"required,gt=0,dive,required"`
 		GasAdjustment   float64 `mapstructure:"gas_adjustment" validate:"required"`
-		ContractAddress string  `mapstructure:"contract_address" validate:"required"`
+		ContractAddress string  `mapstructure:"contract_address"`
 		ProviderTimeout string  `mapstructure:"provider_timeout"`
-		QueryRPC        string  `mapstructure:"query_rpc"`
+		// query rpc for ojo node
+		QueryRPC string `mapstructure:"query_rpc"`
 	}
 
 	// Account defines account related configuration that is related to the Client
@@ -48,7 +49,7 @@ type (
 		Dir     string `mapstructure:"dir" validate:"required"`
 	}
 
-	// RPC defines RPC configuration of both the Ojo gRPC and Tendermint nodes.
+	// RPC defines RPC configuration of both the wasmd chain gRPC and Tendermint nodes.
 	RPC struct {
 		TMRPCEndpoint string `mapstructure:"tmrpc_endpoint" validate:"required"`
 		GRPCEndpoint  string `mapstructure:"grpc_endpoint" validate:"required"`
@@ -85,6 +86,14 @@ func ParseConfig(configPath string) (Config, error) {
 
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return cfg, fmt.Errorf("failed to decode config: %w", err)
+	}
+
+	if len(cfg.ProviderTimeout) == 0 {
+		cfg.ProviderTimeout = defaultProviderTimeout.String()
+	}
+
+	if len(cfg.QueryRPC) == 0 {
+		cfg.QueryRPC = defaultQueryRPC
 	}
 
 	return cfg, cfg.Validate()

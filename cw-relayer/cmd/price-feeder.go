@@ -136,7 +136,6 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 	g.Go(func() error {
 		// start the process that queries the prices on Ojo & submits them on Wasmd
 		return startPriceOracle(ctx, logger, newOracle)
-		return nil
 	})
 
 	// Block main process until all spawned goroutines have gracefully exited and

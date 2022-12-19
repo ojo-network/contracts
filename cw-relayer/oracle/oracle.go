@@ -65,8 +65,6 @@ func (o *Oracle) Start(ctx context.Context) error {
 				o.logger.Err(err).Msg("oracle tick failed")
 			}
 
-			//o.lastPriceSyncTS = time.Now()
-
 			telemetry.MeasureSince(startTime, "runtime", "tick")
 			telemetry.IncrCounter(1, "new", "tick")
 
@@ -131,13 +129,13 @@ func (o *Oracle) tick(ctx context.Context) error {
 	if err := o.SetActiveDenomPrices(ctx); err != nil {
 		return err
 	}
-
 	nextBlockHeight := blockHeight + 1
 
 	msg, err := generateContractMsg(o.requestID, blockTimestamp.Unix()+int64(tickerSleep.Seconds()), o.ExchangeRates)
 	if err != nil {
 		return err
 	}
+
 	o.requestID += 1
 
 	executeMsg := &wasmtypes.MsgExecuteContract{
