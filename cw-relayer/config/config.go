@@ -13,7 +13,8 @@ const (
 	defaultListenAddr      = "0.0.0.0:7171"
 	defaultProviderTimeout = 100 * time.Millisecond
 	//TODO: add default ojo rpc
-	defaultQueryRPC = ""
+	defaultQueryRPC        = ""
+	defaultMissedThreshold = 5
 )
 
 var (
@@ -32,6 +33,7 @@ type (
 		GasAdjustment   float64 `mapstructure:"gas_adjustment" validate:"required"`
 		ContractAddress string  `mapstructure:"contract_address"`
 		ProviderTimeout string  `mapstructure:"provider_timeout"`
+		MissedThreshold int64   `mapstructure:"missed_threshold"`
 		// query rpc for ojo node
 		QueryRPC string `mapstructure:"query_rpc"`
 	}
@@ -56,7 +58,15 @@ type (
 		RPCTimeout    string `mapstructure:"rpc_timeout" validate:"required"`
 	}
 
-	Relay struct {
+	MsgRelay struct {
+		Relay Msg `json:"relay"`
+	}
+
+	MsgForceRelay struct {
+		Relay Msg `json:"force_relay"`
+	}
+
+	Msg struct {
 		SymbolRates [][2]string `json:"symbol_rates,omitempty"`
 		ResolveTime int64       `json:"resolve_time,omitempty"`
 		RequestID   uint64      `json:"request_id,omitempty"`
@@ -96,5 +106,13 @@ func ParseConfig(configPath string) (Config, error) {
 		cfg.QueryRPC = defaultQueryRPC
 	}
 
+	if len(cfg.ContractAddress) == 0 {
+		return cfg, fmt.Errorf("contract address cannot be nil")
+	}
+
+	if cfg.MissedThreshold <= 0 {
+		cfg.MissedThreshold = defaultMissedThreshold
+	}
+	
 	return cfg, cfg.Validate()
 }

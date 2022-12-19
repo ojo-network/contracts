@@ -127,12 +127,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	providerTimeout, err := time.ParseDuration(cfg.ProviderTimeout)
-	if err != nil {
-		return fmt.Errorf("failed to parse provider timeout: %w", err)
-	}
-
-	newOracle := oracle.New(logger, client, cfg, providerTimeout, cfg.QueryRPC)
+	newOracle := oracle.New(logger, client, cfg.ContractAddress, cfg.MissedThreshold, cfg.QueryRPC)
 	g.Go(func() error {
 		// start the process that queries the prices on Ojo & submits them on Wasmd
 		return startPriceOracle(ctx, logger, newOracle)
