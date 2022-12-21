@@ -10,11 +10,10 @@ import (
 )
 
 const (
-	defaultListenAddr      = "0.0.0.0:7171"
 	defaultProviderTimeout = 100 * time.Millisecond
-	//TODO: add default ojo rpc
-	defaultQueryRPC        = ""
+	defaultQueryRPC        = "0.0.0.0:9091"
 	defaultMissedThreshold = 5
+	defaultTimeoutHeight   = 5
 )
 
 var (
@@ -27,13 +26,20 @@ var (
 type (
 	// Config defines all necessary cw-relayer configuration parameters.
 	Config struct {
-		Account         Account `mapstructure:"account" validate:"required,gt=0,dive,required"`
-		Keyring         Keyring `mapstructure:"keyring" validate:"required,gt=0,dive,required"`
-		RPC             RPC     `mapstructure:"rpc" validate:"required,gt=0,dive,required"`
-		GasAdjustment   float64 `mapstructure:"gas_adjustment" validate:"required"`
-		ContractAddress string  `mapstructure:"contract_address"`
-		ProviderTimeout string  `mapstructure:"provider_timeout"`
-		MissedThreshold int64   `mapstructure:"missed_threshold"`
+		Account Account `mapstructure:"account" validate:"required,gt=0,dive,required"`
+		Keyring Keyring `mapstructure:"keyring" validate:"required,gt=0,dive,required"`
+		RPC     RPC     `mapstructure:"rpc" validate:"required,gt=0,dive,required"`
+
+		ProviderTimeout string `mapstructure:"provider_timeout"`
+		ContractAddress string `mapstructure:"contract_address"`
+		TimeoutHeight   int64  `mapsturture:"timeout_height"`
+
+		// force relay prices and reset epoch time in contracts if err in broadcasting tx
+		MissedThreshold int64 `mapstructure:"missed_threshold"`
+
+		GasAdjustment float64 `mapstructure:"gas_adjustment" validate:"required"`
+		GasPrices     string  `mapstructure:"gas_prices" validate:"required"`
+		Fees          string  `mapstructure:"fees" validate:"required"`
 		// query rpc for ojo node
 		QueryRPC string `mapstructure:"query_rpc"`
 	}
@@ -41,8 +47,9 @@ type (
 	// Account defines account related configuration that is related to the Client
 	// Network and Receives Pricing information.
 	Account struct {
-		ChainID string `mapstructure:"chain_id" validate:"required"`
-		Address string `mapstructure:"address" validate:"required"`
+		AccPrefix string `mapstructure:"acc_prefix" validate:"required"`
+		ChainID   string `mapstructure:"chain_id" validate:"required"`
+		Address   string `mapstructure:"address" validate:"required"`
 	}
 
 	// Keyring defines the required Client-chain keyring configuration.
@@ -56,20 +63,6 @@ type (
 		TMRPCEndpoint string `mapstructure:"tmrpc_endpoint" validate:"required"`
 		GRPCEndpoint  string `mapstructure:"grpc_endpoint" validate:"required"`
 		RPCTimeout    string `mapstructure:"rpc_timeout" validate:"required"`
-	}
-
-	MsgRelay struct {
-		Relay Msg `json:"relay"`
-	}
-
-	MsgForceRelay struct {
-		Relay Msg `json:"force_relay"`
-	}
-
-	Msg struct {
-		SymbolRates [][2]string `json:"symbol_rates,omitempty"`
-		ResolveTime int64       `json:"resolve_time,omitempty"`
-		RequestID   uint64      `json:"request_id,omitempty"`
 	}
 )
 
@@ -113,6 +106,10 @@ func ParseConfig(configPath string) (Config, error) {
 	if cfg.MissedThreshold <= 0 {
 		cfg.MissedThreshold = defaultMissedThreshold
 	}
-	
+
+	if cfg.TimeoutHeight == 0 {
+		cfg.TimeoutHeight = defaultTimeoutHeight
+	}
+
 	return cfg, cfg.Validate()
 }

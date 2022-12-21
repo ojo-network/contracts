@@ -1,10 +1,9 @@
-package oracle
+package relayer
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sync"
 	"time"
 
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
@@ -15,61 +14,60 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/ojo-network/cw-relayer/config"
-	"github.com/ojo-network/cw-relayer/oracle/client"
-	psync "github.com/ojo-network/cw-relayer/pkg/sync"
+	"github.com/ojo-network/cw-relayer/pkg/sync"
+	"github.com/ojo-network/cw-relayer/relayer/client"
 )
 
 const (
 	tickerSleep = 1000 * time.Millisecond
 )
 
-type Oracle struct {
+type Relayer struct {
 	logger zerolog.Logger
-	closer *psync.Closer
+	closer *sync.Closer
 
-	oracleClient    client.OracleClient
-	contractAddress string
-	ExchangeRates   types.DecCoins
+	relayerClient   client.RelayerClient
+	exchangeRates   types.DecCoins
 	queryRPC        string
-	pricesMutex     sync.RWMutex
-	prices          map[string]types.Dec
+	contractAddress string
 	requestID       uint64
 	timeoutHeight   int64
-
 	missedCounter   int64
 	missedThreshold int64
 }
 
 func New(
 	logger zerolog.Logger,
-	oc client.OracleClient,
+	oc client.RelayerClient,
 	contractAddress string,
+	timeoutHeight int64,
 	missedThreshold int64,
-	queryRPC string) *Oracle {
-	return &Oracle{
+	queryRPC string,
+) *Relayer {
+	return &Relayer{
 		queryRPC:        queryRPC,
-		logger:          logger.With().Str("module", "oracle").Logger(),
-		oracleClient:    oc,
+		logger:          logger.With().Str("module", "relayer").Logger(),
+		relayerClient:   oc,
 		contractAddress: contractAddress,
 		missedThreshold: missedThreshold,
+		timeoutHeight:   timeoutHeight,
+		closer:          sync.NewCloser(),
 	}
 }
-func (o *Oracle) Start(ctx context.Context) error {
+
+func (o *Relayer) Start(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
 			o.closer.Close()
 
 		default:
-			o.logger.Debug().Msg("starting oracle tick")
+			o.logger.Debug().Msg("starting relayer tick")
 
 			startTime := time.Now()
-
 			if err := o.tick(ctx); err != nil {
-
 				telemetry.IncrCounter(1, "failure", "tick")
-				o.logger.Err(err).Msg("oracle tick failed")
+				o.logger.Err(err).Msg("relayer tick failed")
 			}
 
 			telemetry.MeasureSince(startTime, "runtime", "tick")
@@ -80,13 +78,13 @@ func (o *Oracle) Start(ctx context.Context) error {
 	}
 }
 
-// Stop stops the oracle process and waits for it to gracefully exit.
-func (o *Oracle) Stop() {
+// Stop stops the relayer process and waits for it to gracefully exit.
+func (o *Relayer) Stop() {
 	o.closer.Close()
 	<-o.closer.Done()
 }
 
-func (o *Oracle) SetActiveDenomPrices(ctx context.Context) error {
+func (o *Relayer) setActiveDenomPrices(ctx context.Context) error {
 	grpcConn, err := grpc.Dial(
 		o.queryRPC,
 		// the Cosmos SDK doesn't support any transport security mechanism
@@ -109,15 +107,14 @@ func (o *Oracle) SetActiveDenomPrices(ctx context.Context) error {
 		return err
 	}
 
-	o.ExchangeRates = queryResponse.ExchangeRates
-
+	o.exchangeRates = queryResponse.ExchangeRates
 	return nil
 }
 
-func (o *Oracle) tick(ctx context.Context) error {
-	o.logger.Debug().Msg("executing oracle tick")
+func (o *Relayer) tick(ctx context.Context) error {
+	o.logger.Debug().Msg("executing relayer tick")
 
-	blockHeight, err := o.oracleClient.ChainHeight.GetChainHeight()
+	blockHeight, err := o.relayerClient.ChainHeight.GetChainHeight()
 	if err != nil {
 		return err
 	}
@@ -125,15 +122,16 @@ func (o *Oracle) tick(ctx context.Context) error {
 		return fmt.Errorf("expected positive block height")
 	}
 
-	blockTimestamp, err := o.oracleClient.ChainHeight.GetChainTimestamp()
+	blockTimestamp, err := o.relayerClient.ChainHeight.GetChainTimestamp()
 	if err != nil {
 		return err
 	}
+
 	if blockTimestamp.Unix() < 1 {
 		return fmt.Errorf("expected positive blocktimestamp")
 	}
 
-	if err := o.SetActiveDenomPrices(ctx); err != nil {
+	if err := o.setActiveDenomPrices(ctx); err != nil {
 		return err
 	}
 	nextBlockHeight := blockHeight + 1
@@ -143,14 +141,16 @@ func (o *Oracle) tick(ctx context.Context) error {
 		o.missedCounter = 0
 	}
 
-	msg, err := generateContractRelayMsg(forceRelay, o.requestID, blockTimestamp.Unix()+int64(tickerSleep.Seconds()), o.ExchangeRates)
+	// set the next resolve time for price feeds on wasm contract
+	nextBlockTime := blockTimestamp.Unix() + int64(tickerSleep.Seconds())
+	msg, err := generateContractRelayMsg(forceRelay, o.requestID, nextBlockTime, o.exchangeRates)
 	if err != nil {
 		return err
 	}
-	o.requestID += 1
 
+	o.requestID += 1
 	executeMsg := &wasmtypes.MsgExecuteContract{
-		Sender:   o.oracleClient.OracleAddrString,
+		Sender:   o.relayerClient.RelayerAddrString,
 		Contract: o.contractAddress,
 		Msg:      msg,
 		Funds:    nil,
@@ -158,9 +158,11 @@ func (o *Oracle) tick(ctx context.Context) error {
 
 	o.logger.Info().
 		Str("Contract Address", executeMsg.Contract).
-		Str("oracle addr", executeMsg.Sender).
-		Msg("broadcasting execute contract")
-	if err := o.oracleClient.BroadcastTx(nextBlockHeight, o.timeoutHeight, executeMsg); err != nil {
+		Str("relayer addr", executeMsg.Sender).
+		Str("block timestamp", blockTimestamp.String()).
+		Msg("broadcasting execute to contract")
+
+	if err := o.relayerClient.BroadcastTx(nextBlockHeight, o.timeoutHeight, executeMsg); err != nil {
 		return err
 	}
 
@@ -168,22 +170,22 @@ func (o *Oracle) tick(ctx context.Context) error {
 }
 
 func generateContractRelayMsg(forceRelay bool, requestID uint64, resolveTime int64, exchangeRates types.DecCoins) ([]byte, error) {
-	msg := config.Msg{
+	msg := Msg{
 		SymbolRates: nil,
 		ResolveTime: resolveTime,
 		RequestID:   requestID,
 	}
 
+	factor := types.NewDec(10).Power(18)
 	for _, rate := range exchangeRates {
-		//TODO: confirm accuracy for exchange rates from umee pricefeed
-		msg.SymbolRates = append(msg.SymbolRates, [2]string{rate.Denom, rate.Amount.String()})
+		msg.SymbolRates = append(msg.SymbolRates, [2]string{rate.Denom, rate.Amount.Mul(factor).TruncateInt().String()})
 	}
 
 	if forceRelay {
-		msgData, err := json.Marshal(config.MsgForceRelay{Relay: msg})
+		msgData, err := json.Marshal(MsgForceRelay{Relay: msg})
 		return msgData, err
 	}
 
-	msgData, err := json.Marshal(config.MsgRelay{Relay: msg})
+	msgData, err := json.Marshal(MsgRelay{Relay: msg})
 	return msgData, err
 }

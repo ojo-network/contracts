@@ -1,8 +1,8 @@
 BINARY=wasmd
 CHAINID_1="wasm-test"
 CONTRACT_PATH=./cosmwasm/artifacts/std_reference.wasm
-DEMO_MNEMONIC_1="banner spread envelope side kite person disagree path silver will brother under couch edit food venture squirrel civil budget number acquire point work mass"
-RPC="http://0.0.0.0:26657"
+DEMO_MNEMONIC_1="pony glide frown crisp unfold lawn cup loan trial govern usual matrix theory wash fresh address pioneer between meadow visa buffalo keep gallery swear"
+RPC="http://0.0.0.0:16657"
 
 NODE="--node $RPC"
 TXFLAG="$NODE --chain-id $CHAINID_1 --gas-prices 0.25stake --keyring-backend test --gas auto --gas-adjustment 1.3"
@@ -13,8 +13,8 @@ export DEMOWALLET=$($BINARY keys show demowallet1 -a --keyring-backend test --ho
 # deploy smart contract
 $BINARY tx wasm store $CONTRACT_PATH --from $DEMOWALLET --home ./data/$CHAINID_1 $TXFLAG -y
 sleep 5
-#
-##instantiate contract
+
+#instantiate contract
 $BINARY tx wasm instantiate 1 '{}' --label test --admin $DEMOWALLET --from $DEMOWALLET --home ./data/$CHAINID_1 $TXFLAG -y
 sleep 5
 

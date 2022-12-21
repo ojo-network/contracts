@@ -41,7 +41,11 @@ install: go.sum
 	@echo "--> Installing..."
 	go install -mod=readonly $(BUILD_FLAGS) ./...
 
-.PHONY: build install
+start:
+	@make build
+	build/cw-relayer config.toml
+
+.PHONY: build install start
 
 ###############################################################################
 ##                              Tests & Linting                              ##

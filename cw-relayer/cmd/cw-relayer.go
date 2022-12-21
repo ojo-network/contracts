@@ -12,14 +12,13 @@ import (
 	"time"
 
 	"github.com/cosmos/cosmos-sdk/client/input"
-
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/ojo-network/cw-relayer/config"
-	"github.com/ojo-network/cw-relayer/oracle"
-	oracleclient "github.com/ojo-network/cw-relayer/oracle/client"
+	"github.com/ojo-network/cw-relayer/relayer"
+	relayerclient "github.com/ojo-network/cw-relayer/relayer/client"
 )
 
 const (
@@ -30,7 +29,6 @@ const (
 	flagLogFormat = "log-format"
 
 	envVariablePass = "CW_RELAYER_PASS"
-	accPrefix       = "wasm"
 )
 
 var rootCmd = &cobra.Command{
@@ -110,7 +108,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 	}
 	//
 	//// client for interacting with the ojo & wasmd chain
-	client, err := oracleclient.NewOracleClient(
+	client, err := relayerclient.NewRelayerClient(
 		ctx,
 		logger,
 		cfg.Account.ChainID,
@@ -121,16 +119,19 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		rpcTimeout,
 		cfg.Account.Address,
 		cfg.RPC.GRPCEndpoint,
+		cfg.Account.AccPrefix,
 		cfg.GasAdjustment,
+		cfg.GasPrices,
+		cfg.Fees,
 	)
 	if err != nil {
 		return err
 	}
 
-	newOracle := oracle.New(logger, client, cfg.ContractAddress, cfg.MissedThreshold, cfg.QueryRPC)
+	newRelayer := relayer.New(logger, client, cfg.ContractAddress, cfg.TimeoutHeight, cfg.MissedThreshold, cfg.QueryRPC)
 	g.Go(func() error {
 		// start the process that queries the prices on Ojo & submits them on Wasmd
-		return startPriceOracle(ctx, logger, newOracle)
+		return startPriceRelayer(ctx, logger, newRelayer)
 	})
 
 	// Block main process until all spawned goroutines have gracefully exited and
@@ -163,12 +164,12 @@ func trapSignal(cancel context.CancelFunc, logger zerolog.Logger) {
 	}()
 }
 
-func startPriceOracle(ctx context.Context, logger zerolog.Logger, oracle *oracle.Oracle) error {
+func startPriceRelayer(ctx context.Context, logger zerolog.Logger, relayer *relayer.Relayer) error {
 	srvErrCh := make(chan error, 1)
 
 	go func() {
 		logger.Info().Msg("starting relayer...")
-		srvErrCh <- oracle.Start(ctx)
+		srvErrCh <- relayer.Start(ctx)
 	}()
 
 	for {
@@ -179,7 +180,7 @@ func startPriceOracle(ctx context.Context, logger zerolog.Logger, oracle *oracle
 
 		case err := <-srvErrCh:
 			logger.Err(err).Msg("error starting the relayer")
-			oracle.Stop()
+			relayer.Stop()
 			return err
 		}
 	}

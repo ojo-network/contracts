@@ -25,8 +25,8 @@ import (
 )
 
 type (
-	// OracleClient defines a structure that interfaces with the Ojo node.
-	OracleClient struct {
+	// RelayerClient defines a structure that interfaces with the Ojo node.
+	RelayerClient struct {
 		Logger            zerolog.Logger
 		ChainID           string
 		KeyringBackend    string
@@ -34,9 +34,10 @@ type (
 		KeyringPass       string
 		TMRPC             string
 		RPCTimeout        time.Duration
-		OracleAddr        sdk.AccAddress
-		OracleAddrString  string
+		RelayerAddr       sdk.AccAddress
+		RelayerAddrString string
 		Encoding          wasmparams.EncodingConfig
+		Fees              string
 		GasPrices         string
 		GasAdjustment     float64
 		GRPCEndpoint      string
@@ -50,7 +51,7 @@ type (
 	}
 )
 
-func NewOracleClient(
+func NewRelayerClient(
 	ctx context.Context,
 	logger zerolog.Logger,
 	chainID string,
@@ -59,58 +60,67 @@ func NewOracleClient(
 	keyringPass string,
 	tmRPC string,
 	rpcTimeout time.Duration,
-	oracleAddrString string,
+	RelayerAddrString string,
 	grpcEndpoint string,
+	accPrefix string,
 	gasAdjustment float64,
-) (OracleClient, error) {
-	oracleAddr, err := sdk.AccAddressFromBech32(oracleAddrString)
+	GasPrices string,
+	Fees string,
+) (RelayerClient, error) {
+	config := sdk.GetConfig()
+	config.SetBech32PrefixForAccount(accPrefix, accPrefix+sdk.PrefixPublic)
+	config.Seal()
+
+	RelayerAddr, err := sdk.AccAddressFromBech32(RelayerAddrString)
 	if err != nil {
-		return OracleClient{}, err
+		return RelayerClient{}, err
 	}
 
-	oracleClient := OracleClient{
-		Logger:           logger.With().Str("module", "oracle_client").Logger(),
-		ChainID:          chainID,
-		KeyringBackend:   keyringBackend,
-		KeyringDir:       keyringDir,
-		KeyringPass:      keyringPass,
-		TMRPC:            tmRPC,
-		RPCTimeout:       rpcTimeout,
-		OracleAddr:       oracleAddr,
-		OracleAddrString: oracleAddrString,
-		Encoding:         wasmparams.MakeEncodingConfig(),
-		GasAdjustment:    gasAdjustment,
-		GRPCEndpoint:     grpcEndpoint,
+	relayerClient := RelayerClient{
+		Logger:            logger.With().Str("module", "relayer_client").Logger(),
+		ChainID:           chainID,
+		KeyringBackend:    keyringBackend,
+		KeyringDir:        keyringDir,
+		KeyringPass:       keyringPass,
+		TMRPC:             tmRPC,
+		RPCTimeout:        rpcTimeout,
+		RelayerAddr:       RelayerAddr,
+		RelayerAddrString: RelayerAddrString,
+		Encoding:          MakeEncodingConfig(),
+		GasAdjustment:     gasAdjustment,
+		GRPCEndpoint:      grpcEndpoint,
+		GasPrices:         GasPrices,
+		Fees:              Fees,
 	}
 
-	clientCtx, err := oracleClient.CreateClientContext()
+	clientCtx, err := relayerClient.CreateClientContext()
 	if err != nil {
-		return OracleClient{}, err
+		return RelayerClient{}, err
 	}
 
 	blockHeight, err := rpc.GetChainHeight(clientCtx)
 	if err != nil {
-		return OracleClient{}, err
+		return RelayerClient{}, err
 	}
 
 	blockTime, err := GetChainTimestamp(clientCtx)
 	if err != nil {
-		return OracleClient{}, err
+		return RelayerClient{}, err
 	}
 
 	chainHeight, err := NewChainHeight(
 		ctx,
 		clientCtx.Client,
-		oracleClient.Logger,
+		relayerClient.Logger,
 		blockHeight,
 		blockTime,
 	)
 	if err != nil {
-		return OracleClient{}, err
+		return RelayerClient{}, err
 	}
-	oracleClient.ChainHeight = chainHeight
+	relayerClient.ChainHeight = chainHeight
 
-	return oracleClient, nil
+	return relayerClient, nil
 }
 
 func newPassReader(pass string) io.Reader {
@@ -134,7 +144,7 @@ func (r *passReader) Read(p []byte) (n int, err error) {
 // BroadcastTx attempts to broadcast a signed transaction. If it fails, a few re-attempts
 // will be made until the transaction succeeds or ultimately times out or fails.
 // Ref: https://github.com/terra-money/oracle-feeder/blob/baef2a4a02f57a2ffeaa207932b2e03d7fb0fb25/feeder/src/vote.ts#L230
-func (oc OracleClient) BroadcastTx(nextBlockHeight, timeoutHeight int64, msgs ...sdk.Msg) error {
+func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight int64, msgs ...sdk.Msg) error {
 	maxBlockHeight := nextBlockHeight + timeoutHeight
 	lastCheckHeight := nextBlockHeight - 1
 
@@ -167,6 +177,7 @@ func (oc OracleClient) BroadcastTx(nextBlockHeight, timeoutHeight int64, msgs ..
 			telemetry.IncrCounter(1, "failure", "tx", "code")
 			err = fmt.Errorf("invalid response code from tx: %d", resp.Code)
 		}
+
 		if err != nil {
 			var (
 				code uint32
@@ -204,7 +215,7 @@ func (oc OracleClient) BroadcastTx(nextBlockHeight, timeoutHeight int64, msgs ..
 
 // CreateClientContext creates an SDK client Context instance used for transaction
 // generation, signing and broadcasting.
-func (oc OracleClient) CreateClientContext() (client.Context, error) {
+func (oc RelayerClient) CreateClientContext() (client.Context, error) {
 	var keyringInput io.Reader
 	if len(oc.KeyringPass) > 0 {
 		keyringInput = newPassReader(oc.KeyringPass)
@@ -212,7 +223,7 @@ func (oc OracleClient) CreateClientContext() (client.Context, error) {
 		keyringInput = os.Stdin
 	}
 
-	kr, err := keyring.New("oracle", oc.KeyringBackend, oc.KeyringDir, keyringInput, oc.Encoding.Marshaler)
+	kr, err := keyring.New("relayer", oc.KeyringBackend, oc.KeyringDir, keyringInput, oc.Encoding.Marshaler)
 	if err != nil {
 		return client.Context{}, err
 	}
@@ -229,10 +240,11 @@ func (oc OracleClient) CreateClientContext() (client.Context, error) {
 		return client.Context{}, err
 	}
 
-	keyInfo, err := kr.KeyByAddress(oc.OracleAddr)
+	keyInfo, err := kr.KeyByAddress(oc.RelayerAddr)
 	if err != nil {
 		return client.Context{}, err
 	}
+
 	clientCtx := client.Context{
 		ChainID:           oc.ChainID,
 		InterfaceRegistry: oc.Encoding.InterfaceRegistry,
@@ -246,7 +258,7 @@ func (oc OracleClient) CreateClientContext() (client.Context, error) {
 		NodeURI:           oc.TMRPC,
 		Client:            tmRPC,
 		Keyring:           kr,
-		FromAddress:       oc.OracleAddr,
+		FromAddress:       oc.RelayerAddr,
 		FromName:          keyInfo.Name,
 		From:              keyInfo.Name,
 		OutputFormat:      "json",
@@ -262,7 +274,7 @@ func (oc OracleClient) CreateClientContext() (client.Context, error) {
 
 // CreateTxFactory creates an SDK Factory instance used for transaction
 // generation, signing and broadcasting.
-func (oc OracleClient) CreateTxFactory() (tx.Factory, error) {
+func (oc RelayerClient) CreateTxFactory() (tx.Factory, error) {
 	clientCtx, err := oc.CreateClientContext()
 	if err != nil {
 		return tx.Factory{}, err
@@ -274,6 +286,7 @@ func (oc OracleClient) CreateTxFactory() (tx.Factory, error) {
 		WithTxConfig(clientCtx.TxConfig).
 		WithGasAdjustment(oc.GasAdjustment).
 		WithGasPrices(oc.GasPrices).
+		WithFees(oc.Fees).
 		WithKeybase(clientCtx.Keyring).
 		WithSignMode(signing.SignMode_SIGN_MODE_DIRECT).
 		WithSimulateAndExecute(true)

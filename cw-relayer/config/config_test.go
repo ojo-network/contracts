@@ -1,7 +1,6 @@
 package config_test
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -19,14 +18,15 @@ func TestValidate(t *testing.T) {
 			},
 			Keyring: config.Keyring{
 				Backend: "test",
-				Dir:     "/Users/username/.ojo",
+				Dir:     "/Users/username/.wasm",
 			},
 			RPC: config.RPC{
 				TMRPCEndpoint: "http://localhost:26657",
 				GRPCEndpoint:  "localhost:9090",
 				RPCTimeout:    "100ms",
 			},
-			GasAdjustment: 1.5,
+			GasAdjustment:   1.5,
+			ContractAddress: "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0phg4d",
 		}
 	}
 
@@ -38,7 +38,7 @@ func TestValidate(t *testing.T) {
 		{
 			"valid config",
 			validConfig(),
-			false,
+			true,
 		},
 	}
 
@@ -50,16 +50,20 @@ func TestValidate(t *testing.T) {
 }
 
 func TestParseConfig_Valid(t *testing.T) {
-	tmpFile, err := ioutil.TempFile("", "cw-relayer*.toml")
+	tmpFile, err := os.CreateTemp("", "cw-relayer*.toml")
 	require.NoError(t, err)
 	defer os.Remove(tmpFile.Name())
 
 	content := []byte(`
 gas_adjustment = 1.5
+contract_address = "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0phg4d"
+gas_prices = "0.00025stake"
+fees = "2stake"
 
 [account]
 address = "wasm15nejfgcaanqpw25ru4arvfd0fwy6j8clccvwx4"
 chain_id = "wasm-local-testnet"
+acc_prefix = "wasm"
 
 [keyring]
 backend = "test"

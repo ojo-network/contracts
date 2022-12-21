@@ -58,7 +58,7 @@ func NewChainHeight(
 	}
 
 	chainHeight := &ChainHeight{
-		Logger:             logger.With().Str("oracle_client", "chain_height").Logger(),
+		Logger:             logger.With().Str("relayer_client", "chain_height").Logger(),
 		errGetChainHeight:  nil,
 		lastChainHeight:    initialHeight,
 		lastBlockTimestamp: initialTimeStamp,
