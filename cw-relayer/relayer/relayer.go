@@ -32,6 +32,8 @@ type Relayer struct {
 	contractAddress string
 	requestID       uint64
 	timeoutHeight   int64
+
+	// if missedCounter >= missedThreshold, force relay prices (bypasses timing restrictions)
 	missedCounter   int64
 	missedThreshold int64
 }
@@ -148,7 +150,9 @@ func (o *Relayer) tick(ctx context.Context) error {
 		return err
 	}
 
+	// increment request id to be stored in contracts
 	o.requestID += 1
+
 	executeMsg := &wasmtypes.MsgExecuteContract{
 		Sender:   o.relayerClient.RelayerAddrString,
 		Contract: o.contractAddress,
