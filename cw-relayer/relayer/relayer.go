@@ -57,19 +57,19 @@ func New(
 	}
 }
 
-func (o *Relayer) Start(ctx context.Context) error {
+func (r *Relayer) Start(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			o.closer.Close()
+			r.closer.Close()
 
 		default:
-			o.logger.Debug().Msg("starting relayer tick")
+			r.logger.Debug().Msg("starting relayer tick")
 
 			startTime := time.Now()
-			if err := o.tick(ctx); err != nil {
+			if err := r.tick(ctx); err != nil {
 				telemetry.IncrCounter(1, "failure", "tick")
-				o.logger.Err(err).Msg("relayer tick failed")
+				r.logger.Err(err).Msg("relayer tick failed")
 			}
 
 			telemetry.MeasureSince(startTime, "runtime", "tick")
@@ -81,14 +81,14 @@ func (o *Relayer) Start(ctx context.Context) error {
 }
 
 // Stop stops the relayer process and waits for it to gracefully exit.
-func (o *Relayer) Stop() {
-	o.closer.Close()
-	<-o.closer.Done()
+func (r *Relayer) Stop() {
+	r.closer.Close()
+	<-r.closer.Done()
 }
 
-func (o *Relayer) setActiveDenomPrices(ctx context.Context) error {
+func (r *Relayer) setActiveDenomPrices(ctx context.Context) error {
 	grpcConn, err := grpc.Dial(
-		o.queryRPC,
+		r.queryRPC,
 		// the Cosmos SDK doesn't support any transport security mechanism
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(dialerFunc),
@@ -109,14 +109,14 @@ func (o *Relayer) setActiveDenomPrices(ctx context.Context) error {
 		return err
 	}
 
-	o.exchangeRates = queryResponse.ExchangeRates
+	r.exchangeRates = queryResponse.ExchangeRates
 	return nil
 }
 
-func (o *Relayer) tick(ctx context.Context) error {
-	o.logger.Debug().Msg("executing relayer tick")
+func (r *Relayer) tick(ctx context.Context) error {
+	r.logger.Debug().Msg("executing relayer tick")
 
-	blockHeight, err := o.relayerClient.ChainHeight.GetChainHeight()
+	blockHeight, err := r.relayerClient.ChainHeight.GetChainHeight()
 	if err != nil {
 		return err
 	}
@@ -124,7 +124,7 @@ func (o *Relayer) tick(ctx context.Context) error {
 		return fmt.Errorf("expected positive block height")
 	}
 
-	blockTimestamp, err := o.relayerClient.ChainHeight.GetChainTimestamp()
+	blockTimestamp, err := r.relayerClient.ChainHeight.GetChainTimestamp()
 	if err != nil {
 		return err
 	}
@@ -133,40 +133,40 @@ func (o *Relayer) tick(ctx context.Context) error {
 		return fmt.Errorf("expected positive blocktimestamp")
 	}
 
-	if err := o.setActiveDenomPrices(ctx); err != nil {
+	if err := r.setActiveDenomPrices(ctx); err != nil {
 		return err
 	}
 	nextBlockHeight := blockHeight + 1
 
-	forceRelay := o.missedCounter >= o.missedThreshold
+	forceRelay := r.missedCounter >= r.missedThreshold
 	if forceRelay {
-		o.missedCounter = 0
+		r.missedCounter = 0
 	}
 
 	// set the next resolve time for price feeds on wasm contract
 	nextBlockTime := blockTimestamp.Unix() + int64(tickerSleep.Seconds())
-	msg, err := generateContractRelayMsg(forceRelay, o.requestID, nextBlockTime, o.exchangeRates)
+	msg, err := generateContractRelayMsg(forceRelay, r.requestID, nextBlockTime, r.exchangeRates)
 	if err != nil {
 		return err
 	}
 
 	// increment request id to be stored in contracts
-	o.requestID += 1
+	r.requestID += 1
 
 	executeMsg := &wasmtypes.MsgExecuteContract{
-		Sender:   o.relayerClient.RelayerAddrString,
-		Contract: o.contractAddress,
+		Sender:   r.relayerClient.RelayerAddrString,
+		Contract: r.contractAddress,
 		Msg:      msg,
 		Funds:    nil,
 	}
 
-	o.logger.Info().
+	r.logger.Info().
 		Str("Contract Address", executeMsg.Contract).
 		Str("relayer addr", executeMsg.Sender).
 		Str("block timestamp", blockTimestamp.String()).
 		Msg("broadcasting execute to contract")
 
-	if err := o.relayerClient.BroadcastTx(nextBlockHeight, o.timeoutHeight, executeMsg); err != nil {
+	if err := r.relayerClient.BroadcastTx(nextBlockHeight, r.timeoutHeight, executeMsg); err != nil {
 		return err
 	}
 
