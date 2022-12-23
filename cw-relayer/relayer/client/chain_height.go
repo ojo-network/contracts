@@ -1,4 +1,3 @@
-// Package client TODO: import chain height from PFv1
 package client
 
 import (
