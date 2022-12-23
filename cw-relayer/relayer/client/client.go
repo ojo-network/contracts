@@ -25,7 +25,7 @@ import (
 )
 
 type (
-	// RelayerClient defines a structure that interfaces with the Ojo node.
+	// RelayerClient defines a structure that interfaces with the smart-contract-enabled chain.
 	RelayerClient struct {
 		Logger            zerolog.Logger
 		ChainID           string
@@ -37,8 +37,8 @@ type (
 		RelayerAddr       sdk.AccAddress
 		RelayerAddrString string
 		Encoding          wasmparams.EncodingConfig
-		Fees              string
-		GasPrices         string
+		fees              string
+		gasPrices         string
 		GasAdjustment     float64
 		GRPCEndpoint      string
 		KeyringPassphrase string
@@ -64,8 +64,8 @@ func NewRelayerClient(
 	grpcEndpoint string,
 	accPrefix string,
 	gasAdjustment float64,
-	GasPrices string,
-	Fees string,
+	gasPrices string,
+	fees string,
 ) (RelayerClient, error) {
 	config := sdk.GetConfig()
 	config.SetBech32PrefixForAccount(accPrefix, accPrefix+sdk.PrefixPublic)
@@ -89,8 +89,8 @@ func NewRelayerClient(
 		Encoding:          MakeEncodingConfig(),
 		GasAdjustment:     gasAdjustment,
 		GRPCEndpoint:      grpcEndpoint,
-		GasPrices:         GasPrices,
-		Fees:              Fees,
+		gasPrices:         gasPrices,
+		fees:              fees,
 	}
 
 	clientCtx, err := relayerClient.CreateClientContext()
@@ -143,7 +143,6 @@ func (r *passReader) Read(p []byte) (n int, err error) {
 
 // BroadcastTx attempts to broadcast a signed transaction. If it fails, a few re-attempts
 // will be made until the transaction succeeds or ultimately times out or fails.
-// Ref: https://github.com/terra-money/oracle-feeder/blob/baef2a4a02f57a2ffeaa207932b2e03d7fb0fb25/feeder/src/vote.ts#L230
 func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight int64, msgs ...sdk.Msg) error {
 	maxBlockHeight := nextBlockHeight + timeoutHeight
 	lastCheckHeight := nextBlockHeight - 1
@@ -158,7 +157,7 @@ func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight int64, msgs .
 		return err
 	}
 
-	// re-try voting until timeout
+	// re-try tx until timeout
 	for lastCheckHeight < maxBlockHeight {
 		latestBlockHeight, err := oc.ChainHeight.GetChainHeight()
 		if err != nil {
@@ -285,8 +284,8 @@ func (oc RelayerClient) CreateTxFactory() (tx.Factory, error) {
 		WithChainID(oc.ChainID).
 		WithTxConfig(clientCtx.TxConfig).
 		WithGasAdjustment(oc.GasAdjustment).
-		WithGasPrices(oc.GasPrices).
-		WithFees(oc.Fees).
+		WithGasPrices(oc.gasPrices).
+		WithFees(oc.fees).
 		WithKeybase(clientCtx.Keyring).
 		WithSignMode(signing.SignMode_SIGN_MODE_DIRECT).
 		WithSimulateAndExecute(true)

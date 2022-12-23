@@ -35,8 +35,9 @@ var rootCmd = &cobra.Command{
 	Use:   "cw-relayer [config-file]",
 	Args:  cobra.ExactArgs(1),
 	Short: "cw-relayer is a side-car process for providing Wasm-enabled chains with Ojo's pricing Data",
-	Long:  `cw-relayer is a side-car process for providing Wasm-enabled chains with Ojo's pricing Data.`,
-	RunE:  cwRelayerCmdHandler,
+	Long: `cw-relayer is a side-car process for providing Wasm-enabled chains with Ojo's pricing Data,
+	It queries prices from ojo node and pushes it to Wasm contracts on regular intervals`,
+	RunE: cwRelayerCmdHandler,
 }
 
 func init() {
@@ -95,7 +96,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 
 	// listen for and trap any OS signal to gracefully shutdown and exit
 	trapSignal(cancel, logger)
-	//
+
 	rpcTimeout, err := time.ParseDuration(cfg.RPC.RPCTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to parse RPC timeout: %w", err)
@@ -106,8 +107,8 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	//
-	//// client for interacting with the ojo & wasmd chain
+
+	// client for interacting with the ojo & wasmd chain
 	client, err := relayerclient.NewRelayerClient(
 		ctx,
 		logger,

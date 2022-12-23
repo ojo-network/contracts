@@ -3,6 +3,9 @@ contract_address = "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0ph
 query_rpc = "0.0.0.0:9090"
 gas_adjustment = 1.5
 timeout_height = 10
+gas_prices = "0.00025stake"
+fees = "2stake"
+
 ### account & chain-id for the wasmd relayer account
 [account]
 address = "wasm1usr9g5a4s2qrwl63sdjtrs2qd4a7huh6qksawp"
