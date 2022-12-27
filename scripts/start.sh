@@ -3,8 +3,8 @@
 BINARY=wasmd
 CHAIN_DIR=./data
 CHAINID_1="wasm-test"
-GRPCPORT_1=8090
-GRPCWEB_1=8091
+GRPCPORT_1=8092
+GRPCWEB_1=8093
 
 echo "Starting $CHAINID_1 in $CHAIN_DIR..."
 echo "Creating log file at $CHAIN_DIR/$CHAINID_1.log"
