@@ -48,7 +48,7 @@ start:
 docker-build-relayer-e2e:
 	@DOCKER_BUILDKIT=1 docker build -t cw-relayer -f tests/e2e/docker/relayer.Dockerfile .
 
-.PHONY: build install start docker-build-api-e2e
+.PHONY: build install start docker-build-relayer-e2e
 
 ###############################################################################
 ##                              Tests & Linting                              ##

@@ -16,18 +16,18 @@ type RelayerTestSuite struct {
 	relayer *Relayer
 }
 
-func (ots *RelayerTestSuite) SetupSuite() {
-	ots.relayer = New(zerolog.Nop(), client.RelayerClient{}, "", 100, 5, "")
+func (rts *RelayerTestSuite) SetupSuite() {
+	rts.relayer = New(zerolog.Nop(), client.RelayerClient{}, "", 100, 5, "")
 }
 
 func TestServiceTestSuite(t *testing.T) {
 	suite.Run(t, new(RelayerTestSuite))
 }
 
-func (ots *RelayerTestSuite) TestStop() {
-	ots.Eventually(
+func (rts *RelayerTestSuite) TestStop() {
+	rts.Eventually(
 		func() bool {
-			ots.relayer.Stop()
+			rts.relayer.Stop()
 			return true
 		},
 		5*time.Second,
@@ -35,31 +35,31 @@ func (ots *RelayerTestSuite) TestStop() {
 	)
 }
 
-func (ots *RelayerTestSuite) Test_generateContractMsg() {
+func (rts *RelayerTestSuite) Test_generateContractMsg() {
 	exchangeRates := types.DecCoins{
 		types.NewDecCoinFromDec("atom", types.MustNewDecFromStr("1.23456789")),
 		types.NewDecCoinFromDec("umee", types.MustNewDecFromStr("1.23456789")),
 		types.NewDecCoinFromDec("juno", types.MustNewDecFromStr("1.23456789")),
 	}
 
-	ots.Run("Relay msg", func() {
+	rts.Run("Relay msg", func() {
 		msg, err := generateContractRelayMsg(false, 1, 1, exchangeRates)
-		ots.Require().NoError(err)
+		rts.Require().NoError(err)
 
 		// price * 10**9 (USD factor in contract)
 		expectedRes := "{\"relay\":{\"symbol_rates\":[[\"atom\",\"1234567890\"],[\"umee\",\"1234567890\"],[\"juno\",\"1234567890\"]],\"resolve_time\":\"1\",\"request_id\":\"1\"}}"
 		msgStr := string(msg)
 
-		ots.Require().Equal(expectedRes, msgStr)
+		rts.Require().Equal(expectedRes, msgStr)
 	})
 
-	ots.Run("Force Relay msg", func() {
+	rts.Run("Force Relay msg", func() {
 		msg, err := generateContractRelayMsg(true, 1, 1, exchangeRates)
-		ots.Require().NoError(err)
+		rts.Require().NoError(err)
 
 		expectedRes := "{\"force_relay\":{\"symbol_rates\":[[\"atom\",\"1234567890\"],[\"umee\",\"1234567890\"],[\"juno\",\"1234567890\"]],\"resolve_time\":\"1\",\"request_id\":\"1\"}}"
 		msgStr := string(msg)
 
-		ots.Require().Equal(expectedRes, msgStr)
+		rts.Require().Equal(expectedRes, msgStr)
 	})
 }
