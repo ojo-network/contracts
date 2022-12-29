@@ -23,3 +23,9 @@ kill-dev:
 kill:
 	@echo "Killing wasmd"
 	-@killall -9 wasmd 2>/dev/null
+
+test-e2e:
+	@echo "Running e2e tests"
+	cd cw-relayer && ${MAKE} test-e2e
+
+.PHONY: test-e2e

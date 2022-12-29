@@ -46,7 +46,8 @@ func (ots *RelayerTestSuite) Test_generateContractMsg() {
 		msg, err := generateContractRelayMsg(false, 1, 1, exchangeRates)
 		ots.Require().NoError(err)
 
-		expectedRes := "{\"relay\":{\"symbol_rates\":[[\"atom\",\"1234567890000000000\"],[\"umee\",\"1234567890000000000\"],[\"juno\",\"1234567890000000000\"]],\"resolve_time\":\"1\",\"request_id\":\"1\"}}"
+		// price * 10**9 (USD factor in contract)
+		expectedRes := "{\"relay\":{\"symbol_rates\":[[\"atom\",\"1234567890\"],[\"umee\",\"1234567890\"],[\"juno\",\"1234567890\"]],\"resolve_time\":\"1\",\"request_id\":\"1\"}}"
 		msgStr := string(msg)
 
 		ots.Require().Equal(expectedRes, msgStr)
@@ -56,7 +57,7 @@ func (ots *RelayerTestSuite) Test_generateContractMsg() {
 		msg, err := generateContractRelayMsg(true, 1, 1, exchangeRates)
 		ots.Require().NoError(err)
 
-		expectedRes := "{\"force_relay\":{\"symbol_rates\":[[\"atom\",\"1234567890000000000\"],[\"umee\",\"1234567890000000000\"],[\"juno\",\"1234567890000000000\"]],\"resolve_time\":\"1\",\"request_id\":\"1\"}}"
+		expectedRes := "{\"force_relay\":{\"symbol_rates\":[[\"atom\",\"1234567890\"],[\"umee\",\"1234567890\"],[\"juno\",\"1234567890\"]],\"resolve_time\":\"1\",\"request_id\":\"1\"}}"
 		msgStr := string(msg)
 
 		ots.Require().Equal(expectedRes, msgStr)

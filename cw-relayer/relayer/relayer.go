@@ -180,7 +180,8 @@ func generateContractRelayMsg(forceRelay bool, requestID uint64, resolveTime int
 		RequestID:   requestID,
 	}
 
-	factor := types.NewDec(10).Power(18)
+	// base (USD) representation in contract
+	factor := types.NewDec(10).Power(9)
 	for _, rate := range exchangeRates {
 		msg.SymbolRates = append(msg.SymbolRates, [2]string{rate.Denom, rate.Amount.Mul(factor).TruncateInt().String()})
 	}

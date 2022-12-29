@@ -1,8 +1,8 @@
 BINARY=wasmd
-CHAINID_1="wasm-test"
-CONTRACT_PATH=./cosmwasm/artifacts/std_reference.wasm
+CHAINID_1="test-wasm"
+CONTRACT_PATH=.wasm/config/std_reference.wasm
 DEMO_MNEMONIC_1="pony glide frown crisp unfold lawn cup loan trial govern usual matrix theory wash fresh address pioneer between meadow visa buffalo keep gallery swear"
-RPC="http://0.0.0.0:16657"
+RPC="http://0.0.0.0:26657"
 
 NODE="--node $RPC"
 TXFLAG="$NODE --chain-id $CHAINID_1 --gas-prices 0.25stake --keyring-backend test --gas auto --gas-adjustment 1.3"
