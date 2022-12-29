@@ -22,6 +22,7 @@ const (
 	tickerSleep = 1000 * time.Millisecond
 )
 
+// Relayer defines a structure that queries prices from ojo and publishes prices to wasm contract
 type Relayer struct {
 	logger zerolog.Logger
 	closer *sync.Closer
@@ -38,6 +39,7 @@ type Relayer struct {
 	missedThreshold int64
 }
 
+// New returns instance of a relayer
 func New(
 	logger zerolog.Logger,
 	oc client.RelayerClient,
@@ -113,6 +115,7 @@ func (r *Relayer) setActiveDenomPrices(ctx context.Context) error {
 	return nil
 }
 
+// tick queries price from ojo and broadcasts wasm tx with prices to the wasm contract periodically
 func (r *Relayer) tick(ctx context.Context) error {
 	r.logger.Debug().Msg("executing relayer tick")
 
