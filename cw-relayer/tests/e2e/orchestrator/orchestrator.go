@@ -19,7 +19,6 @@ const (
 	WASMD_CONTAINER_NAME = "cw-relayer"
 	WASMD_TRPC_PORT      = "26657"
 	WASM_GRPC_PORT       = "8080"
-	QUERY_GRPC_PORT      = "9090"
 )
 
 // Orchestrator is responsible for managing docker resources,
@@ -70,12 +69,6 @@ func (o *Orchestrator) InitDockerResources(t *testing.T) error {
 		time.Second*2,
 		"wasmd node failed to produce blocks",
 	)
-
-	t.Log("-> initializing mock price server")
-	err = o.InitMockPriceServer(QUERY_GRPC_PORT)
-	if err != nil {
-		return err
-	}
 
 	t.Log("-> initializing wasm contract")
 	err = o.deployAndInitContract()

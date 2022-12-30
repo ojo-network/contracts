@@ -6,12 +6,16 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/ojo-network/cw-relayer/tests/e2e/orchestrator"
+	"github.com/ojo-network/cw-relayer/tests/e2e/server"
 )
+
+const QUERY_PORT = "9090"
 
 type IntegrationTestSuite struct {
 	suite.Suite
 
 	orchestrator orchestrator.Orchestrator
+	priceServer  server.Server
 }
 
 func TestIntegrationTestSuite(t *testing.T) {
@@ -20,11 +24,19 @@ func TestIntegrationTestSuite(t *testing.T) {
 
 func (s *IntegrationTestSuite) SetupSuite() {
 	s.orchestrator = orchestrator.Orchestrator{}
+	s.priceServer = server.Server{}
+
 	s.T().Log("---> initializing docker resources")
-	s.Require().NoError(s.orchestrator.InitDockerResources(s.T()))
+	err := s.orchestrator.InitDockerResources(s.T())
+	s.Require().NoError(err)
+
+	s.T().Log("---> initializing mock price server")
+	err = s.priceServer.InitMockPriceServer(QUERY_PORT)
+	s.Require().NoError(err)
 }
 
 func (s *IntegrationTestSuite) TearDownSuite() {
 	s.T().Log("---> tearing down")
-	s.Require().NoError(s.orchestrator.TearDownDockerResources())
+	err := s.orchestrator.TearDownDockerResources()
+	s.Require().NoError(err)
 }

@@ -1,6 +1,4 @@
 # syntax=docker/dockerfile:1
-# https://github.com/osmosis-labs/osmosis/blob/v12.3.0/Makefile
-# Modified to use the apline image instead of distroless and include bash
 
 ARG GO_VERSION="1.18"
 ARG RUNNER_IMAGE="alpine"
