@@ -23,8 +23,8 @@ const (
 )
 
 var (
-	// Factor is multiplied to price to convert them into correct amount for contracts
-	Factor = types.NewDec(10).Power(9)
+	// RateFactor is used to convert ojo prices to contract-compatible values.
+	RateFactor = types.NewDec(10).Power(9)
 )
 
 // Relayer defines a structure that queries prices from ojo and publishes prices to wasm contract.
@@ -189,7 +189,7 @@ func generateContractRelayMsg(forceRelay bool, requestID uint64, resolveTime int
 	}
 
 	for _, rate := range exchangeRates {
-		msg.SymbolRates = append(msg.SymbolRates, [2]string{rate.Denom, rate.Amount.Mul(Factor).TruncateInt().String()})
+		msg.SymbolRates = append(msg.SymbolRates, [2]string{rate.Denom, rate.Amount.Mul(RateFactor).TruncateInt().String()})
 	}
 
 	if forceRelay {

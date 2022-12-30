@@ -153,7 +153,6 @@ func (o *Orchestrator) setGrpcEndpoint() (err error) {
 func (o *Orchestrator) setContractAddress() error {
 	grpcConn, err := grpc.Dial(
 		o.QueryRpc,
-		// the Cosmos SDK doesn't support any transport security mechanism
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {

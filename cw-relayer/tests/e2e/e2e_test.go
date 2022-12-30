@@ -6,6 +6,7 @@ import (
 	"time"
 
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
+	"github.com/cosmos/cosmos-sdk/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -39,8 +40,8 @@ type (
 )
 
 var (
-	// only used when querying prices with reference to other tokens
-	contractFactor = relayer.Factor.Power(2)
+	// used to convert rate from reference data queries to USD
+	refDataFactor = types.NewDec(10).Power(18)
 )
 
 func (s *IntegrationTestSuite) TestQueryRateAndReferenceData() {
@@ -70,7 +71,7 @@ func (s *IntegrationTestSuite) TestQueryRateAndReferenceData() {
 
 				return data, err
 			},
-			rate: mockPrices[0].Amount.Mul(relayer.Factor).TruncateInt().String(),
+			rate: mockPrices[0].Amount.Mul(relayer.RateFactor).TruncateInt().String(),
 		},
 		{
 			tc: "query reference data in USD from contract",
@@ -83,7 +84,7 @@ func (s *IntegrationTestSuite) TestQueryRateAndReferenceData() {
 
 				return data, nil
 			},
-			rate: mockPrices[0].Amount.Mul(contractFactor).TruncateInt().String(),
+			rate: mockPrices[0].Amount.Mul(refDataFactor).TruncateInt().String(),
 		},
 	}
 
@@ -191,7 +192,7 @@ func (s *IntegrationTestSuite) TestQueryReferenceDataBulk() {
 					}
 
 					for i, respData := range resp {
-						s.Require().Equal(respData["rate"], mockPrices[i].Amount.Mul(contractFactor).TruncateInt().String())
+						s.Require().Equal(respData["rate"], mockPrices[i].Amount.Mul(refDataFactor).TruncateInt().String())
 					}
 
 					return true
