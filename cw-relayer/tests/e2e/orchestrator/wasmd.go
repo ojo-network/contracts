@@ -54,8 +54,11 @@ func (o *Orchestrator) initWasmd() error {
 	}
 
 	err = o.setTendermintEndpoint()
-	err = o.setGrpcEndpoint()
-	return err
+	if err != nil {
+		return err
+	}
+
+	return o.setGrpcEndpoint()
 }
 
 func (o *Orchestrator) initWasmConfigs() (dir string, err error) {

@@ -1,13 +1,9 @@
 package orchestrator
 
 import (
-	"container/list"
-	"context"
-	"sync"
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 	"github.com/stretchr/testify/require"
@@ -30,11 +26,6 @@ type Orchestrator struct {
 	wasmdResource *dockertest.Resource
 	wasmRPC       *rpchttp.HTTP
 	wasmChain     *Chain
-
-	wsConn       *websocket.Conn
-	wsCancelFunc context.CancelFunc
-	wsMessages   *list.List
-	wsMutex      sync.RWMutex
 
 	QueryRpc        string
 	ContractAddress string
@@ -98,9 +89,7 @@ func (o *Orchestrator) InitDockerResources(t *testing.T) error {
 }
 
 func (o *Orchestrator) TearDownDockerResources() error {
-	var err error
-
-	err = o.dockerPool.Purge(o.wasmdResource)
+	err := o.dockerPool.Purge(o.wasmdResource)
 	if err != nil {
 		return err
 	}
