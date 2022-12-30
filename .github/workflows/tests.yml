@@ -10,17 +10,19 @@ jobs:
   test-e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: ./cw-relayer
     steps:
       - uses: actions/checkout@v3
       - uses: technote-space/get-diff-action@v6.1.2
         with:
           PATTERNS: |
-            cw-relayer/**/**.go
-            cw-relayer/go.mod
-            cw-relayer/go.sum
+            **/**.go
+            go.mod
+            go.sum
 
       - uses: actions/setup-go@v3
-        working-directory: cw-relayer
         if: env.GIT_DIFF
         with:
           go-version: 1.19
