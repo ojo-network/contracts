@@ -10,23 +10,21 @@ jobs:
   test-e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: ./cw-relayer
     steps:
       - uses: actions/checkout@v3
       - uses: technote-space/get-diff-action@v6.1.2
         with:
           PATTERNS: |
-            **/**.go
-            go.mod
-            go.sum
+            cw-relayer/**/**.go
+            cw-relayer/go.mod
+            cw-relayer/go.sum
 
       - uses: actions/setup-go@v3
         if: env.GIT_DIFF
         with:
           go-version: 1.19
           cache: true
+          cache-dependency-path: cw-relayer/go.sum
 
       - name: cache docker layer
         uses: satackey/action-docker-layer-caching@v0.0.11
