@@ -39,6 +39,7 @@ func (o *Orchestrator) initWasmd() error {
 				fmt.Sprintf("E2E_WASMD_VAL_MNEMONIC=%s", o.wasmChain.val_mnemonic),
 				fmt.Sprintf("E2E_WASMD_VAL_ADDRESSS=%s", o.wasmChain.address),
 			},
+			ExtraHosts:   []string{"host.docker.internal:host-gateway"},
 			PortBindings: map[docker.Port][]docker.PortBinding{},
 			Mounts:       []string{fmt.Sprintf("%s:/config", configDir)},
 			Entrypoint: []string{
