@@ -58,7 +58,6 @@ func TestParseConfig_Valid(t *testing.T) {
 gas_adjustment = 1.5
 contract_address = "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0phg4d"
 gas_prices = "0.00025stake"
-fees = "2stake"
 
 [account]
 address = "wasm15nejfgcaanqpw25ru4arvfd0fwy6j8clccvwx4"

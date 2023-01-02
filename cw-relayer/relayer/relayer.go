@@ -22,6 +22,12 @@ const (
 	tickerSleep = 1000 * time.Millisecond
 )
 
+var (
+	// RateFactor is used to convert ojo prices to contract-compatible values.
+	RateFactor = types.NewDec(10).Power(9)
+)
+
+// Relayer defines a structure that queries prices from ojo and publishes prices to wasm contract.
 type Relayer struct {
 	logger zerolog.Logger
 	closer *sync.Closer
@@ -38,6 +44,7 @@ type Relayer struct {
 	missedThreshold int64
 }
 
+// New returns an instance of the relayer.
 func New(
 	logger zerolog.Logger,
 	oc client.RelayerClient,
@@ -113,6 +120,7 @@ func (r *Relayer) setActiveDenomPrices(ctx context.Context) error {
 	return nil
 }
 
+// tick queries price from ojo and broadcasts wasm tx with prices to the wasm contract periodically.
 func (r *Relayer) tick(ctx context.Context) error {
 	r.logger.Debug().Msg("executing relayer tick")
 
@@ -180,9 +188,8 @@ func generateContractRelayMsg(forceRelay bool, requestID uint64, resolveTime int
 		RequestID:   requestID,
 	}
 
-	factor := types.NewDec(10).Power(18)
 	for _, rate := range exchangeRates {
-		msg.SymbolRates = append(msg.SymbolRates, [2]string{rate.Denom, rate.Amount.Mul(factor).TruncateInt().String()})
+		msg.SymbolRates = append(msg.SymbolRates, [2]string{rate.Denom, rate.Amount.Mul(RateFactor).TruncateInt().String()})
 	}
 
 	if forceRelay {

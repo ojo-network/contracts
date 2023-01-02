@@ -39,7 +39,7 @@ type (
 
 		GasAdjustment float64 `mapstructure:"gas_adjustment" validate:"required"`
 		GasPrices     string  `mapstructure:"gas_prices" validate:"required"`
-		Fees          string  `mapstructure:"fees" validate:"required"`
+
 		// query rpc for ojo node
 		QueryRPC string `mapstructure:"query_rpc"`
 	}

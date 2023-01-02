@@ -37,8 +37,7 @@ type (
 		RelayerAddr       sdk.AccAddress
 		RelayerAddrString string
 		Encoding          wasmparams.EncodingConfig
-		fees              string
-		gasPrices         string
+		GasPrices         string
 		GasAdjustment     float64
 		GRPCEndpoint      string
 		KeyringPassphrase string
@@ -64,8 +63,7 @@ func NewRelayerClient(
 	grpcEndpoint string,
 	accPrefix string,
 	gasAdjustment float64,
-	gasPrices string,
-	fees string,
+	GasPrices string,
 ) (RelayerClient, error) {
 	config := sdk.GetConfig()
 	config.SetBech32PrefixForAccount(accPrefix, accPrefix+sdk.PrefixPublic)
@@ -89,8 +87,7 @@ func NewRelayerClient(
 		Encoding:          MakeEncodingConfig(),
 		GasAdjustment:     gasAdjustment,
 		GRPCEndpoint:      grpcEndpoint,
-		gasPrices:         gasPrices,
-		fees:              fees,
+		GasPrices:         GasPrices,
 	}
 
 	clientCtx, err := relayerClient.CreateClientContext()
@@ -174,6 +171,7 @@ func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight int64, msgs .
 		resp, err := BroadcastTx(clientCtx, factory, msgs...)
 		if resp != nil && resp.Code != 0 {
 			telemetry.IncrCounter(1, "failure", "tx", "code")
+			oc.Logger.Debug().Msg(resp.String())
 			err = fmt.Errorf("invalid response code from tx: %d", resp.Code)
 		}
 
@@ -284,8 +282,7 @@ func (oc RelayerClient) CreateTxFactory() (tx.Factory, error) {
 		WithChainID(oc.ChainID).
 		WithTxConfig(clientCtx.TxConfig).
 		WithGasAdjustment(oc.GasAdjustment).
-		WithGasPrices(oc.gasPrices).
-		WithFees(oc.fees).
+		WithGasPrices(oc.GasPrices).
 		WithKeybase(clientCtx.Keyring).
 		WithSignMode(signing.SignMode_SIGN_MODE_DIRECT).
 		WithSimulateAndExecute(true)
