@@ -1,6 +1,8 @@
 package relayer
 
 import (
+	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -17,7 +19,7 @@ type RelayerTestSuite struct {
 }
 
 func (rts *RelayerTestSuite) SetupSuite() {
-	rts.relayer = New(zerolog.Nop(), client.RelayerClient{}, "", 100, 5, "")
+	rts.relayer = New(zerolog.Nop(), client.RelayerClient{}, "", 100, 5, "", 0)
 }
 
 func TestServiceTestSuite(t *testing.T) {
@@ -35,31 +37,63 @@ func (rts *RelayerTestSuite) TestStop() {
 	)
 }
 
-func (rts *RelayerTestSuite) Test_generateContractMsg() {
+func (rts *RelayerTestSuite) Test_generateRelayMsg() {
 	exchangeRates := types.DecCoins{
 		types.NewDecCoinFromDec("atom", types.MustNewDecFromStr("1.23456789")),
 		types.NewDecCoinFromDec("umee", types.MustNewDecFromStr("1.23456789")),
 		types.NewDecCoinFromDec("juno", types.MustNewDecFromStr("1.23456789")),
 	}
 
-	rts.Run("Relay msg", func() {
-		msg, err := generateContractRelayMsg(false, 1, 1, exchangeRates)
-		rts.Require().NoError(err)
+	testCases := []struct {
+		tc         string
+		forceRelay bool
+		msgType    MsgType
+	}{
+		{
+			tc:         "Relay msg",
+			forceRelay: false,
+			msgType:    RelayRate,
+		},
+		{
+			tc:         "Force Relay msg",
+			forceRelay: true,
+			msgType:    RelayRate,
+		},
+		{
+			tc:         "Relay median",
+			forceRelay: false,
+			msgType:    RelayHistoricalMedian,
+		},
+		{
+			tc:         "Relay deviations",
+			forceRelay: false,
+			msgType:    RelayHistoricalDeviation,
+		},
+	}
 
-		// price * 10**9 (USD factor in contract)
-		expectedRes := "{\"relay\":{\"symbol_rates\":[[\"atom\",\"1234567890\"],[\"umee\",\"1234567890\"],[\"juno\",\"1234567890\"]],\"resolve_time\":\"1\",\"request_id\":\"1\"}}"
-		msgStr := string(msg)
+	for _, tc := range testCases {
+		rts.Run(tc.tc, func() {
+			msg, err := genRateMsgData(tc.forceRelay, tc.msgType, 0, 0, exchangeRates)
+			rts.Require().NoError(err)
 
-		rts.Require().Equal(expectedRes, msgStr)
-	})
+			var expectedMsg map[string]Msg
+			err = json.Unmarshal(msg, &expectedMsg)
+			rts.Require().NoError(err)
 
-	rts.Run("Force Relay msg", func() {
-		msg, err := generateContractRelayMsg(true, 1, 1, exchangeRates)
-		rts.Require().NoError(err)
+			var msgKey string
+			if tc.forceRelay {
+				msgKey = fmt.Sprintf("force_%s", tc.msgType.String())
+			} else {
+				msgKey = tc.msgType.String()
+			}
 
-		expectedRes := "{\"force_relay\":{\"symbol_rates\":[[\"atom\",\"1234567890\"],[\"umee\",\"1234567890\"],[\"juno\",\"1234567890\"]],\"resolve_time\":\"1\",\"request_id\":\"1\"}}"
-		msgStr := string(msg)
+			rates := expectedMsg[msgKey].SymbolRates
+			rts.Require().NotZero(len(rates))
 
-		rts.Require().Equal(expectedRes, msgStr)
-	})
+			for i, rate := range rates {
+				rts.Require().Equal(rate[0], exchangeRates[i].Denom)
+				rts.Require().Equal(rate[1], exchangeRates[i].Amount.Mul(RateFactor).TruncateInt().String())
+			}
+		})
+	}
 }

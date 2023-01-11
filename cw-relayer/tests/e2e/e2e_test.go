@@ -18,12 +18,24 @@ type (
 		Ref symbol `json:"get_ref"`
 	}
 
+	medianRateMsg struct {
+		Ref symbol `json:"get_median_ref"`
+	}
+
+	deviationRateMsg struct {
+		Ref symbol `json:"get_deviation_ref"`
+	}
+
 	symbol struct {
 		Symbol string `json:"symbol"`
 	}
 
 	refMsg struct {
 		RefData symbolPair `json:"get_reference_data"`
+	}
+
+	medianRefMsg struct {
+		RefData symbolPair `json:"get_median_reference_data"`
 	}
 
 	symbolPair struct {
@@ -34,8 +46,20 @@ type (
 		RefData symbolPairs `json:"get_reference_data_bulk"`
 	}
 
+	medianRefMsgBulk struct {
+		RefData symbolPairs `json:"get_median_reference_data_bulk"`
+	}
+
 	symbolPairs struct {
 		SymbolPairs [][2]string `json:"symbol_pairs"`
+	}
+
+	deviationRateMsgBulk struct {
+		RefData symbols `json:"get_deviation_ref_bulk"`
+	}
+
+	symbols struct {
+		Symbols []string `json:"symbols"`
 	}
 )
 
@@ -85,6 +109,45 @@ func (s *IntegrationTestSuite) TestQueryRateAndReferenceData() {
 				return data, nil
 			},
 			rate: mockPrices[0].Amount.Mul(refDataFactor).TruncateInt().String(),
+		},
+		{
+			tc: "query median rate from contract",
+			prepare: func() ([]byte, error) {
+				msg := medianRateMsg{Ref: symbol{Symbol: mockPrices[0].Denom}}
+				data, err := json.Marshal(msg)
+				if err != nil {
+					return nil, err
+				}
+
+				return data, err
+			},
+			rate: mockPrices[0].Amount.Mul(relayer.RateFactor).TruncateInt().String(),
+		},
+		{
+			tc: "query median reference data in USD from contract",
+			prepare: func() ([]byte, error) {
+				msg := medianRefMsg{symbolPair{SymbolPair: [2]string{mockPrices[0].Denom, "USD"}}}
+				data, err := json.Marshal(msg)
+				if err != nil {
+					return nil, err
+				}
+
+				return data, nil
+			},
+			rate: mockPrices[0].Amount.Mul(refDataFactor).TruncateInt().String(),
+		},
+		{
+			tc: "query deviations from contract",
+			prepare: func() ([]byte, error) {
+				msg := deviationRateMsg{Ref: symbol{Symbol: mockPrices[0].Denom}}
+				data, err := json.Marshal(msg)
+				if err != nil {
+					return nil, err
+				}
+
+				return data, err
+			},
+			rate: mockPrices[0].Amount.Mul(relayer.RateFactor).TruncateInt().String(),
 		},
 	}
 
@@ -144,6 +207,7 @@ func (s *IntegrationTestSuite) TestQueryReferenceDataBulk() {
 	testCases := []struct {
 		tc      string
 		prepare func() ([]byte, error)
+		factor  types.Dec
 	}{
 		{
 			tc: "query reference data in bulk",
@@ -161,6 +225,43 @@ func (s *IntegrationTestSuite) TestQueryReferenceDataBulk() {
 
 				return data, nil
 			},
+			factor: refDataFactor,
+		},
+		{
+			tc: "query median reference data in bulk",
+			prepare: func() ([]byte, error) {
+				var symbolData [][2]string
+				for _, mockPrice := range mockPrices {
+					symbolData = append(symbolData, [2]string{mockPrice.Denom, "USD"})
+				}
+
+				msg := medianRefMsgBulk{symbolPairs{SymbolPairs: symbolData}}
+				data, err := json.Marshal(msg)
+				if err != nil {
+					return nil, err
+				}
+
+				return data, nil
+			},
+			factor: refDataFactor,
+		},
+		{
+			tc: "query deviation data in bulk",
+			prepare: func() ([]byte, error) {
+				var denoms []string
+				for _, mockPrice := range mockPrices {
+					denoms = append(denoms, mockPrice.Denom)
+				}
+
+				msg := deviationRateMsgBulk{symbols{Symbols: denoms}}
+				data, err := json.Marshal(msg)
+				if err != nil {
+					return nil, err
+				}
+
+				return data, nil
+			},
+			factor: relayer.RateFactor,
 		},
 	}
 
@@ -192,7 +293,7 @@ func (s *IntegrationTestSuite) TestQueryReferenceDataBulk() {
 					}
 
 					for i, respData := range resp {
-						s.Require().Equal(respData["rate"], mockPrices[i].Amount.Mul(refDataFactor).TruncateInt().String())
+						s.Require().Equal(respData["rate"], mockPrices[i].Amount.Mul(tc.factor).TruncateInt().String())
 					}
 
 					return true

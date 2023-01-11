@@ -7,8 +7,9 @@ use semver::Version;
 
 use crate::errors::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::state::{RefData, ReferenceData, ADMIN, REFDATA, RELAYERS};
+use crate::state::{RefData, ReferenceData, ADMIN, REFDATA, RELAYERS,MEDIANREFDATA,DEVIATIONDATA};
 
+const E0: Uint64 = Uint64::new(0);
 const E9: Uint64 = Uint64::new(1_000_000_000u64);
 const E18: Uint256 = Uint256::from_u128(1_000_000_000_000_000_000u128);
 
@@ -56,6 +57,21 @@ pub fn execute(
             resolve_time,
             request_id,
         } => execute_force_relay(deps, info, symbol_rates, resolve_time, request_id),
+        ExecuteMsg::RelayHistoricalMedian {
+            symbol_rates,
+            resolve_time,
+            request_id,
+        } => execute_relay_historical_median(deps, info, symbol_rates, resolve_time, request_id),
+        ExecuteMsg::ForceRelayHistoricalMedian {
+            symbol_rates,
+            resolve_time,
+            request_id,
+        } => execute_force_relay_historical_median(deps, info, symbol_rates, resolve_time, request_id),
+        ExecuteMsg::RelayHistoricalDeviation {
+            symbol_rates,
+            resolve_time,
+            request_id,
+        } => execute_relay_historical_deviation(deps, info, symbol_rates, resolve_time, request_id),
     }
 }
 
@@ -154,6 +170,39 @@ fn execute_relay(
     Ok(Response::default().add_attribute("action", "execute_relay"))
 }
 
+fn execute_relay_historical_median(
+    deps: DepsMut,
+    info: MessageInfo,
+    symbol_rates: Vec<(String, Uint64)>,
+    resolve_time: Uint64,
+    request_id: Uint64,
+) -> Result<Response, ContractError> {
+    // Checks if sender is a relayer
+    let sender_addr = &info.sender;
+    if !query_is_relayer(deps.as_ref(), sender_addr)? {
+        return Err(ContractError::Unauthorized {
+            msg: String::from("Sender is not a relayer"),
+        });
+    }
+
+    // Saves price data
+    for (symbol, rate) in symbol_rates {
+        if let Some(existing_refdata) = MEDIANREFDATA.may_load(deps.storage, &symbol)? {
+            if existing_refdata.resolve_time >= resolve_time {
+                continue;
+            }
+        }
+
+        MEDIANREFDATA.save(
+            deps.storage,
+            &symbol,
+            &RefData::new(rate, resolve_time, request_id),
+        )?
+    }
+
+    Ok(Response::default().add_attribute("action", "execute_relay_historical"))
+}
+
 fn execute_force_relay(
     deps: DepsMut,
     info: MessageInfo,
@@ -180,6 +229,65 @@ fn execute_force_relay(
     Ok(Response::default().add_attribute("action", "execute_force_relay"))
 }
 
+fn execute_force_relay_historical_median(
+    deps: DepsMut,
+    info: MessageInfo,
+    symbol_rates: Vec<(String, Uint64)>,
+    resolve_time: Uint64,
+    request_id: Uint64,
+) -> Result<Response, ContractError> {
+    let sender_addr = &info.sender;
+
+    if !query_is_relayer(deps.as_ref(), sender_addr)? {
+        return Err(ContractError::Unauthorized {
+            msg: String::from("Sender is not a relayer"),
+        });
+    }
+
+    for (symbol, rate) in symbol_rates {
+        MEDIANREFDATA.save(
+            deps.storage,
+            &symbol,
+            &RefData::new(rate, resolve_time, request_id),
+        )?;
+    }
+
+    Ok(Response::default().add_attribute("action", "execute_force_relay_median"))
+}
+
+fn execute_relay_historical_deviation(
+    deps: DepsMut,
+    info: MessageInfo,
+    symbol_rates: Vec<(String, Uint64)>,
+    resolve_time: Uint64,
+    request_id: Uint64,
+) -> Result<Response, ContractError> {
+    // Checks if sender is a relayer
+    let sender_addr = &info.sender;
+    if !query_is_relayer(deps.as_ref(), sender_addr)? {
+        return Err(ContractError::Unauthorized {
+            msg: String::from("Sender is not a relayer"),
+        });
+    }
+
+    // Saves price data
+    for (symbol, rate) in symbol_rates {
+        if let Some(existing_refdata) = DEVIATIONDATA.may_load(deps.storage, &symbol)? {
+            if existing_refdata.resolve_time >= resolve_time {
+                continue;
+            }
+        }
+
+        DEVIATIONDATA.save(
+            deps.storage,
+            &symbol,
+            &RefData::new(rate, resolve_time, request_id),
+        )?
+    }
+
+    Ok(Response::default().add_attribute("action", "execute_relay_historical_deviations"))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -194,6 +302,15 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetReferenceDataBulk { symbol_pairs } => {
             to_binary(&query_reference_data_bulk(deps, &symbol_pairs)?)
         }
+        QueryMsg::GetMedianRef { symbol } => to_binary(&query_median_ref(deps, &symbol)?),
+        QueryMsg::GetMedianReferenceData { symbol_pair } => {
+            to_binary(&query_median_reference_data(deps, &symbol_pair)?)
+        }
+        QueryMsg::GetMedianReferenceDataBulk { symbol_pairs } => {
+            to_binary(&query_median_reference_data_bulk(deps, &symbol_pairs)?)
+        }
+        QueryMsg::GetDeviationRef { symbol } => to_binary(&query_deviation_ref(deps, &symbol)?),
+        QueryMsg::GetDeviationRefBulk { symbols } => to_binary(&query_deviation_ref_bulk(deps, &symbols)?),
     }
 }
 
@@ -229,6 +346,55 @@ fn query_reference_data_bulk(
     symbol_pairs
         .iter()
         .map(|pair| query_reference_data(deps, pair))
+        .collect()
+}
+
+fn query_median_ref(deps: Deps, symbol: &str) -> StdResult<RefData> {
+    if symbol == "USD" {
+        Ok(RefData::new(E9, Uint64::MAX, Uint64::zero()))
+    } else {
+        MEDIANREFDATA.load(deps.storage, symbol)
+    }
+}
+
+fn query_median_reference_data(deps: Deps, symbol_pair: &(String, String)) -> StdResult<ReferenceData> {
+    let base = query_median_ref(deps, &symbol_pair.0)?;
+    let quote = query_median_ref(deps, &symbol_pair.1)?;
+
+    Ok(ReferenceData::new(
+        Uint256::from(base.rate)
+            .checked_mul(E18)?
+            .checked_div(Uint256::from(quote.rate))?,
+        base.resolve_time,
+        quote.resolve_time,
+    ))
+}
+
+fn query_median_reference_data_bulk(
+    deps: Deps,
+    symbol_pairs: &[(String, String)],
+) -> StdResult<Vec<ReferenceData>> {
+    symbol_pairs
+        .iter()
+        .map(|pair| query_median_reference_data(deps, pair))
+        .collect()
+}
+
+fn query_deviation_ref(deps: Deps, symbol: &str) -> StdResult<RefData> {
+    if symbol == "USD" {
+        Ok(RefData::new(E0, Uint64::MAX, Uint64::zero()))
+    } else {
+        DEVIATIONDATA.load(deps.storage, symbol)
+    }
+}
+
+fn query_deviation_ref_bulk(
+    deps: Deps,
+    symbols: &[String],
+) -> StdResult<Vec<RefData>> {
+    symbols
+        .iter()
+        .map(|symbol| query_deviation_ref(deps,symbol))
         .collect()
 }
 

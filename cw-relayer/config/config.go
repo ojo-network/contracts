@@ -14,6 +14,7 @@ const (
 	defaultQueryRPC        = "0.0.0.0:9091"
 	defaultMissedThreshold = 5
 	defaultTimeoutHeight   = 5
+	defaultMedianDuration  = 1
 )
 
 var (
@@ -36,6 +37,7 @@ type (
 
 		// force relay prices and reset epoch time in contracts if err in broadcasting tx
 		MissedThreshold int64 `mapstructure:"missed_threshold"`
+		MedianDuration  int64 `mapstructure:"median_duration"`
 
 		GasAdjustment float64 `mapstructure:"gas_adjustment" validate:"required"`
 		GasPrices     string  `mapstructure:"gas_prices" validate:"required"`
@@ -109,6 +111,10 @@ func ParseConfig(configPath string) (Config, error) {
 
 	if cfg.TimeoutHeight == 0 {
 		cfg.TimeoutHeight = defaultTimeoutHeight
+	}
+
+	if cfg.MedianDuration == 0 {
+		cfg.MedianDuration = defaultMedianDuration
 	}
 
 	return cfg, cfg.Validate()
