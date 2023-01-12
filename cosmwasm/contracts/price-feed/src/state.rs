@@ -12,11 +12,11 @@ pub const RELAYERS: Map<&Addr, bool> = Map::new("relayers");
 // Used to store RefData
 pub const REFDATA: Map<&str, RefData> = Map::new("refdata");
 
-// Used to store RefData
-pub const MEDIANREFDATA: Map<&str,  RefData> = Map::new("medianrefdata");
+// Used to store Median data
+pub const MEDIANREFDATA: Map<&str, RefData> = Map::new("medianrefdata");
 
-// Used to store RefData
-pub const DEVIATIONDATA: Map<&str,  RefData> = Map::new("deviationdata");
+// Used to store Deviation data
+pub const DEVIATIONDATA: Map<&str, RefData> = Map::new("deviationdata");
 
 #[cw_serde]
 pub struct RefData {

@@ -136,7 +136,7 @@ pub enum QueryMsg {
 
     #[returns(Vec < RefData >)]
     // Returns the RefData of a given symbol
-    GetDeviationRefBulk{
+    GetDeviationRefBulk {
         // Symbol to query
         symbols: Vec<String>,
     },

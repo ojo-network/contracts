@@ -7,7 +7,9 @@ use semver::Version;
 
 use crate::errors::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::state::{RefData, ReferenceData, ADMIN, REFDATA, RELAYERS,MEDIANREFDATA,DEVIATIONDATA};
+use crate::state::{
+    RefData, ReferenceData, ADMIN, DEVIATIONDATA, MEDIANREFDATA, REFDATA, RELAYERS,
+};
 
 const E0: Uint64 = Uint64::new(0);
 const E9: Uint64 = Uint64::new(1_000_000_000u64);
@@ -66,7 +68,13 @@ pub fn execute(
             symbol_rates,
             resolve_time,
             request_id,
-        } => execute_force_relay_historical_median(deps, info, symbol_rates, resolve_time, request_id),
+        } => execute_force_relay_historical_median(
+            deps,
+            info,
+            symbol_rates,
+            resolve_time,
+            request_id,
+        ),
         ExecuteMsg::RelayHistoricalDeviation {
             symbol_rates,
             resolve_time,
@@ -310,7 +318,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_binary(&query_median_reference_data_bulk(deps, &symbol_pairs)?)
         }
         QueryMsg::GetDeviationRef { symbol } => to_binary(&query_deviation_ref(deps, &symbol)?),
-        QueryMsg::GetDeviationRefBulk { symbols } => to_binary(&query_deviation_ref_bulk(deps, &symbols)?),
+        QueryMsg::GetDeviationRefBulk { symbols } => {
+            to_binary(&query_deviation_ref_bulk(deps, &symbols)?)
+        }
     }
 }
 
@@ -357,7 +367,10 @@ fn query_median_ref(deps: Deps, symbol: &str) -> StdResult<RefData> {
     }
 }
 
-fn query_median_reference_data(deps: Deps, symbol_pair: &(String, String)) -> StdResult<ReferenceData> {
+fn query_median_reference_data(
+    deps: Deps,
+    symbol_pair: &(String, String),
+) -> StdResult<ReferenceData> {
     let base = query_median_ref(deps, &symbol_pair.0)?;
     let quote = query_median_ref(deps, &symbol_pair.1)?;
 
@@ -388,13 +401,10 @@ fn query_deviation_ref(deps: Deps, symbol: &str) -> StdResult<RefData> {
     }
 }
 
-fn query_deviation_ref_bulk(
-    deps: Deps,
-    symbols: &[String],
-) -> StdResult<Vec<RefData>> {
+fn query_deviation_ref_bulk(deps: Deps, symbols: &[String]) -> StdResult<Vec<RefData>> {
     symbols
         .iter()
-        .map(|symbol| query_deviation_ref(deps,symbol))
+        .map(|symbol| query_deviation_ref(deps, symbol))
         .collect()
 }
 
@@ -476,7 +486,10 @@ mod tests {
 
         use cw_controllers::AdminError;
 
-        use crate::msg::ExecuteMsg::{AddRelayers, ForceRelay, Relay, RelayHistoricalDeviation, RelayHistoricalMedian, RemoveRelayers};
+        use crate::msg::ExecuteMsg::{
+            AddRelayers, ForceRelay, Relay, RelayHistoricalDeviation, RelayHistoricalMedian,
+            RemoveRelayers,
+        };
 
         use super::*;
 
@@ -813,7 +826,7 @@ mod tests {
                     .map(|s| (s.clone(), String::from("USD")))
                     .collect::<Vec<(String, String)>>(),
             )
-                .unwrap();
+            .unwrap();
             let retrieved_rates = reference_datas
                 .clone()
                 .into_iter()
@@ -856,11 +869,8 @@ mod tests {
             execute(deps.as_mut(), env, info, msg).unwrap();
 
             // Check if relay was successful
-            let reference_datas = query_deviation_ref_bulk(
-                deps.as_ref(),
-                &symbols
-                    .clone()
-            ).unwrap();
+            let reference_datas =
+                query_deviation_ref_bulk(deps.as_ref(), &symbols.clone()).unwrap();
 
             let retrieved_rates = reference_datas
                 .clone()
@@ -868,10 +878,7 @@ mod tests {
                 .map(|r| r.rate)
                 .collect::<Vec<Uint64>>();
 
-            assert_eq!(
-                retrieved_rates,
-                rates
-            );
+            assert_eq!(retrieved_rates, rates);
         }
 
         #[test]
