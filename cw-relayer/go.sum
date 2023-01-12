@@ -333,8 +333,8 @@ github.com/dnaeon/go-vcr v1.2.0/go.mod h1:R4UdLID7HZT3taECzJs4YgbbH6PIGXB6W/sc5O
 github.com/docker/cli v20.10.22+incompatible h1:0E7UqWPcn4SlvLImMHyh6xwyNRUGdPxhstpHeh0bFL0=
 github.com/docker/cli v20.10.22+incompatible/go.mod h1:JLrzqnKDaYBop7H2jaqPtU4hHvMKP+vjCwu2uszcLI8=
 github.com/docker/docker v1.4.2-0.20180625184442-8e610b2b55bf/go.mod h1:eEKB0N0r5NX/I1kEveEz05bcu8tLC/8azJZsviup8Sk=
-github.com/docker/docker v20.10.22+incompatible h1:6jX4yB+NtcbldT90k7vBSaWJDB3i+zkVJT9BEK8kQkk=
-github.com/docker/docker v20.10.22+incompatible/go.mod h1:eEKB0N0r5NX/I1kEveEz05bcu8tLC/8azJZsviup8Sk=
+github.com/docker/docker v20.10.19+incompatible h1:lzEmjivyNHFHMNAFLXORMBXyGIhw/UP4DvJwvyKYq64=
+github.com/docker/docker v20.10.19+incompatible/go.mod h1:eEKB0N0r5NX/I1kEveEz05bcu8tLC/8azJZsviup8Sk=
 github.com/docker/go-connections v0.4.0 h1:El9xVISelRB7BuFusrZozjnkIM5YnzCViNKohAFqRJQ=
 github.com/docker/go-connections v0.4.0/go.mod h1:Gbd7IOopHjR8Iph03tsViu4nIes5XhDvyHbTtUxmeec=
 github.com/docker/go-units v0.4.0/go.mod h1:fgPhTUdO+D/Jk86RDLlptpiXQzgHJF7gydDDbaIK4Dk=
@@ -935,8 +935,8 @@ github.com/notional-labs/wasmd v0.29.0-sdk46 h1:KaGpIdDOdDbWoHp0ZUzIdSGgUqe03Mac
 github.com/notional-labs/wasmd v0.29.0-sdk46/go.mod h1:NbER19ksI5bZOJUta8lN4wrkVYBKD9VzOFjoCgL4P3o=
 github.com/nxadm/tail v1.4.4 h1:DQuhQpB1tVlglWS2hLQ5OV6B5r8aGxSrPc5Qo6uTN78=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
-github.com/ojo-network/ojo v0.0.0-20230109071856-6318f7e6dfb9 h1:NzRQ26gcKd977IefA/rdC5PykJg89n2h2DQjn96l4hk=
-github.com/ojo-network/ojo v0.0.0-20230109071856-6318f7e6dfb9/go.mod h1:C13DyeXAdXixM0KBbMF+/we9FwqEc+DzBwE8iZPs/sU=
+github.com/ojo-network/ojo v0.1.0 h1:WucyUJ4riha2GhxZUdlN4IPPDfXXl4ktHXQmQ5fWZK0=
+github.com/ojo-network/ojo v0.1.0/go.mod h1:1YqSkW1e4uvZ27TvYKq+KAik3ap5d2c94yXrzlXu/Zk=
 github.com/oklog/oklog v0.3.2/go.mod h1:FCV+B7mhrz4o+ueLpx+KqkyXRGMWOYEvfiXtdGtbWGs=
 github.com/oklog/run v1.0.0/go.mod h1:dlhp/R75TPv97u0XWUtDeV/lRKWPKSdTuV0TZvrmrQA=
 github.com/oklog/ulid v1.3.1/go.mod h1:CirwcVhetQ6Lv90oh/F+FBtV6XMibvdAFo93nm5qn4U=
