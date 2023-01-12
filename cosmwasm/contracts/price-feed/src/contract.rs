@@ -11,7 +11,7 @@ use crate::state::{
     RefData, ReferenceData, ADMIN, DEVIATIONDATA, MEDIANREFDATA, REFDATA, RELAYERS,
 };
 
-const E0: Uint64 = Uint64::new(0);
+const E0: Uint64 = Uint64::zero();
 const E9: Uint64 = Uint64::new(1_000_000_000u64);
 const E18: Uint256 = Uint256::from_u128(1_000_000_000_000_000_000u128);
 
@@ -80,6 +80,17 @@ pub fn execute(
             resolve_time,
             request_id,
         } => execute_relay_historical_deviation(deps, info, symbol_rates, resolve_time, request_id),
+        ExecuteMsg::ForceRelayHistoricalDeviation {
+            symbol_rates,
+            resolve_time,
+            request_id,
+        } => execute_force_relay_historical_deviation(
+            deps,
+            info,
+            symbol_rates,
+            resolve_time,
+            request_id,
+        ),
     }
 }
 
@@ -293,7 +304,34 @@ fn execute_relay_historical_deviation(
         )?
     }
 
-    Ok(Response::default().add_attribute("action", "execute_relay_historical_deviations"))
+    Ok(Response::default().add_attribute("action", "execute_relay_historical_deviation"))
+}
+
+fn execute_force_relay_historical_deviation(
+    deps: DepsMut,
+    info: MessageInfo,
+    symbol_rates: Vec<(String, Uint64)>,
+    resolve_time: Uint64,
+    request_id: Uint64,
+) -> Result<Response, ContractError> {
+    // Checks if sender is a relayer
+    let sender_addr = &info.sender;
+    if !query_is_relayer(deps.as_ref(), sender_addr)? {
+        return Err(ContractError::Unauthorized {
+            msg: String::from("Sender is not a relayer"),
+        });
+    }
+
+    // Saves price data
+    for (symbol, rate) in symbol_rates {
+        DEVIATIONDATA.save(
+            deps.storage,
+            &symbol,
+            &RefData::new(rate, resolve_time, request_id),
+        )?
+    }
+
+    Ok(Response::default().add_attribute("action", "execute_force_relay_historical_deviation"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -487,8 +525,8 @@ mod tests {
         use cw_controllers::AdminError;
 
         use crate::msg::ExecuteMsg::{
-            AddRelayers, ForceRelay, Relay, RelayHistoricalDeviation, RelayHistoricalMedian,
-            RemoveRelayers,
+            AddRelayers, ForceRelay, ForceRelayHistoricalDeviation, ForceRelayHistoricalMedian,
+            Relay, RelayHistoricalDeviation, RelayHistoricalMedian, RemoveRelayers,
         };
 
         use super::*;

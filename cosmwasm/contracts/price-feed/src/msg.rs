@@ -71,6 +71,13 @@ pub enum ExecuteMsg {
         resolve_time: Uint64,
         request_id: Uint64,
     },
+    // Relays a vector of symbols and their corresponding deviations
+    ForceRelayHistoricalDeviation {
+        symbol_rates: Vec<(String, Uint64)>,
+        resolve_time: Uint64,
+        // Request ID of the results on BandChain
+        request_id: Uint64,
+    },
 }
 
 #[cw_serde]
