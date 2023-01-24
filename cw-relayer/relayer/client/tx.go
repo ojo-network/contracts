@@ -1,6 +1,8 @@
 package client
 
 import (
+	"fmt"
+
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -19,12 +21,14 @@ func BroadcastTx(clientCtx client.Context, txf tx.Factory, msgs ...sdk.Msg) (*sd
 		return nil, err
 	}
 
+	//error for now: alternative set high gas limit
 	_, adjusted, err := tx.CalculateGas(clientCtx, txf, msgs...)
-	if err != nil {
-		return nil, err
-	}
+	fmt.Println("error: ", adjusted, err)
+	//if err != nil {
+	//	return nil, err
+	//}
 
-	txf = txf.WithGas(adjusted)
+	txf = txf.WithGas(80000)
 
 	unsignedTx, err := txf.BuildUnsignedTx(msgs...)
 	if err != nil {

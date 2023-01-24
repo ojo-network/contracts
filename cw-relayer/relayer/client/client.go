@@ -9,12 +9,12 @@ import (
 	"os"
 	"time"
 
-	wasmparams "github.com/CosmWasm/wasmd/app/params"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/rpc"
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+	"github.com/cosmos/cosmos-sdk/simapp/params"
 	"github.com/cosmos/cosmos-sdk/telemetry"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
@@ -36,7 +36,7 @@ type (
 		RPCTimeout        time.Duration
 		RelayerAddr       sdk.AccAddress
 		RelayerAddrString string
-		Encoding          wasmparams.EncodingConfig
+		Encoding          params.EncodingConfig
 		GasPrices         string
 		GasAdjustment     float64
 		GRPCEndpoint      string
@@ -140,14 +140,9 @@ func (r *passReader) Read(p []byte) (n int, err error) {
 
 // BroadcastTx attempts to broadcast a signed transaction. If it fails, a few re-attempts
 // will be made until the transaction succeeds or ultimately times out or fails.
-func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight int64, msgs ...sdk.Msg) error {
+func (oc RelayerClient) BroadcastTx(clientCtx client.Context, nextBlockHeight, timeoutHeight int64, msgs ...sdk.Msg) error {
 	maxBlockHeight := nextBlockHeight + timeoutHeight
 	lastCheckHeight := nextBlockHeight - 1
-
-	clientCtx, err := oc.CreateClientContext()
-	if err != nil {
-		return err
-	}
 
 	factory, err := oc.CreateTxFactory()
 	if err != nil {
@@ -165,9 +160,7 @@ func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight int64, msgs .
 			continue
 		}
 
-		// set last check height to latest block height
 		lastCheckHeight = latestBlockHeight
-
 		resp, err := BroadcastTx(clientCtx, factory, msgs...)
 		if resp != nil && resp.Code != 0 {
 			telemetry.IncrCounter(1, "failure", "tx", "code")
@@ -220,7 +213,7 @@ func (oc RelayerClient) CreateClientContext() (client.Context, error) {
 		keyringInput = os.Stdin
 	}
 
-	kr, err := keyring.New("relayer", oc.KeyringBackend, oc.KeyringDir, keyringInput, oc.Encoding.Marshaler)
+	kr, err := keyring.New("relayer", oc.KeyringBackend, oc.KeyringDir, keyringInput, oc.Encoding.Codec)
 	if err != nil {
 		return client.Context{}, err
 	}
@@ -249,7 +242,7 @@ func (oc RelayerClient) CreateClientContext() (client.Context, error) {
 		BroadcastMode:     flags.BroadcastSync,
 		TxConfig:          oc.Encoding.TxConfig,
 		AccountRetriever:  authtypes.AccountRetriever{},
-		Codec:             oc.Encoding.Marshaler,
+		Codec:             oc.Encoding.Codec,
 		LegacyAmino:       oc.Encoding.Amino,
 		Input:             os.Stdin,
 		NodeURI:           oc.TMRPC,

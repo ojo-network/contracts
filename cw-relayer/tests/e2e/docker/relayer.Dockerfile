@@ -15,7 +15,8 @@ ARG GIT_COMMIT
 RUN apk add --no-cache \
     ca-certificates \
     build-base \
-    linux-headers
+    linux-headers \
+    libpq-dev
 
 # Download go dependencies
 WORKDIR /cw-relayer

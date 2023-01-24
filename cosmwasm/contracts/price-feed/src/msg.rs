@@ -1,3 +1,5 @@
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint64;
 
