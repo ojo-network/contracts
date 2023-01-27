@@ -24,6 +24,11 @@ kill:
 	@echo "Killing wasmd"
 	-@killall -9 wasmd 2>/dev/null
 
+test-unit:
+	@echo "Testing unit"
+	cd cw-relayer && ${MAKE} test-unit
+	cd cosmwasm && cargo test
+
 test-e2e:
 	@echo "Running e2e tests"
 	cd cw-relayer && ${MAKE} test-e2e

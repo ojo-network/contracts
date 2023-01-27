@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -129,7 +128,6 @@ func GetConsensusIoPubKey(ctx WASMContext) ([]byte, error) {
 func (ctx WASMContext) getTxEncryptionKey(txSenderPrivKey, nonce, iopubkey []byte) ([]byte, error) {
 	txEncryptionIkm, err := curve25519.X25519(txSenderPrivKey, iopubkey)
 	if err != nil {
-		fmt.Println("Failed to get tx encryption key")
 		return nil, err
 	}
 

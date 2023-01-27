@@ -83,24 +83,13 @@ func (r *Relayer) Start(ctx context.Context) error {
 		return err
 	}
 
-	// rpc might timeout query till io keys
-
+	// iopubkey for encryption
 	var iopubkey []byte
-
 	iopubkey, err = scrtutils.GetConsensusIoPubKey(scrtutils.WASMContext{CLIContext: clientCtx})
-	iter := 1
-	for err != nil {
-		if iter%10 == 0 {
-			break
-		}
-		iopubkey, err = scrtutils.GetConsensusIoPubKey(scrtutils.WASMContext{CLIContext: clientCtx})
-
-		iter++
-	}
-
 	if err != nil {
 		return err
 	}
+
 	r.iopubkey = iopubkey
 
 	for {
