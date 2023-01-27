@@ -20,14 +20,14 @@ jobs:
             cw-relayer/go.sum
 
       - uses: actions/setup-go@v3
-#        if: env.GIT_DIFF
+        if: env.GIT_DIFF
         with:
           go-version: 1.19
           cache: true
           cache-dependency-path: cw-relayer/go.sum
 
       - name: Test Relayer
-#        if: env.GIT_DIFF
+        if: env.GIT_DIFF
         run: |
           make test-unit-relayer
 
@@ -45,12 +45,12 @@ jobs:
             cosmwasm/Cargo.lock
 
       - uses: actions-rs/toolchain@v1
-#        if: env.GIT_DIFF
+        if: env.GIT_DIFF
         with:
           toolchain: stable
 
       - name: Test Contracts
-#        if: env.GIT_DIFF
+        if: env.GIT_DIFF
         run: |
           make test-unit-contract
 
