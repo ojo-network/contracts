@@ -1,0 +1,21 @@
+### gas adjustment - multiplier for the expected amount of gas
+contract_address = "{{.Contract}}"
+query_rpc = "https://api.devnet-cw.ojo-devnet.node.ojo.network:443"
+gas_adjustment = 1.5
+timeout_height = 10
+gas_prices = "0.25stake"
+### account & chain-id for the wasmd relayer account
+[account]
+address = "{{.UserAddress}}"
+chain_id = "wasm-test"
+acc_prefix = "wasm"
+### keyring for the relayer account on the wasmd chain
+[keyring]
+backend = "test"
+dir = "{{.Dir}}"
+
+### rpc endpoint for the wasm Chain
+[rpc]
+grpc_endpoint = "0.0.0.0:8080"
+rpc_timeout = "400ms"
+tmrpc_endpoint = "http://localhost:16657"
