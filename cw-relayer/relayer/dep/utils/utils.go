@@ -11,15 +11,13 @@ import (
 	"path/filepath"
 
 	"github.com/cosmos/cosmos-sdk/client"
-	"google.golang.org/grpc/encoding"
-	"google.golang.org/grpc/encoding/proto"
-
-	ra "github.com/ojo-network/cw-relayer/relayer/dep/utils/remote_attestation"
-	regtypes "github.com/ojo-network/cw-relayer/relayer/dep/utils/types"
-
 	"github.com/miscreant/miscreant.go"
 	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/hkdf"
+	"google.golang.org/grpc/encoding"
+	"google.golang.org/grpc/encoding/proto"
+
+	regtypes "github.com/ojo-network/cw-relayer/relayer/dep/utils/types"
 )
 
 // WASMContext wraps github.com/cosmos/cosmos-sdk/client/client.Context
@@ -117,12 +115,7 @@ func GetConsensusIoPubKey(ctx WASMContext) ([]byte, error) {
 		}
 	}
 
-	ioPubkey, err := ra.UNSAFE_VerifyRaCert(masterIoKey.Key)
-	if err != nil {
-		return nil, err
-	}
-
-	return ioPubkey, nil
+	return masterIoKey.Key, nil
 }
 
 func (ctx WASMContext) getTxEncryptionKey(txSenderPrivKey, nonce, iopubkey []byte) ([]byte, error) {
