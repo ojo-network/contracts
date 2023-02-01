@@ -1,0 +1,43 @@
+name: Release Contract
+
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - "v[0-9]+\\.[0-9]+\\.[0-9]+" # Official release version tags e.g. v2.0.5
+      - "v[0-9]+\\.[0-9]+\\.[0-9]+-rc[0-9]+" # Release candidate tags e.g. v1.0.3-rc4
+      - "v[0-9]+\\.[0-9]+\\.[0-9]+-alpha[0-9]+" # Alpha release testing tags e.g. v0.0.3-alpha1
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install latest stable
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Generate Cargo.lock
+        run: |
+          cargo fetch --verbose --manifest-path ./cosmwasm/Cargo.toml
+      - name: Build Artifacts
+        if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'Enable:ReleaseBuild')
+        run: |
+          docker run --rm -v "$(pwd)/cosmwasm":/code \
+          --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
+          --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+          cosmwasm/workspace-optimizer:0.12.7
+          tar -zcvf cosmwasm-artifacts.tar.gz cosmwasm/artifacts
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            cosmwasm-artifacts.tar.gz

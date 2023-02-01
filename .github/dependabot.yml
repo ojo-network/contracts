@@ -1,0 +1,29 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 10
+
+  - package-ecosystem: gomod
+    directory: "/cw-relayer"
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 10
+    reviewers:
+      - ojo-network/core-devs
+    labels:
+      - "A:Automerge"
+      - "T:Dependencies"
+
+  - package-ecosystem: cargo
+    directory: "/cosmwasm"
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 10
+    reviewers:
+      - ojo-network/core-devs
+    labels:
+      - "A:Automerge"
+      - "T:Dependencies"
