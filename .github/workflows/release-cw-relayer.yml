@@ -57,3 +57,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_CURRENT_TAG: ${{ env.RELEASE_VERSION }}
+
+      - name: Update Devnet
+        uses: ./.github/relayer-testnet
+        with:
+          RELAYER_BINARY_NAME: cw-relayer
+          RELAYER_BINARY_VERSION: ${{ env.RELEASE_VERSION }}
+          PULUMI_PROJECT_DIR: infra/pulumi/testnet
+          PULUMI_STACK_NAME: ojo-network/cw-relayer
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UMEE_INFRA_SSH_KEY: ${{ secrets.UMEE_INFRA_SSH_KEY }}
