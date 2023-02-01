@@ -1,13 +1,13 @@
 config:
   gcp:project: ojo-network
   ojo-testnet:config:
-    relayerHomeFolderName: .relayer
-    localRelayerBinaryPath: cw-relayer
+    relayerHomeFolderName: .cw-relayer
+    localRelayerBinary: cw-relayer
+    chainID: test
     nodeConfig:
-      diskSizeGB: 15
+      diskSizeGB: 10
       diskType: pd-balanced
       location:
         - region: us-west2
           zone: us-west2-b
       machineType: n2-standard-2
-    numNodes: 1

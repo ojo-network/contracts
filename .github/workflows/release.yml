@@ -45,13 +45,11 @@ jobs:
       - name: Update Devnet
         uses: ./.github/relayer-testnet
         with:
-          COSMOS_BINARY_NAME: wasmd
-          COSMOS_BINARY_VERSION: ${{ github.ref_name }}
           RELAYER_BINARY_NAME: cw-relayer
           RELAYER_BINARY_VERSION: ${{ github.ref_name }}
           RELAYER_BACKEND: ${{ secrets.RELAYER_TOKEN }}
           PULUMI_PROJECT_DIR: infra/pulumi/testnet
-          PULUMI_STACK_NAME: ojo-cw-relayer
+          PULUMI_STACK_NAME: ojo-network/cw-relayer
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           UMEE_INFRA_SSH_KEY: ${{ secrets.UMEE_INFRA_SSH_KEY }}

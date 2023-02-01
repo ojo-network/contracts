@@ -67,35 +67,12 @@ func (u Unit) GenSystemdUnit() pulumi.StringOutput {
 	}).(pulumi.StringOutput)
 }
 
-// automatic contract deployment might be an issue
-//type Config struct {
-//	Contract    string
-//	UserAddress string
-//	Dir         string
-//}
-//
-//func (c Config) GenRelayerConfig() pulumi.StringOutput {
-//	return pulumi.All().ApplyT(func(args []interface{}) (string, error) {
-//		var buf bytes.Buffer
-//		err := relayerConfigTemplate.Execute(&buf, Config{
-//			Contract:    c.Contract,
-//			UserAddress: c.UserAddress,
-//			Dir:         c.Dir,
-//		})
-//		if err != nil {
-//			return "", err
-//		}
-//
-//		return buf.String(), nil
-//	}).(pulumi.StringOutput)
-//}
-
 var (
 	//go:embed unit.service.tmpl
 	unitServiceTemplateStr string
 	unitServiceTemplate    *template.Template
 
-	//go:embed config.toml.tmpl
+	//go:embed config.toml
 	relayerConfigStr      string
 	relayerConfigTemplate *template.Template
 )
