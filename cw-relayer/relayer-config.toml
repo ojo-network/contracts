@@ -6,6 +6,7 @@ timeout_height = 10
 gas_prices = "0.025uscrt"
 code_hash = "c5068e249d2486bc1be8caa3e60faf60e5d017dbe68498429e40225a996843b3"
 ticker = "1000ms"
+gas_limit = "50000"
 
 ### account & chain-id for the wasmd relayer account
 [account]

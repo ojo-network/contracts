@@ -134,7 +134,6 @@ func (ctx WASMContext) getTxEncryptionKey(txSenderPrivKey, nonce, iopubkey []byt
 	return txEncryptionKey, nil
 }
 
-// Encrypt encrypts
 func (ctx WASMContext) Encrypt(iopubkey, plaintext []byte) ([]byte, error) {
 	txSenderPrivKey, txSenderPubKey, err := ctx.GetTxSenderKeyPair()
 	if err != nil {

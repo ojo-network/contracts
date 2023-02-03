@@ -42,6 +42,7 @@ type (
 		GRPCEndpoint      string
 		KeyringPassphrase string
 		ChainHeight       *ChainHeight
+		gasLimit          uint64
 	}
 
 	passReader struct {
@@ -64,6 +65,7 @@ func NewRelayerClient(
 	accPrefix string,
 	gasAdjustment float64,
 	GasPrices string,
+	gasLimit uint64,
 ) (RelayerClient, error) {
 	config := sdk.GetConfig()
 	config.SetBech32PrefixForAccount(accPrefix, accPrefix+sdk.PrefixPublic)
@@ -88,6 +90,7 @@ func NewRelayerClient(
 		GasAdjustment:     gasAdjustment,
 		GRPCEndpoint:      grpcEndpoint,
 		GasPrices:         GasPrices,
+		gasLimit:          gasLimit,
 	}
 
 	clientCtx, err := relayerClient.CreateClientContext()
@@ -276,6 +279,7 @@ func (oc RelayerClient) CreateTxFactory() (tx.Factory, error) {
 		WithTxConfig(clientCtx.TxConfig).
 		WithGasAdjustment(oc.GasAdjustment).
 		WithGasPrices(oc.GasPrices).
+		WithGas(oc.gasLimit).
 		WithKeybase(clientCtx.Keyring).
 		WithSignMode(signing.SignMode_SIGN_MODE_DIRECT).
 		WithSimulateAndExecute(true)

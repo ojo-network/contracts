@@ -15,6 +15,7 @@ const (
 	defaultMissedThreshold = 5
 	defaultTimeoutHeight   = 5
 	defaulTicker           = "1s"
+	defaultGasLimit        = 80000
 )
 
 var (
@@ -42,6 +43,7 @@ type (
 
 		GasAdjustment float64 `mapstructure:"gas_adjustment" validate:"required"`
 		GasPrices     string  `mapstructure:"gas_prices" validate:"required"`
+		GasLimit      uint64  `mapstructure:"gas_limit" validate:"required"`
 
 		// query rpc for ojo node
 		QueryRPC string `mapstructure:"query_rpc"`
@@ -116,6 +118,10 @@ func ParseConfig(configPath string) (Config, error) {
 
 	if cfg.Ticker == "" {
 		cfg.Ticker = defaulTicker
+	}
+
+	if cfg.GasLimit == 0 {
+		cfg.GasLimit = defaultGasLimit
 	}
 
 	return cfg, cfg.Validate()
