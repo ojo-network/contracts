@@ -19,7 +19,7 @@ func BroadcastTx(clientCtx client.Context, txf tx.Factory, msgs ...sdk.Msg) (*sd
 		return nil, err
 	}
 
-	//error for now: alternative set high gas limit
+	//error for now: CalculateGas fails due to scrt network dependency, using high gas limit as alternative
 	//_, adjusted, err := tx.CalculateGas(clientCtx, txf, msgs...)
 	//fmt.Println("error: ", adjusted, err)
 	//if err != nil {
