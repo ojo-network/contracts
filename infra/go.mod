@@ -1,10 +1,13 @@
-module contracts
+module contracts-relayer
 
 go 1.19
 
 require (
+	github.com/pulumi/pulumi-command/sdk v0.4.1
+	github.com/pulumi/pulumi-gcp/sdk/v6 v6.31.0
 	github.com/pulumi/pulumi/sdk/v3 v3.51.0
 	github.com/sirupsen/logrus v1.7.0
+	github.com/umee-network/umee-infra/infra/pulumi/common v0.4.0
 )
 
 require (
@@ -19,6 +22,7 @@ require (
 	github.com/go-git/gcfg v1.5.0 // indirect
 	github.com/go-git/go-billy/v5 v5.3.1 // indirect
 	github.com/go-git/go-git/v5 v5.4.2 // indirect
+	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/gofrs/uuid v3.3.0+incompatible // indirect
 	github.com/gogo/protobuf v1.3.3 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
@@ -50,8 +54,6 @@ require (
 	github.com/tweekmonster/luser v0.0.0-20161003172636-3fa38070dbd7 // indirect
 	github.com/uber/jaeger-client-go v2.22.1+incompatible // indirect
 	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
-	github.com/umee-network/umee-infra/infra/pulumi/common v0.4.0 // indirect
-	github.com/umee-network/umee-infra/lib v0.7.0-alpha4 // indirect
 	github.com/xanzy/ssh-agent v0.3.2 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	golang.org/x/crypto v0.0.0-20220824171710-5757bc0c5503 // indirect

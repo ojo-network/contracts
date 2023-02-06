@@ -67,12 +67,35 @@ func (u Unit) GenSystemdUnit() pulumi.StringOutput {
 	}).(pulumi.StringOutput)
 }
 
+type RelayerConfig struct {
+	UserAddress     string
+	ContractAddress string
+}
+
+func (u RelayerConfig) GenRelayerConfig() pulumi.StringOutput {
+	return pulumi.All(u.UserAddress, u.ContractAddress).ApplyT(func(args []interface{}) (string, error) {
+		userAddress := args[0].(string)
+		contractAddress := args[1].(string)
+
+		var buf bytes.Buffer
+		err := relayerConfigTemplate.Execute(&buf, RelayerConfig{
+			ContractAddress: contractAddress,
+			UserAddress:     userAddress,
+		})
+		if err != nil {
+			return "", err
+		}
+
+		return buf.String(), nil
+	}).(pulumi.StringOutput)
+}
+
 var (
 	//go:embed unit.service.tmpl
 	unitServiceTemplateStr string
 	unitServiceTemplate    *template.Template
 
-	//go:embed config.toml
+	//go:embed config.toml.tmpl
 	relayerConfigStr      string
 	relayerConfigTemplate *template.Template
 )

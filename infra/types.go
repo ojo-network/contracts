@@ -4,19 +4,14 @@ type Network struct {
 	ChainID               string
 	LocalRelayerBinary    string
 	RelayerHomeFolderName string
+	UserAddress           string
+	ContractAddress       string
 	NodeConfig            NodeConfig
 }
 
-type NodeLocation struct {
-	Region string
-	Zone   string
-}
-
 type NodeConfig struct {
-	MachineType string
-	DiskType    string
-	DiskSizeGB  int
-	Location    NodeLocation
+	InstanceName string
+	InstanceID   string
 }
 
 type NodeSecretConfig struct {

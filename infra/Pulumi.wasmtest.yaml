@@ -5,9 +5,7 @@ config:
     localRelayerBinary: cw-relayer
     chainID: test
     nodeConfig:
-      diskSizeGB: 10
-      diskType: pd-balanced
-      location:
-        - region: us-west2
-          zone: us-west2-b
-      machineType: n2-standard-2
+      instanceName: devnet-n3-cw
+      instanceID: 2488808662151011601
+    contractAddress: ""
+    userAddress: ""
