@@ -71,7 +71,7 @@ jobs:
             cosmwasm/Cargo.lock
 
       - uses: actions/setup-go@v3
-#        if: env.GIT_DIFF
+        if: env.GIT_DIFF
         with:
           go-version: 1.19
           cache: true
@@ -79,10 +79,10 @@ jobs:
 
       - name: cache docker layer
         uses: satackey/action-docker-layer-caching@v0.0.11
-#        if: env.GIT_DIFF
+        if: env.GIT_DIFF
         continue-on-error: true
 
       - name: Test E2E
-#        if: env.GIT_DIFF
+        if: env.GIT_DIFF
         run: |
           make test-e2e
