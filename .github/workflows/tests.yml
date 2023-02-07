@@ -65,6 +65,10 @@ jobs:
             cw-relayer/**/**.go
             cw-relayer/go.mod
             cw-relayer/go.sum
+            cosmwasm/contracts/price-feed/src/*
+            cosmwasm/contracts/price-feed/Cargo.toml
+            cosmwasm/Cargo.toml
+            cosmwasm/Cargo.lock
 
       - uses: actions/setup-go@v3
         if: env.GIT_DIFF
