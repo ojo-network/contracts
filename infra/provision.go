@@ -18,12 +18,8 @@ import (
 
 func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig) error {
 	var addrs pulumi.StringArray
-	var nodeHostNames []string
 
-	moniker := genMoniker(network.ChainID)
-	
 	conf := config.New(ctx, "")
-	// TODO
 	sshPrivate := conf.RequireSecret("sshprivate").ApplyT(func(b64private string) (string, error) {
 		privatebytes, err := base64.StdEncoding.DecodeString(b64private)
 		if err != nil {
@@ -54,13 +50,13 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 	relayerUnit := relayerSpec.ToUnit(fmt.Sprintf("/home/ubuntu/%s/relayer-config.toml", network.RelayerHomeFolderName))
 
 	// set environment for relayer keyring pass
-	// write node secrets here
-	environment := map[string]string{
-		"CW_RELAYER_PASS": "PASS",
+	keyPass := conf.RequireSecret("Keypass")
+	environment := map[string]pulumi.StringInput{
+		"CW_RELAYER_PASS": keyPass,
 	}
-	relayerUnit.Environment = pulumi.ToStringMap(environment)
+	relayerUnit.Environment = environment
 
-	uploadCwRelayerBinary, err := remote.NewCopyFile(ctx, "relayer"+relayerUnit.Name+"-cp-cosmos-binary", &remote.CopyFileArgs{
+	uploadCwRelayerBinary, err := remote.NewCopyFile(ctx, relayerUnit.Name+"-"+"binary-upload", &remote.CopyFileArgs{
 		Connection: conn,
 		// TODO: don't assume /usr/local/ as the base path (brittle); will work for now since we control action file, may not work on a particular devs machine
 		LocalPath:  pulumi.Sprintf("/usr/local/bin/%s", network.LocalRelayerBinary),
@@ -72,7 +68,7 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 
 	installCwRelayerBinary, err := remote.NewCommand(
 		ctx,
-		moniker+"-"+relayerUnit.Name+"wasm-install-cosmos-binary",
+		relayerUnit.Name+"-"+"binary-install",
 		&remote.CommandArgs{
 			Connection: conn,
 			Create: pulumi.Sprintf(`
@@ -92,7 +88,7 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 	}
 	configBody := relayerConfig.GenRelayerConfig()
 	configPath := pulumi.String(fmt.Sprintf("/home/ubuntu/%s/relayer-config.toml", network.RelayerHomeFolderName))
-	configInit, err := resources.NewStringToRemoteFileCommand(ctx, moniker+"-"+relayerUnit.Name+"-relayer-config", resources.StringToRemoteFileCommandArgs{
+	configInit, err := resources.NewStringToRemoteFileCommand(ctx, relayerUnit.Name+"-"+"relayer-config", resources.StringToRemoteFileCommandArgs{
 		Connection:      conn,
 		Body:            configBody,
 		DestinationPath: configPath,
@@ -111,7 +107,7 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 	// start relayer demon, can also be removed as it already exists
 	unitBody := relayerUnit.GenSystemdUnit()
 	unitPath := pulumi.String(path.Join("/etc/systemd/system", relayerUnit.Name+".service"))
-	relayerInstall, err := resources.NewStringToRemoteFileCommand(ctx, moniker+"-"+relayerUnit.Name+"-systemd-unit", resources.StringToRemoteFileCommandArgs{
+	relayerInstall, err := resources.NewStringToRemoteFileCommand(ctx, relayerUnit.Name+"-systemd-unit", resources.StringToRemoteFileCommandArgs{
 		Connection:      conn,
 		Body:            unitBody,
 		DestinationPath: unitPath,
@@ -136,7 +132,7 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 
 	_, err = remote.NewCommand(
 		ctx,
-		moniker+"-reboot",
+		"relayer-reboot",
 		&remote.CommandArgs{
 			Connection: conn,
 			Update:     pulumi.String("echo updates disabled..."),
@@ -148,11 +144,5 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 		return err
 	}
 
-	ctx.Export("node-hostnames", pulumi.ToStringArray(nodeHostNames))
-
 	return nil
-}
-
-func genMoniker(chainID string) string {
-	return fmt.Sprintf("cosmwasm-devnet-n%v", chainID)
 }

@@ -3,7 +3,7 @@ config:
   ojo-testnet:config:
     relayerHomeFolderName: .cw-relayer
     localRelayerBinary: cw-relayer
-    chainID: test
+    chainID: wasm-test
     nodeConfig:
       instanceName: devnet-n3-cw
       instanceID: 2488808662151011601
