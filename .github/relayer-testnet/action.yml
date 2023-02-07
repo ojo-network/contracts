@@ -79,6 +79,6 @@ runs:
       shell: bash
       working-directory: infra/pulumi/testnet
       run: |
-        pulumi up --yes --skip-preview --color never --exec-kind auto.local --stack ojo-network/cw-relayer --non-interactive
+        pulumi up --yes --skip-preview --color never --exec-kind auto.local --stack ojo-network/devnet --non-interactive
       env:
         PULUMI_ACCESS_TOKEN: ${{ inputs.PULUMI_ACCESS_TOKEN }}

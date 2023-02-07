@@ -9,3 +9,5 @@ config:
       instanceID: 2488808662151011601
     contractAddress: ""
     userAddress: ""
+  ojo-testnet:sshprivate:
+  ojo-testnet:keypass:

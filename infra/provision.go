@@ -44,13 +44,13 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 	relayerSpec := unit.UnitSpec{
 		Name:              techName,
 		Description:       fmt.Sprintf("%s daemon", techName),
-		User:              "blockchain",
+		User:              "ubuntu",
 		BinaryInstallPath: fmt.Sprintf("/usr/local/bin/%s", network.LocalRelayerBinary),
 	}
 	relayerUnit := relayerSpec.ToUnit(fmt.Sprintf("/home/ubuntu/%s/relayer-config.toml", network.RelayerHomeFolderName))
 
 	// set environment for relayer keyring pass
-	keyPass := conf.RequireSecret("Keypass")
+	keyPass := conf.RequireSecret("keypass")
 	environment := map[string]pulumi.StringInput{
 		"CW_RELAYER_PASS": keyPass,
 	}
