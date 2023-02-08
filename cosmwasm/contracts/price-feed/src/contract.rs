@@ -839,7 +839,7 @@ mod tests {
             execute(deps.as_mut(), env, info, msg).unwrap();
 
             // Check if relay was successful
-            let reference_datas = query_median_reference_data_bulk(
+            let reference_datas = query_median_ref_data_bulk(
                 deps.as_ref(),
                 &symbols
                     .clone()
