@@ -34,10 +34,6 @@ type (
 		RefData symbolPair `json:"get_reference_data"`
 	}
 
-	medianRefMsg struct {
-		RefData symbolPair `json:"get_median_reference_data"`
-	}
-
 	symbolPair struct {
 		SymbolPair [2]string `json:"symbol_pair"`
 	}
@@ -47,7 +43,7 @@ type (
 	}
 
 	medianRefMsgBulk struct {
-		RefData symbolPairs `json:"get_median_reference_data_bulk"`
+		RefData symbols `json:"get_median_ref_data_bulk"`
 	}
 
 	symbolPairs struct {
@@ -101,32 +97,6 @@ func (s *IntegrationTestSuite) TestQueryRateAndReferenceData() {
 			tc: "query reference data in USD from contract",
 			prepare: func() ([]byte, error) {
 				msg := refMsg{symbolPair{SymbolPair: [2]string{mockPrices[0].Denom, "USD"}}}
-				data, err := json.Marshal(msg)
-				if err != nil {
-					return nil, err
-				}
-
-				return data, nil
-			},
-			rate: mockPrices[0].Amount.Mul(refDataFactor).TruncateInt().String(),
-		},
-		{
-			tc: "query median rate from contract",
-			prepare: func() ([]byte, error) {
-				msg := medianRateMsg{Ref: symbol{Symbol: mockPrices[0].Denom}}
-				data, err := json.Marshal(msg)
-				if err != nil {
-					return nil, err
-				}
-
-				return data, err
-			},
-			rate: mockPrices[0].Amount.Mul(relayer.RateFactor).TruncateInt().String(),
-		},
-		{
-			tc: "query median reference data in USD from contract",
-			prepare: func() ([]byte, error) {
-				msg := medianRefMsg{symbolPair{SymbolPair: [2]string{mockPrices[0].Denom, "USD"}}}
 				data, err := json.Marshal(msg)
 				if err != nil {
 					return nil, err
@@ -228,24 +198,6 @@ func (s *IntegrationTestSuite) TestQueryReferenceDataBulk() {
 			factor: refDataFactor,
 		},
 		{
-			tc: "query median reference data in bulk",
-			prepare: func() ([]byte, error) {
-				var symbolData [][2]string
-				for _, mockPrice := range mockPrices {
-					symbolData = append(symbolData, [2]string{mockPrice.Denom, "USD"})
-				}
-
-				msg := medianRefMsgBulk{symbolPairs{SymbolPairs: symbolData}}
-				data, err := json.Marshal(msg)
-				if err != nil {
-					return nil, err
-				}
-
-				return data, nil
-			},
-			factor: refDataFactor,
-		},
-		{
 			tc: "query deviation data in bulk",
 			prepare: func() ([]byte, error) {
 				var denoms []string
@@ -294,6 +246,113 @@ func (s *IntegrationTestSuite) TestQueryReferenceDataBulk() {
 
 					for i, respData := range resp {
 						s.Require().Equal(respData["rate"], mockPrices[i].Amount.Mul(tc.factor).TruncateInt().String())
+					}
+
+					return true
+				}
+
+				return false
+			},
+				1*time.Minute,
+				time.Second*4,
+				"failed to query prices from contract",
+			)
+		})
+	}
+}
+
+func (s *IntegrationTestSuite) TestQueryMedianRates() {
+	grpcConn, err := grpc.Dial(
+		s.orchestrator.QueryRpc,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+
+	s.Require().NoError(err)
+	defer grpcConn.Close()
+
+	mockPrices := s.priceServer.GetMockPrices()
+
+	testCases := []struct {
+		tc      string
+		prepare func() ([]byte, error)
+		factor  types.Dec
+		bulk    bool
+	}{
+		{
+			tc: "query median rate data from contract",
+			prepare: func() ([]byte, error) {
+
+				msg := medianRateMsg{Ref: symbol{mockPrices[0].Denom}}
+				data, err := json.Marshal(msg)
+				if err != nil {
+					return nil, err
+				}
+
+				return data, nil
+			},
+			factor: relayer.RateFactor,
+			bulk:   false,
+		},
+		{
+			tc: "query median ref data bulk",
+			prepare: func() ([]byte, error) {
+				var denoms []string
+				for _, mockPrice := range mockPrices {
+					denoms = append(denoms, mockPrice.Denom)
+				}
+
+				msg := medianRefMsgBulk{symbols{denoms}}
+				data, err := json.Marshal(msg)
+				if err != nil {
+					return nil, err
+				}
+
+				return data, nil
+			},
+			factor: relayer.RateFactor,
+			bulk:   true,
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.tc, func() {
+			queryClient := wasmtypes.NewQueryClient(grpcConn)
+			data, err := tc.prepare()
+			s.Require().NoError(err)
+
+			query := wasmtypes.QuerySmartContractStateRequest{
+				Address:   s.orchestrator.ContractAddress,
+				QueryData: data,
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+
+			s.Require().Eventually(func() bool {
+				queryResponse, err := queryClient.SmartContractState(ctx, &query)
+				if err != nil {
+					return false
+				}
+
+				if queryResponse != nil {
+					if tc.bulk {
+						var resp []map[string]interface{}
+						err = json.Unmarshal(queryResponse.Data, &resp)
+						if err != nil {
+							return false
+						}
+
+						for i, respData := range resp {
+							s.Require().Equal(respData["rates"].([]interface{})[0], mockPrices[i].Amount.Mul(tc.factor).TruncateInt().String())
+						}
+					} else {
+						var resp map[string]interface{}
+						err = json.Unmarshal(queryResponse.Data, &resp)
+						if err != nil {
+							return false
+						}
+
+						s.Require().Equal(resp["rates"].([]interface{})[0], mockPrices[0].Amount.Mul(tc.factor).TruncateInt().String())
 					}
 
 					return true

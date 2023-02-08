@@ -119,17 +119,9 @@ pub enum QueryMsg {
         // Symbol to query
         symbol: String,
     },
-    // #[returns(ReferenceData)]
-    // Returns the ReferenceData of a given asset pairing
-    // GetMedianReferenceData {
-    //     // Symbol pair to query where:
-    //     // symbol_pair := (base_symbol, quote_symbol)
-    //     // e.g. BTC/USD ≡ ("BTC", "USD")
-    //     symbol_pair: (String, String),
-    // },
     #[returns(Vec < RefMedianData >)]
-    // Returns the ReferenceDatas of the given asset pairings
-    GetMedianReferenceDataBulk {
+    // Returns the RefMedianData of the given asset pairings
+    GetMedianRefDataBulk {
         // Vector of Symbol pair to query
         // e.g. <BTC/USD ETH/USD, BAND/BTC> ≡ <("BTC", "USD"), ("ETH", "USD"), ("BAND", "BTC")>
         symbols: Vec<String>,

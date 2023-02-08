@@ -4,6 +4,7 @@ query_rpc = "host.docker.internal:9090"
 gas_adjustment = 1.5
 timeout_height = 10
 gas_prices = "0.2stake"
+median_duration = 1
 
 ### account & chain-id for the wasmd relayer account
 [account]

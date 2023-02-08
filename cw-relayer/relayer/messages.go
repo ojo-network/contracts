@@ -34,7 +34,7 @@ type (
 	}
 
 	MsgForceRelayHistoricalDeviation struct {
-		Relay Msg `json:"force_relay_historical_median"`
+		Relay Msg `json:"force_relay_historical_deviation"`
 	}
 
 	Msg struct {

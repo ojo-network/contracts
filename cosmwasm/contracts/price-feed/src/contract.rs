@@ -347,11 +347,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_binary(&query_reference_data_bulk(deps, &symbol_pairs)?)
         }
         QueryMsg::GetMedianRef { symbol } => to_binary(&query_median_ref(deps, &symbol)?),
-        // QueryMsg::GetMedianReferenceData { symbol_pair } => {
-        //     // to_binary(&query_median_reference_data(deps, &symbol_pair)?)
-        // }
-        QueryMsg::GetMedianReferenceDataBulk { symbols } => {
-            to_binary(&query_median_reference_data_bulk(deps, &symbols)?)
+        QueryMsg::GetMedianRefDataBulk { symbols } => {
+            to_binary(&query_median_ref_data_bulk(deps, &symbols)?)
         }
         QueryMsg::GetDeviationRef { symbol } => to_binary(&query_deviation_ref(deps, &symbol)?),
         QueryMsg::GetDeviationRefBulk { symbols } => {
@@ -404,24 +401,7 @@ fn query_median_ref(deps: Deps, symbol: &str) -> StdResult<RefMedianData> {
     }
 }
 
-// TODO
-// fn query_median_reference_data(
-//     deps: Deps,
-//     symbol_pair: &(String, String),
-// ) -> StdResult<ReferenceData> {
-//     let base = query_median_ref(deps, &symbol_pair.0)?;
-//     let quote = query_median_ref(deps, &symbol_pair.1)?;
-//
-//     Ok(ReferenceData::new(
-//         Uint256::from(base.rate)
-//             .checked_mul(E18)?
-//             .checked_div(Uint256::from(quote.rate))?,
-//         base.resolve_time,
-//         quote.resolve_time,
-//     ))
-// }
-
-fn query_median_reference_data_bulk(
+fn query_median_ref_data_bulk(
     deps: Deps,
     symbols: &[String],
 ) -> StdResult<Vec<RefMedianData>> {
@@ -846,37 +826,29 @@ mod tests {
                 .map(|r| Uint64::new(*r))
                 .collect::<Vec<Uint64>>();
 
-            // let msg = RelayHistoricalMedian {
-            //     symbol_rates: zip(symbols.clone(), rates.clone())
-            //         .collect::<Vec<(String, Uint64)>>(),
-            //     resolve_time: Uint64::from(100u64),
-            //     request_id: Uint64::one(),
-            // };
+            let symbol_rates:Vec<(String, Vec<Uint64>)>=symbols.iter().zip(std::iter::repeat(rates.clone()))
+                .map(|(s, r)| (s.to_owned(), r))
+                .collect();
+
+            let msg = RelayHistoricalMedian {
+                symbol_rates:symbol_rates.clone(),
+                resolve_time: Uint64::from(100u64),
+                request_id: Uint64::one(),
+            };
 
             execute(deps.as_mut(), env, info, msg).unwrap();
 
             // Check if relay was successful
-            // let reference_datas = query_median_reference_data_bulk(
-            //     deps.as_ref(),
-            //     &symbols
-            //         .clone()
-            //         .iter()
-            //         .map(|s| (s.clone(), String::from("USD")))
-            //         .collect::<Vec<(String, String)>>(),
-            // )
-            // .unwrap();
-            let retrieved_rates = reference_datas
-                .clone()
-                .into_iter()
-                .map(|rd| rd.rate / Uint256::from(E9))
-                .collect::<Vec<Uint256>>();
-            assert_eq!(
-                retrieved_rates,
-                rates
-                    .iter()
-                    .map(|r| Uint256::from(*r))
-                    .collect::<Vec<Uint256>>()
-            );
+            let reference_datas = query_median_reference_data_bulk(
+                deps.as_ref(),
+                &symbols
+                    .clone()
+            )
+            .unwrap();
+
+            for (expected,actual) in symbol_rates.iter().zip(reference_datas.iter()){
+                assert_eq!(expected.1, actual.rates)
+            }
         }
 
         #[test]
