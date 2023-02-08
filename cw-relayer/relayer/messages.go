@@ -25,13 +25,21 @@ type (
 		Relay Msg `json:"relay_historical_median"`
 	}
 
+	MsgForceRelayHistoricalMedian struct {
+		Relay Msg `json:"force_relay_historical_median"`
+	}
+
 	MsgRelayHistoricalDeviation struct {
 		Relay Msg `json:"relay_historical_deviation"`
 	}
 
+	MsgForceRelayHistoricalDeviation struct {
+		Relay Msg `json:"force_relay_historical_median"`
+	}
+
 	Msg struct {
-		SymbolRates [][2]string `json:"symbol_rates,omitempty"`
-		ResolveTime int64       `json:"resolve_time,string"`
-		RequestID   uint64      `json:"request_id,string"`
+		SymbolRates [][2]interface{} `json:"symbol_rates,omitempty"`
+		ResolveTime int64            `json:"resolve_time,string"`
+		RequestID   uint64           `json:"request_id,string"`
 	}
 )

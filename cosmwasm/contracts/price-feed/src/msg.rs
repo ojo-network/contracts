@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint64;
 
-use crate::state::{RefData, ReferenceData};
+use crate::state::{RefData, ReferenceData, RefMedianData};
 
 #[cw_serde]
 pub struct InstantiateMsg {}
@@ -46,7 +46,7 @@ pub enum ExecuteMsg {
         // e.g.
         // BTC = 19,343.34, ETH = 1,348.57
         // symbol_rates ≡ <("BTC", 19343340000000), ("ETH", 1348570000000)>
-        symbol_rates: Vec<(String, Uint64)>,
+        symbol_rates: Vec<(String, Vec<Uint64>)>,
         // Resolve time of request on BandChain in Unix timestamp
         resolve_time: Uint64,
         // Request ID of the results on BandChain
@@ -67,7 +67,7 @@ pub enum ExecuteMsg {
     },
     // Same as Relay but without the resolve_time guard
     ForceRelayHistoricalMedian {
-        symbol_rates: Vec<(String, Uint64)>,
+        symbol_rates: Vec<(String, Vec<Uint64>)>,
         resolve_time: Uint64,
         request_id: Uint64,
     },
@@ -113,26 +113,26 @@ pub enum QueryMsg {
         // e.g. <BTC/USD ETH/USD, BAND/BTC> ≡ <("BTC", "USD"), ("ETH", "USD"), ("BAND", "BTC")>
         symbol_pairs: Vec<(String, String)>,
     },
-    #[returns(RefData)]
+    #[returns(RefMedianData)]
     // Returns the RefData of a given symbol
     GetMedianRef {
         // Symbol to query
         symbol: String,
     },
-    #[returns(ReferenceData)]
+    // #[returns(ReferenceData)]
     // Returns the ReferenceData of a given asset pairing
-    GetMedianReferenceData {
-        // Symbol pair to query where:
-        // symbol_pair := (base_symbol, quote_symbol)
-        // e.g. BTC/USD ≡ ("BTC", "USD")
-        symbol_pair: (String, String),
-    },
-    #[returns(Vec < ReferenceData >)]
+    // GetMedianReferenceData {
+    //     // Symbol pair to query where:
+    //     // symbol_pair := (base_symbol, quote_symbol)
+    //     // e.g. BTC/USD ≡ ("BTC", "USD")
+    //     symbol_pair: (String, String),
+    // },
+    #[returns(Vec < RefMedianData >)]
     // Returns the ReferenceDatas of the given asset pairings
     GetMedianReferenceDataBulk {
         // Vector of Symbol pair to query
         // e.g. <BTC/USD ETH/USD, BAND/BTC> ≡ <("BTC", "USD"), ("ETH", "USD"), ("BAND", "BTC")>
-        symbol_pairs: Vec<(String, String)>,
+        symbols: Vec<String>,
     },
     #[returns(RefData)]
     // Returns the RefData of a given symbol

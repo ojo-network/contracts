@@ -14,7 +14,6 @@ const (
 	defaultQueryRPC        = "0.0.0.0:9091"
 	defaultMissedThreshold = 5
 	defaultTimeoutHeight   = 5
-	defaultMedianDuration  = 1
 )
 
 var (
@@ -111,10 +110,6 @@ func ParseConfig(configPath string) (Config, error) {
 
 	if cfg.TimeoutHeight == 0 {
 		cfg.TimeoutHeight = defaultTimeoutHeight
-	}
-
-	if cfg.MedianDuration == 0 {
-		cfg.MedianDuration = defaultMedianDuration
 	}
 
 	return cfg, cfg.Validate()

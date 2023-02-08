@@ -7,9 +7,7 @@ use semver::Version;
 
 use crate::errors::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::state::{
-    RefData, ReferenceData, ADMIN, DEVIATIONDATA, MEDIANREFDATA, REFDATA, RELAYERS,
-};
+use crate::state::{RefData, ReferenceData, ADMIN, DEVIATIONDATA, MEDIANREFDATA, REFDATA, RELAYERS, RefMedianData, ReferenceDataMedian};
 
 const E0: Uint64 = Uint64::zero();
 const E9: Uint64 = Uint64::new(1_000_000_000u64);
@@ -192,7 +190,7 @@ fn execute_relay(
 fn execute_relay_historical_median(
     deps: DepsMut,
     info: MessageInfo,
-    symbol_rates: Vec<(String, Uint64)>,
+    symbol_rates: Vec<(String, Vec<Uint64>)>,
     resolve_time: Uint64,
     request_id: Uint64,
 ) -> Result<Response, ContractError> {
@@ -205,7 +203,7 @@ fn execute_relay_historical_median(
     }
 
     // Saves price data
-    for (symbol, rate) in symbol_rates {
+    for (symbol, rates) in symbol_rates {
         if let Some(existing_refdata) = MEDIANREFDATA.may_load(deps.storage, &symbol)? {
             if existing_refdata.resolve_time >= resolve_time {
                 continue;
@@ -215,7 +213,7 @@ fn execute_relay_historical_median(
         MEDIANREFDATA.save(
             deps.storage,
             &symbol,
-            &RefData::new(rate, resolve_time, request_id),
+            &RefMedianData::new(rates, resolve_time, request_id),
         )?
     }
 
@@ -251,7 +249,7 @@ fn execute_force_relay(
 fn execute_force_relay_historical_median(
     deps: DepsMut,
     info: MessageInfo,
-    symbol_rates: Vec<(String, Uint64)>,
+    symbol_rates: Vec<(String, Vec<Uint64>)>,
     resolve_time: Uint64,
     request_id: Uint64,
 ) -> Result<Response, ContractError> {
@@ -263,11 +261,11 @@ fn execute_force_relay_historical_median(
         });
     }
 
-    for (symbol, rate) in symbol_rates {
+    for (symbol, rates) in symbol_rates {
         MEDIANREFDATA.save(
             deps.storage,
             &symbol,
-            &RefData::new(rate, resolve_time, request_id),
+            &RefMedianData::new(rates, resolve_time, request_id),
         )?;
     }
 
@@ -349,11 +347,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_binary(&query_reference_data_bulk(deps, &symbol_pairs)?)
         }
         QueryMsg::GetMedianRef { symbol } => to_binary(&query_median_ref(deps, &symbol)?),
-        QueryMsg::GetMedianReferenceData { symbol_pair } => {
-            to_binary(&query_median_reference_data(deps, &symbol_pair)?)
-        }
-        QueryMsg::GetMedianReferenceDataBulk { symbol_pairs } => {
-            to_binary(&query_median_reference_data_bulk(deps, &symbol_pairs)?)
+        // QueryMsg::GetMedianReferenceData { symbol_pair } => {
+        //     // to_binary(&query_median_reference_data(deps, &symbol_pair)?)
+        // }
+        QueryMsg::GetMedianReferenceDataBulk { symbols } => {
+            to_binary(&query_median_reference_data_bulk(deps, &symbols)?)
         }
         QueryMsg::GetDeviationRef { symbol } => to_binary(&query_deviation_ref(deps, &symbol)?),
         QueryMsg::GetDeviationRefBulk { symbols } => {
@@ -397,37 +395,39 @@ fn query_reference_data_bulk(
         .collect()
 }
 
-fn query_median_ref(deps: Deps, symbol: &str) -> StdResult<RefData> {
+// can only support USD
+fn query_median_ref(deps: Deps, symbol: &str) -> StdResult<RefMedianData> {
     if symbol == "USD" {
-        Ok(RefData::new(E9, Uint64::MAX, Uint64::zero()))
+        Ok(RefMedianData::new(vec![E9], Uint64::MAX, Uint64::zero()))
     } else {
         MEDIANREFDATA.load(deps.storage, symbol)
     }
 }
 
-fn query_median_reference_data(
-    deps: Deps,
-    symbol_pair: &(String, String),
-) -> StdResult<ReferenceData> {
-    let base = query_median_ref(deps, &symbol_pair.0)?;
-    let quote = query_median_ref(deps, &symbol_pair.1)?;
-
-    Ok(ReferenceData::new(
-        Uint256::from(base.rate)
-            .checked_mul(E18)?
-            .checked_div(Uint256::from(quote.rate))?,
-        base.resolve_time,
-        quote.resolve_time,
-    ))
-}
+// TODO
+// fn query_median_reference_data(
+//     deps: Deps,
+//     symbol_pair: &(String, String),
+// ) -> StdResult<ReferenceData> {
+//     let base = query_median_ref(deps, &symbol_pair.0)?;
+//     let quote = query_median_ref(deps, &symbol_pair.1)?;
+//
+//     Ok(ReferenceData::new(
+//         Uint256::from(base.rate)
+//             .checked_mul(E18)?
+//             .checked_div(Uint256::from(quote.rate))?,
+//         base.resolve_time,
+//         quote.resolve_time,
+//     ))
+// }
 
 fn query_median_reference_data_bulk(
     deps: Deps,
-    symbol_pairs: &[(String, String)],
-) -> StdResult<Vec<ReferenceData>> {
-    symbol_pairs
+    symbols: &[String],
+) -> StdResult<Vec<RefMedianData>> {
+    symbols
         .iter()
-        .map(|pair| query_median_reference_data(deps, pair))
+        .map(|symbol| query_median_ref(deps, symbol))
         .collect()
 }
 
@@ -846,25 +846,25 @@ mod tests {
                 .map(|r| Uint64::new(*r))
                 .collect::<Vec<Uint64>>();
 
-            let msg = RelayHistoricalMedian {
-                symbol_rates: zip(symbols.clone(), rates.clone())
-                    .collect::<Vec<(String, Uint64)>>(),
-                resolve_time: Uint64::from(100u64),
-                request_id: Uint64::one(),
-            };
+            // let msg = RelayHistoricalMedian {
+            //     symbol_rates: zip(symbols.clone(), rates.clone())
+            //         .collect::<Vec<(String, Uint64)>>(),
+            //     resolve_time: Uint64::from(100u64),
+            //     request_id: Uint64::one(),
+            // };
 
             execute(deps.as_mut(), env, info, msg).unwrap();
 
             // Check if relay was successful
-            let reference_datas = query_median_reference_data_bulk(
-                deps.as_ref(),
-                &symbols
-                    .clone()
-                    .iter()
-                    .map(|s| (s.clone(), String::from("USD")))
-                    .collect::<Vec<(String, String)>>(),
-            )
-            .unwrap();
+            // let reference_datas = query_median_reference_data_bulk(
+            //     deps.as_ref(),
+            //     &symbols
+            //         .clone()
+            //         .iter()
+            //         .map(|s| (s.clone(), String::from("USD")))
+            //         .collect::<Vec<(String, String)>>(),
+            // )
+            // .unwrap();
             let retrieved_rates = reference_datas
                 .clone()
                 .into_iter()
