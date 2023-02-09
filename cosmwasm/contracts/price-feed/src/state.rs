@@ -77,23 +77,3 @@ impl ReferenceData {
         }
     }
 }
-
-#[cw_serde]
-pub struct ReferenceDataMedian {
-    // Pair rate e.g. rate of BTC/USD
-    pub rates: Vec<Uint256>,
-    // Unix time of when the base asset was last updated. e.g. Last update time of BTC in Unix time
-    pub last_updated_base: Uint64,
-    // Unix time of when the quote asset was last updated. e.g. Last update time of USD in Unix time
-    pub last_updated_quote: Uint64,
-}
-
-impl ReferenceDataMedian {
-    pub fn new(rates: Vec<Uint256>, last_updated_base: Uint64, last_updated_quote: Uint64) -> Self {
-        ReferenceDataMedian {
-            rates,
-            last_updated_base,
-            last_updated_quote,
-        }
-    }
-}
