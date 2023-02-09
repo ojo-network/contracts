@@ -17,7 +17,7 @@ type RelayerTestSuite struct {
 }
 
 func (rts *RelayerTestSuite) SetupSuite() {
-	rts.relayer = New(zerolog.Nop(), client.RelayerClient{}, "", 100, 5, "")
+	rts.relayer = New(zerolog.Nop(), client.RelayerClient{}, "", 100, 5, "", nil)
 }
 
 func TestServiceTestSuite(t *testing.T) {

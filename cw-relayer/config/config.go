@@ -42,6 +42,7 @@ type (
 
 		// query rpc for ojo node
 		QueryRPC string `mapstructure:"query_rpc"`
+		EventRPC string `mapstructure:"event_rpc"`
 	}
 
 	// Account defines account related configuration that is related to the Client

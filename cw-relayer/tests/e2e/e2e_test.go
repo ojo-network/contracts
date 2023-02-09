@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
@@ -65,6 +66,7 @@ func (s *IntegrationTestSuite) TestQueryRateAndReferenceData() {
 			prepare: func() ([]byte, error) {
 				msg := rateMsg{Ref: symbol{Symbol: mockPrices[0].Denom}}
 				data, err := json.Marshal(msg)
+				fmt.Println(string(data))
 				if err != nil {
 					return nil, err
 				}
@@ -99,7 +101,7 @@ func (s *IntegrationTestSuite) TestQueryRateAndReferenceData() {
 				QueryData: data,
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 			defer cancel()
 
 			s.Require().Eventually(func() bool {
@@ -107,7 +109,6 @@ func (s *IntegrationTestSuite) TestQueryRateAndReferenceData() {
 				if err != nil {
 					return false
 				}
-
 				if queryResponse != nil {
 					resp := map[string]string{}
 					err = json.Unmarshal(queryResponse.Data, &resp)
@@ -122,7 +123,7 @@ func (s *IntegrationTestSuite) TestQueryRateAndReferenceData() {
 
 				return false
 			},
-				1*time.Minute,
+				2*time.Minute,
 				time.Second*4,
 				"failed to query prices from contract",
 			)
@@ -200,7 +201,7 @@ func (s *IntegrationTestSuite) TestQueryReferenceDataBulk() {
 
 				return false
 			},
-				1*time.Minute,
+				2*time.Minute,
 				time.Second*4,
 				"failed to query prices from contract",
 			)

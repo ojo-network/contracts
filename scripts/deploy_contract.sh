@@ -1,6 +1,6 @@
 BINARY=wasmd
-CHAINID_1="test-wasm"
-CONTRACT_PATH=.wasm/config/std_reference.wasm
+CHAINID_1="wasm-test"
+CONTRACT_PATH=./cosmwasm/artifacts/std_reference.wasm
 DEMO_MNEMONIC_1="pony glide frown crisp unfold lawn cup loan trial govern usual matrix theory wash fresh address pioneer between meadow visa buffalo keep gallery swear"
 RPC="http://0.0.0.0:26657"
 
@@ -23,7 +23,7 @@ CONTRACT=$($BINARY query wasm list-contract-by-code "1" $NODE --output json | jq
 echo $CONTRACT
 
 #sample transactions
-ADD_RELAYERS='{"add_relayers": {"relayers": ["wasm1m9l358xunhhwds0568za49mzhvuxx9uxf9974x"]}}'
+ADD_RELAYERS='{"add_relayers": {"relayers": ["wasm1usr9g5a4s2qrwl63sdjtrs2qd4a7huh6qksawp"]}}'
 $BINARY tx wasm execute $CONTRACT "$ADD_RELAYERS" --home ./data/$CHAINID_1 --from $DEMOWALLET $TXFLAG -y
 sleep 5
 

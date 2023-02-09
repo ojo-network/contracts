@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	tickerSleep = 1000 * time.Millisecond
+	resolveTime = 1000 * time.Millisecond
 )
 
 var (
@@ -42,6 +42,8 @@ type Relayer struct {
 	// if missedCounter >= missedThreshold, force relay prices (bypasses timing restrictions)
 	missedCounter   int64
 	missedThreshold int64
+
+	event chan struct{}
 }
 
 // New returns an instance of the relayer.
@@ -52,6 +54,7 @@ func New(
 	timeoutHeight int64,
 	missedThreshold int64,
 	queryRPC string,
+	event chan struct{},
 ) *Relayer {
 	return &Relayer{
 		queryRPC:        queryRPC,
@@ -61,6 +64,7 @@ func New(
 		missedThreshold: missedThreshold,
 		timeoutHeight:   timeoutHeight,
 		closer:          sync.NewCloser(),
+		event:           event,
 	}
 }
 
@@ -70,9 +74,8 @@ func (r *Relayer) Start(ctx context.Context) error {
 		case <-ctx.Done():
 			r.closer.Close()
 
-		default:
-			r.logger.Debug().Msg("starting relayer tick")
-
+		case <-r.event:
+			r.logger.Debug().Msg("starting relayer")
 			startTime := time.Now()
 			if err := r.tick(ctx); err != nil {
 				telemetry.IncrCounter(1, "failure", "tick")
@@ -81,8 +84,6 @@ func (r *Relayer) Start(ctx context.Context) error {
 
 			telemetry.MeasureSince(startTime, "runtime", "tick")
 			telemetry.IncrCounter(1, "new", "tick")
-
-			time.Sleep(tickerSleep)
 		}
 	}
 }
@@ -152,7 +153,7 @@ func (r *Relayer) tick(ctx context.Context) error {
 	}
 
 	// set the next resolve time for price feeds on wasm contract
-	nextBlockTime := blockTimestamp.Unix() + int64(tickerSleep.Seconds())
+	nextBlockTime := blockTimestamp.Unix() + int64(resolveTime)
 	msg, err := generateContractRelayMsg(forceRelay, r.requestID, nextBlockTime, r.exchangeRates)
 	if err != nil {
 		return err

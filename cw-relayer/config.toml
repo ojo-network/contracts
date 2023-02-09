@@ -1,6 +1,7 @@
 ### gas adjustment - multiplier for the expected amount of gas
 contract_address = "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0phg4d"
 query_rpc = "0.0.0.0:9090"
+event_rpc = "0.0.0.0:9090"
 gas_adjustment = 1.5
 timeout_height = 10
 gas_prices = "0.2stake"
@@ -18,4 +19,4 @@ dir = "/Users/username/.wasmd"
 [rpc]
 grpc_endpoint = "0.0.0.0:8080"
 rpc_timeout = "100ms"
-tmrpc_endpoint = "http://localhost:16657"
+tmrpc_endpoint = "http://localhost:26657"
