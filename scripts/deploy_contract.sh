@@ -1,35 +1,36 @@
-BINARY=wasmd
-CHAINID_1="test-wasm"
-CONTRACT_PATH=.wasm/config/std_reference.wasm
-DEMO_MNEMONIC_1="pony glide frown crisp unfold lawn cup loan trial govern usual matrix theory wash fresh address pioneer between meadow visa buffalo keep gallery swear"
-RPC="http://0.0.0.0:26657"
-
+BINARY=secretcli
+CHAINID_1="pulsar-2"
+CONTRACT_PATH=./cosmwasm/artifacts/std_reference.wasm
+RPC="https://rpc.testnet.secretsaturn.net"
 NODE="--node $RPC"
-TXFLAG="$NODE --chain-id $CHAINID_1 --gas-prices 0.25stake --keyring-backend test --gas auto --gas-adjustment 1.3"
-# network check
-export DEMOWALLET=$($BINARY keys show demowallet1 -a --keyring-backend test --home ./data/$CHAINID_1) && echo $DEMOWALLET;
-#$BINARY query wasm list-code $NODE
+TXFLAG="$NODE --chain-id $CHAINID_1 --gas-prices 1uscrt --gas-adjustment 1.3"
+
+export DEMOWALLET=$($BINARY keys show relayer -a --keyring-backend=test --keyring-dir=./relayer-data/ ) && echo $DEMOWALLET;
+$BINARY query wasm list-code $NODE
 
 # deploy smart contract
-$BINARY tx wasm store $CONTRACT_PATH --from $DEMOWALLET --home ./data/$CHAINID_1 $TXFLAG -y
+$BINARY tx compute store $CONTRACT_PATH --from $DEMOWALLET --keyring-backend=test --keyring-dir=./cw-relayer/data/ $TXFLAG -y
+sleep 5
+
+$BINARY tx compute instantiate 19480 '{}' --label=newtest --from $DEMOWALLET --keyring-backend=test --keyring-dir=./cw-relayer/data/ -y
 sleep 5
 
 #instantiate contract
-$BINARY tx wasm instantiate 1 '{}' --label test --admin $DEMOWALLET --from $DEMOWALLET --home ./data/$CHAINID_1 $TXFLAG -y
+$BINARY tx compute instantiate 1 '{}' --label=newthings --from $DEMOWALLET --keyring-backend=test --keyring-dir=./cw-relayer/newrelayerdata/ --sign-mode=direct $TXFLAG -y
 sleep 5
 
-# query contract address
-CONTRACT=$($BINARY query wasm list-contract-by-code "1" $NODE --output json | jq -r '.contracts[-1]')
+## query contract address
+CONTRACT=$($BINARY query compute list-contract-by-code "19480" $NODE --output json | jq -r '.[0].contract_address')
 echo $CONTRACT
 
-#sample transactions
-ADD_RELAYERS='{"add_relayers": {"relayers": ["wasm1m9l358xunhhwds0568za49mzhvuxx9uxf9974x"]}}'
-$BINARY tx wasm execute $CONTRACT "$ADD_RELAYERS" --home ./data/$CHAINID_1 --from $DEMOWALLET $TXFLAG -y
+#sample
+ADD_RELAYERS='{"add_relayers": {"relayers": ["secret19uywplnd25gzxgc3t8pyqsl2tcse8heag2s6av"]}}'
+$BINARY tx compute execute $CONTRACT "$ADD_RELAYERS" --keyring-dir=./relayer-data --keyring-backend=test --from $DEMOWALLET --dry-run -y
 sleep 5
 
-RELAY='{"force_relay": {"symbol_rates": [["stake","30"]], "resolve_time":"10", "request_id":"1"}}'
-$BINARY tx wasm execute $CONTRACT "$RELAY" --home ./data/$CHAINID_1 --from $DEMOWALLET $TXFLAG -y
+RELAY='{"force_relay": {"symbol_rates": [["ATOM","14"]], "resolve_time":"10", "request_id":"2"}}'
+$BINARY tx compute execute $CONTRACT "$RELAY" --keyring-backend=test --keyring-dir=./cw-relayer/data/ --sign-mode=direct --from $DEMOWALLET $TXFLAG --offline
 sleep 5
 
-QUERY='{"get_ref": {"symbol": "stake"}}'
-$BINARY query wasm contract-state smart $CONTRACT "$QUERY" $NODE --output json
+QUERY='{"get_ref": {"symbol": "ATOM"}}'
+$BINARY query compute query $CONTRACT "$QUERY" $NODE --output json

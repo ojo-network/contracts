@@ -14,6 +14,8 @@ const (
 	defaultQueryRPC        = "0.0.0.0:9091"
 	defaultMissedThreshold = 5
 	defaultTimeoutHeight   = 5
+	defaulTicker           = "1s"
+	defaultGasLimit        = 80000
 )
 
 var (
@@ -33,12 +35,15 @@ type (
 		ProviderTimeout string `mapstructure:"provider_timeout"`
 		ContractAddress string `mapstructure:"contract_address"`
 		TimeoutHeight   int64  `mapsturture:"timeout_height"`
+		CodeHash        string `mapstructure:"code_hash"`
+		Ticker          string `mapstructure:"ticker" validate:"required"`
 
 		// force relay prices and reset epoch time in contracts if err in broadcasting tx
 		MissedThreshold int64 `mapstructure:"missed_threshold"`
 
 		GasAdjustment float64 `mapstructure:"gas_adjustment" validate:"required"`
 		GasPrices     string  `mapstructure:"gas_prices" validate:"required"`
+		GasLimit      uint64  `mapstructure:"gas_limit" validate:"required"`
 
 		// query rpc for ojo node
 		QueryRPC string `mapstructure:"query_rpc"`
@@ -109,6 +114,14 @@ func ParseConfig(configPath string) (Config, error) {
 
 	if cfg.TimeoutHeight == 0 {
 		cfg.TimeoutHeight = defaultTimeoutHeight
+	}
+
+	if cfg.Ticker == "" {
+		cfg.Ticker = defaulTicker
+	}
+
+	if cfg.GasLimit == 0 {
+		cfg.GasLimit = defaultGasLimit
 	}
 
 	return cfg, cfg.Validate()

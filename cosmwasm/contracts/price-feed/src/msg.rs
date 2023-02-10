@@ -1,5 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint64;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 use crate::state::{RefData, ReferenceData};
 
@@ -51,7 +53,7 @@ pub enum ExecuteMsg {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     // Returns admin accounts
-    #[returns(cw_controllers::AdminResponse)]
+    #[returns(String)]
     Admin {},
     // Queries if given a address is a relayer
     #[returns(bool)]

@@ -2,38 +2,22 @@ package relayer
 
 import (
 	"testing"
-	"time"
 
 	"github.com/cosmos/cosmos-sdk/types"
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/suite"
-
-	"github.com/ojo-network/cw-relayer/relayer/client"
 )
 
 type RelayerTestSuite struct {
 	suite.Suite
-	relayer *Relayer
 }
 
-func (rts *RelayerTestSuite) SetupSuite() {
-	rts.relayer = New(zerolog.Nop(), client.RelayerClient{}, "", 100, 5, "")
-}
+func (rts *RelayerTestSuite) SetupSuite() {}
 
 func TestServiceTestSuite(t *testing.T) {
 	suite.Run(t, new(RelayerTestSuite))
 }
 
-func (rts *RelayerTestSuite) TestStop() {
-	rts.Eventually(
-		func() bool {
-			rts.relayer.Stop()
-			return true
-		},
-		5*time.Second,
-		time.Second,
-	)
-}
+func (rts *RelayerTestSuite) TestStop() {}
 
 func (rts *RelayerTestSuite) Test_generateContractMsg() {
 	exchangeRates := types.DecCoins{

@@ -1,20 +1,13 @@
+use crate::errors::ContractError;
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::state::{RefData, RefStore, ReferenceData, WhitelistedRelayers, ADMIN, REFDATA, RELAYERS};
 use cosmwasm_std::{
     entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
     StdResult, Uint256, Uint64,
 };
-use cw2::{get_contract_version, set_contract_version};
-use semver::Version;
-
-use crate::errors::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::state::{RefData, ReferenceData, ADMIN, REFDATA, RELAYERS};
 
 const E9: Uint64 = Uint64::new(1_000_000_000u64);
 const E18: Uint256 = Uint256::from_u128(1_000_000_000_000_000_000u128);
-
-// Version Info
-const CONTRACT_NAME: &str = "ojo-price-feeds";
-const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -23,11 +16,10 @@ pub fn instantiate(
     info: MessageInfo,
     _msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    // Set contract version
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
     // Set sender as admin
-    ADMIN.set(deps.branch(), Some(info.sender))?;
+    let admin = info.sender;
+
+    ADMIN.save(deps.storage, &admin.clone())?;
 
     Ok(Response::default())
 }
@@ -42,7 +34,13 @@ pub fn execute(
     match msg {
         ExecuteMsg::UpdateAdmin { admin } => {
             let admin = deps.api.addr_validate(&admin)?;
-            Ok(ADMIN.execute_update_admin(deps, info, Some(admin))?)
+            let prev_admin = ADMIN.load(deps.storage)?;
+            // check if sender is admin
+            assert_admin(&prev_admin, &info.sender)?;
+
+            // save new admin
+            ADMIN.save(deps.storage, &admin)?;
+            Ok(Response::default())
         }
         ExecuteMsg::AddRelayers { relayers } => execute_add_relayers(deps, info, relayers),
         ExecuteMsg::RemoveRelayers { relayers } => execute_remove_relayers(deps, info, relayers),
@@ -59,49 +57,18 @@ pub fn execute(
     }
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    fn from_semver(err: semver::Error) -> StdError {
-        StdError::generic_err(format!("Semver: {}", err))
-    }
-
-    // New contract version
-    let version: Version = CONTRACT_VERSION.parse().map_err(from_semver)?;
-
-    // Current contract version
-    let stored_info = get_contract_version(deps.storage)?;
-
-    // Stored contract version
-    let stored_version: Version = stored_info.version.parse().map_err(from_semver)?;
-
-    // Check contract type
-    if CONTRACT_NAME != stored_info.contract {
-        return Err(ContractError::CannotMigrate {
-            previous_contract: stored_info.contract,
-        });
-    }
-
-    // Check new contract version is equal or newer
-    if stored_version > version {
-        return Err(ContractError::CannotMigrateVersion {
-            previous_version: stored_info.version,
-        });
-    }
-
-    Ok(Response::default())
-}
-
 fn execute_add_relayers(
     deps: DepsMut,
     info: MessageInfo,
     relayers: Vec<String>,
 ) -> Result<Response, ContractError> {
     // Checks if sender is admin
-    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+    let admin = ADMIN.load(deps.storage)?;
+    assert_admin(&admin, &info.sender)?;
 
     // Adds relayer
     for relayer in relayers {
-        RELAYERS.save(deps.storage, &deps.api.addr_validate(&relayer)?, &true)?;
+        WhitelistedRelayers::save(deps.storage, &deps.api.addr_validate(&relayer)?)?;
     }
 
     Ok(Response::new().add_attribute("action", "add_relayers"))
@@ -112,11 +79,11 @@ fn execute_remove_relayers(
     info: MessageInfo,
     relayers: Vec<String>,
 ) -> Result<Response, ContractError> {
-    // Checks if sender is admin
-    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+    let admin = ADMIN.load(deps.storage)?;
+    assert_admin(&admin, &info.sender)?;
 
     for relayer in relayers {
-        RELAYERS.remove(deps.storage, &deps.api.addr_validate(&relayer)?);
+        WhitelistedRelayers::remove(deps.storage, &deps.api.addr_validate(&relayer)?)?;
     }
 
     Ok(Response::new().add_attribute("action", "remove_relayers"))
@@ -139,12 +106,12 @@ fn execute_relay(
 
     // Saves price data
     for (symbol, rate) in symbol_rates {
-        if let Some(existing_refdata) = REFDATA.may_load(deps.storage, &symbol)? {
+        if let Some(existing_refdata) = RefStore::load(deps.storage, &symbol) {
             if existing_refdata.resolve_time >= resolve_time {
                 continue;
             }
         }
-        REFDATA.save(
+        RefStore::save(
             deps.storage,
             &symbol,
             &RefData::new(rate, resolve_time, request_id),
@@ -170,7 +137,7 @@ fn execute_force_relay(
     }
 
     for (symbol, rate) in symbol_rates {
-        REFDATA.save(
+        RefStore::save(
             deps.storage,
             &symbol,
             &RefData::new(rate, resolve_time, request_id),
@@ -183,7 +150,7 @@ fn execute_force_relay(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Admin {} => to_binary(&ADMIN.query_admin(deps)?),
+        QueryMsg::Admin {} => to_binary(&ADMIN.load(deps.storage)?),
         QueryMsg::IsRelayer { relayer } => {
             to_binary(&query_is_relayer(deps, &deps.api.addr_validate(&relayer)?)?)
         }
@@ -198,14 +165,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 fn query_is_relayer(deps: Deps, relayer: &Addr) -> StdResult<bool> {
-    Ok(RELAYERS.may_load(deps.storage, relayer)?.is_some())
+    let status = RELAYERS.contains(deps.storage, relayer);
+    Ok(status)
 }
 
 fn query_ref(deps: Deps, symbol: &str) -> StdResult<RefData> {
     if symbol == "USD" {
         Ok(RefData::new(E9, Uint64::MAX, Uint64::zero()))
     } else {
-        REFDATA.load(deps.storage, symbol)
+        let data = RefStore::load(deps.storage, symbol);
+        data.ok_or(StdError::not_found("std_reference::state::RefData"))
     }
 }
 
@@ -232,10 +201,24 @@ fn query_reference_data_bulk(
         .collect()
 }
 
+fn assert_admin(config_admin: &Addr, account: &Addr) -> Result<(), ContractError> {
+    if config_admin != account {
+        return Err(ContractError::Admin {
+            msg: String::from("ADMIN ONLY"),
+        });
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{Addr, Uint256};
+
+    use cosmwasm_std::testing::*;
+    use cosmwasm_std::{
+        from_binary, BlockInfo, ContractInfo, MessageInfo, OwnedDeps, QueryResponse, ReplyOn,
+        SubMsg, Timestamp, TransactionInfo, WasmMsg,
+    };
 
     use crate::msg::ExecuteMsg::{AddRelayers, Relay};
 
@@ -292,6 +275,7 @@ mod tests {
 
     mod instantiate {
         use super::*;
+        use crate::msg::QueryMsg::Admin;
 
         #[test]
         fn can_instantiate() {
@@ -301,18 +285,56 @@ mod tests {
             let env = mock_env();
             let res = instantiate(deps.as_mut(), env, info.clone(), init_msg).unwrap();
             assert_eq!(0, res.messages.len());
-            assert_eq!(ADMIN.is_admin(deps.as_ref(), &info.sender).unwrap(), true);
+            let saved_admin = ADMIN.load(&deps.storage).unwrap();
+            let is_admin = assert_admin(&saved_admin, &info.sender);
+
+            assert_eq!(is_admin.is_err(), false);
         }
     }
 
     mod relay {
         use std::iter::zip;
 
-        use cw_controllers::AdminError;
+        // use cw_controllers::AdminError;
 
-        use crate::msg::ExecuteMsg::{AddRelayers, ForceRelay, Relay, RemoveRelayers};
+        use crate::msg::ExecuteMsg::{AddRelayers, ForceRelay, Relay, RemoveRelayers, UpdateAdmin};
 
         use super::*;
+
+        #[test]
+        fn change_admin() {
+            // Setup
+            let mut deps = mock_dependencies();
+            let init_msg = InstantiateMsg {};
+            let info = mock_info("owner1", &[]);
+            let env = mock_env();
+            instantiate(deps.as_mut(), env.clone(), info, init_msg).unwrap();
+
+            let msg = UpdateAdmin {
+                admin: String::from("owner2"),
+            };
+
+            // Test authorized attempt to add relayers
+            let info = mock_info("owner1", &[]);
+            let env = mock_env();
+
+            execute(deps.as_mut(), env, info, msg.clone()).unwrap();
+
+            // Unauthorized attempt to change admin
+            let info = mock_info("owner1", &[]);
+            let env = mock_env();
+
+            // would fail as current_owner=owner2
+            let err = execute(deps.as_mut(), env, info, msg);
+            assert_eq!(err.is_err(), true);
+
+            assert_eq!(
+                err.err().unwrap(),
+                ContractError::Admin {
+                    msg: String::from("ADMIN ONLY"),
+                }
+            )
+        }
 
         #[test]
         fn add_relayers_by_owner() {
@@ -367,9 +389,9 @@ mod tests {
             assert_eq!(
                 err,
                 ContractError::Admin {
-                    0: AdminError::NotAdmin {}
+                    msg: String::from("ADMIN ONLY"),
                 }
-            );
+            )
         }
 
         #[test]
@@ -416,10 +438,11 @@ mod tests {
             let env = mock_env();
             let msg = RemoveRelayers { relayers };
             let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+
             assert_eq!(
                 err,
                 ContractError::Admin {
-                    0: AdminError::NotAdmin {}
+                    msg: String::from("ADMIN ONLY"),
                 }
             );
         }
@@ -744,6 +767,7 @@ mod tests {
         use std::ops::Mul;
 
         use cosmwasm_std::from_binary;
+        use cosmwasm_std::OverflowOperation::Add;
 
         use crate::msg::QueryMsg::{GetRef, GetReferenceData, GetReferenceDataBulk};
 
@@ -756,12 +780,22 @@ mod tests {
             setup(deps.as_mut(), "owner");
 
             // Test if query_config results are correct
+
+            let admin = ADMIN.load(&deps.storage).unwrap();
+            let is_admin = assert_admin(&admin, &Addr::unchecked("owner"));
+
+            assert_eq!(is_admin.is_err(), false,);
+
+            let is_admin = assert_admin(&admin, &Addr::unchecked("notowner"));
+
+            assert_eq!(is_admin.is_err(), true,);
+
             assert_eq!(
-                ADMIN
-                    .is_admin(deps.as_ref(), &Addr::unchecked("owner"))
-                    .unwrap(),
-                true
-            );
+                is_admin.err().unwrap(),
+                ContractError::Admin {
+                    msg: String::from("ADMIN ONLY"),
+                }
+            )
         }
 
         #[test]

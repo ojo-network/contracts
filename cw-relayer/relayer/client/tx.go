@@ -19,12 +19,12 @@ func BroadcastTx(clientCtx client.Context, txf tx.Factory, msgs ...sdk.Msg) (*sd
 		return nil, err
 	}
 
-	_, adjusted, err := tx.CalculateGas(clientCtx, txf, msgs...)
-	if err != nil {
-		return nil, err
-	}
-
-	txf = txf.WithGas(adjusted)
+	//error for now: CalculateGas fails due to scrt network dependency, using high gas limit as alternative
+	//_, adjusted, err := tx.CalculateGas(clientCtx, txf, msgs...)
+	//fmt.Println("error: ", adjusted, err)
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	unsignedTx, err := txf.BuildUnsignedTx(msgs...)
 	if err != nil {

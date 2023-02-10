@@ -6,20 +6,18 @@ import (
 	"fmt"
 	"time"
 
-	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	"github.com/cosmos/cosmos-sdk/telemetry"
 	"github.com/cosmos/cosmos-sdk/types"
-	oracletypes "github.com/ojo-network/ojo/x/oracle/types"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	oracletypes "github.com/ojo-network/ojo/x/oracle/types"
+
 	"github.com/ojo-network/cw-relayer/pkg/sync"
 	"github.com/ojo-network/cw-relayer/relayer/client"
-)
-
-const (
-	tickerSleep = 1000 * time.Millisecond
+	scrttypes "github.com/ojo-network/cw-relayer/relayer/dep"
+	scrtutils "github.com/ojo-network/cw-relayer/relayer/dep/utils"
 )
 
 var (
@@ -36,12 +34,16 @@ type Relayer struct {
 	exchangeRates   types.DecCoins
 	queryRPC        string
 	contractAddress string
+	contractAddr    types.AccAddress
+	codeHash        string
 	requestID       uint64
 	timeoutHeight   int64
 
 	// if missedCounter >= missedThreshold, force relay prices (bypasses timing restrictions)
 	missedCounter   int64
 	missedThreshold int64
+	tickerTime      time.Duration
+	iopubkey        []byte
 }
 
 // New returns an instance of the relayer.
@@ -52,7 +54,15 @@ func New(
 	timeoutHeight int64,
 	missedThreshold int64,
 	queryRPC string,
+	codeHash string,
+	tickerTime time.Duration,
 ) *Relayer {
+
+	contractAddr, err := types.AccAddressFromBech32(contractAddress)
+	if err != nil {
+		panic(err)
+	}
+
 	return &Relayer{
 		queryRPC:        queryRPC,
 		logger:          logger.With().Str("module", "relayer").Logger(),
@@ -61,10 +71,27 @@ func New(
 		missedThreshold: missedThreshold,
 		timeoutHeight:   timeoutHeight,
 		closer:          sync.NewCloser(),
+		contractAddr:    contractAddr,
+		codeHash:        codeHash,
+		tickerTime:      tickerTime,
 	}
 }
 
 func (r *Relayer) Start(ctx context.Context) error {
+	clientCtx, err := r.relayerClient.CreateClientContext()
+	if err != nil {
+		return err
+	}
+
+	// iopubkey for encryption
+	var iopubkey []byte
+	iopubkey, err = scrtutils.GetConsensusIoPubKey(scrtutils.WASMContext{CLIContext: clientCtx})
+	if err != nil {
+		return err
+	}
+
+	r.iopubkey = iopubkey
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -82,7 +109,7 @@ func (r *Relayer) Start(ctx context.Context) error {
 			telemetry.MeasureSince(startTime, "runtime", "tick")
 			telemetry.IncrCounter(1, "new", "tick")
 
-			time.Sleep(tickerSleep)
+			time.Sleep(r.tickerTime)
 		}
 	}
 }
@@ -152,7 +179,7 @@ func (r *Relayer) tick(ctx context.Context) error {
 	}
 
 	// set the next resolve time for price feeds on wasm contract
-	nextBlockTime := blockTimestamp.Unix() + int64(tickerSleep.Seconds())
+	nextBlockTime := blockTimestamp.Unix() + int64(r.tickerTime.Seconds())
 	msg, err := generateContractRelayMsg(forceRelay, r.requestID, nextBlockTime, r.exchangeRates)
 	if err != nil {
 		return err
@@ -161,20 +188,31 @@ func (r *Relayer) tick(ctx context.Context) error {
 	// increment request id to be stored in contracts
 	r.requestID += 1
 
-	executeMsg := &wasmtypes.MsgExecuteContract{
-		Sender:   r.relayerClient.RelayerAddrString,
-		Contract: r.contractAddress,
-		Msg:      msg,
-		Funds:    nil,
+	execMsg := scrttypes.NewSecretMsg([]byte(r.codeHash), msg)
+	clientCtx, err := r.relayerClient.CreateClientContext()
+	if err != nil {
+		return err
+	}
+
+	wasmCtx := scrtutils.WASMContext{CLIContext: clientCtx}
+	encryptedMsg, err := wasmCtx.Encrypt(r.iopubkey, execMsg.Serialize())
+	if err != nil {
+		return err
+	}
+
+	executeMsg := &scrttypes.MsgExecuteContract{
+		Sender:   r.relayerClient.RelayerAddr,
+		Contract: r.contractAddr,
+		Msg:      encryptedMsg,
 	}
 
 	r.logger.Info().
-		Str("Contract Address", executeMsg.Contract).
-		Str("relayer addr", executeMsg.Sender).
+		Str("Contract Address", r.contractAddress).
+		Str("relayer addr", r.relayerClient.RelayerAddrString).
 		Str("block timestamp", blockTimestamp.String()).
 		Msg("broadcasting execute to contract")
 
-	if err := r.relayerClient.BroadcastTx(nextBlockHeight, r.timeoutHeight, executeMsg); err != nil {
+	if err := r.relayerClient.BroadcastTx(clientCtx, nextBlockHeight, r.timeoutHeight, executeMsg); err != nil {
 		return err
 	}
 
@@ -198,5 +236,6 @@ func generateContractRelayMsg(forceRelay bool, requestID uint64, resolveTime int
 	}
 
 	msgData, err := json.Marshal(MsgRelay{Relay: msg})
+
 	return msgData, err
 }

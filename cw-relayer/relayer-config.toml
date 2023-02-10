@@ -1,0 +1,26 @@
+### gas adjustment - multiplier for the expected amount of gas
+contract_address = "secret1pxehd23wmcp06hk0r7vpaxmpd0nwn6eyv5hkj7"
+query_rpc = "api.devnet-n0.ojo-devnet.node.ojo.network:9090"
+gas_adjustment = 1.5
+timeout_height = 10
+gas_prices = "0.025uscrt"
+code_hash = "c5068e249d2486bc1be8caa3e60faf60e5d017dbe68498429e40225a996843b3"
+ticker = "1000ms"
+gas_limit = "50000"
+
+### account & chain-id for the wasmd relayer account
+[account]
+address = "secret19uywplnd25gzxgc3t8pyqsl2tcse8heag2s6av"
+chain_id = "pulsar-2"
+acc_prefix = "secret"
+
+### keyring for the relayer account on the wasmd chain
+[keyring]
+backend = "test"
+dir = "/path/to/relayer"
+
+### rpc endpoint for the wasm Chain
+[rpc]
+grpc_endpoint = "0.0.0.0:8080"
+rpc_timeout = "5000ms"
+tmrpc_endpoint = "https://rpc.pulsar.scrttestnet.com:443"
