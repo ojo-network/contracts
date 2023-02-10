@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -24,14 +23,12 @@ func NewEventSubscribe(
 	rpcAddress string,
 	logger zerolog.Logger,
 ) (*EventSubscribe, error) {
-
 	httpClient, err := tmjsonclient.DefaultHTTPClient(rpcAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	httpClient.Timeout = 1 * time.Minute
-
+	httpClient.Timeout = 2 * time.Minute
 	rpcClient, err := rpchttp.NewWithClient(rpcAddress, "/websocket", httpClient)
 	if err != nil {
 		return nil, err
@@ -43,7 +40,7 @@ func NewEventSubscribe(
 		}
 	}
 
-	eventType := tmtypes.EventNewBlock
+	eventType := tmtypes.EventNewBlockHeader
 	queryType := tmtypes.QueryForEvent(eventType).String()
 	newSubscription, err := rpcClient.Subscribe(ctx, eventType, queryType)
 	if err != nil {
@@ -66,7 +63,7 @@ func (event *EventSubscribe) subscribe(
 	ctx context.Context,
 	eventsClient tmrpcclient.EventsClient,
 	eventType string,
-	newBlockHeaderSubscription <-chan tmctypes.ResultEvent,
+	newBlockHeader <-chan tmctypes.ResultEvent,
 ) {
 	for {
 		select {
@@ -78,16 +75,14 @@ func (event *EventSubscribe) subscribe(
 			event.Logger.Info().Msg("closing the event subscription")
 			return
 
-		case resultEvent := <-newBlockHeaderSubscription:
-			data, ok := resultEvent.Data.(tmtypes.EventDataNewBlock)
+		case resultEvent := <-newBlockHeader:
+			data, ok := resultEvent.Data.(tmtypes.EventDataNewBlockHeader)
 			if !ok {
 				event.Logger.Err(errors.New("no new block"))
 				continue
 			}
-			fmt.Println(data.ResultEndBlock.GetEvents())
-			events := data.ResultEndBlock.GetEvents()
-			event.Tick <- struct{}{}
-			if len(events) > 0 {
+
+			if len(data.ResultEndBlock.GetEvents()) > 0 {
 				event.Tick <- struct{}{}
 			}
 		}

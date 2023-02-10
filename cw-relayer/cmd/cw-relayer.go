@@ -131,7 +131,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 	// subscribe
 	event, err := relayerclient.NewEventSubscribe(ctx, cfg.EventRPC, logger)
 	if err != nil {
-		panic("shit")
+		return err
 	}
 
 	newRelayer := relayer.New(logger, client, cfg.ContractAddress, cfg.TimeoutHeight, cfg.MissedThreshold, cfg.QueryRPC, event.Tick)
