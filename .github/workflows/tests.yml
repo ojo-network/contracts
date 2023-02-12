@@ -77,6 +77,11 @@ jobs:
           cache: true
           cache-dependency-path: cw-relayer/go.sum
 
+      - name: Generate Cargo.lock
+        if: env.GIT_DIFF
+        run: |
+          cargo fetch --verbose --manifest-path ./cosmwasm/Cargo.toml
+
       - name: cache docker layer
         uses: satackey/action-docker-layer-caching@v0.0.11
         if: env.GIT_DIFF

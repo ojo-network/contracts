@@ -23,6 +23,18 @@ func (s *Server) ExchangeRates(context.Context, *oracletypes.QueryExchangeRates)
 	}, nil
 }
 
+func (s *Server) Medians(context.Context, *oracletypes.QueryMedians) (*oracletypes.QueryMediansResponse, error) {
+	return &oracletypes.QueryMediansResponse{
+		Medians: s.mockPrices,
+	}, nil
+}
+
+func (s *Server) MedianDeviations(context.Context, *oracletypes.QueryMedianDeviations) (*oracletypes.QueryMedianDeviationsResponse, error) {
+	return &oracletypes.QueryMedianDeviationsResponse{
+		MedianDeviations: s.mockPrices,
+	}, nil
+}
+
 func (s *Server) setMockPrices() {
 	for i := 0; i < 5; i++ {
 		price := rand.Float64()
