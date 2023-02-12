@@ -5,6 +5,7 @@ event_rpc= "https://rpc.devnet-n0.ojo-devnet.node.ojo.network:443"
 gas_adjustment = 1.5
 timeout_height = 10
 gas_prices = "0.2stake"
+median_duration = 1
 
 ### account & chain-id for the wasmd relayer account
 [account]

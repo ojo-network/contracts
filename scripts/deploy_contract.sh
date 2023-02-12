@@ -10,13 +10,13 @@ TXFLAG="$NODE --chain-id $CHAINID_1 --gas-prices 0.25stake --keyring-backend tes
 export DEMOWALLET=$($BINARY keys show demowallet1 -a --keyring-backend test --home ./data/$CHAINID_1) && echo $DEMOWALLET;
 #$BINARY query wasm list-code $NODE
 
-# deploy smart contract
-$BINARY tx wasm store $CONTRACT_PATH --from $DEMOWALLET --home ./data/$CHAINID_1 $TXFLAG -y
-sleep 5
-
-#instantiate contract
-$BINARY tx wasm instantiate 1 '{}' --label test --admin $DEMOWALLET --from $DEMOWALLET --home ./data/$CHAINID_1 $TXFLAG -y
-sleep 5
+## deploy smart contract
+#$BINARY tx wasm store $CONTRACT_PATH --from $DEMOWALLET --home ./data/$CHAINID_1 $TXFLAG -y
+#sleep 5
+#
+##instantiate contract
+#$BINARY tx wasm instantiate 1 '{}' --label test --admin $DEMOWALLET --from $DEMOWALLET --home ./data/$CHAINID_1 $TXFLAG -y
+#sleep 5
 
 # query contract address
 CONTRACT=$($BINARY query wasm list-contract-by-code "1" $NODE --output json | jq -r '.contracts[-1]')

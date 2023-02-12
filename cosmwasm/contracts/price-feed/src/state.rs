@@ -12,6 +12,12 @@ pub const RELAYERS: Map<&Addr, bool> = Map::new("relayers");
 // Used to store RefData
 pub const REFDATA: Map<&str, RefData> = Map::new("refdata");
 
+// Used to store Median data
+pub const MEDIANREFDATA: Map<&str, RefMedianData> = Map::new("medianrefdata");
+
+// Used to store Deviation data
+pub const DEVIATIONDATA: Map<&str, RefData> = Map::new("deviationdata");
+
 #[cw_serde]
 pub struct RefData {
     // Rate of an asset relative to USD
@@ -26,6 +32,26 @@ impl RefData {
     pub fn new(rate: Uint64, resolve_time: Uint64, request_id: Uint64) -> Self {
         RefData {
             rate,
+            resolve_time,
+            request_id,
+        }
+    }
+}
+
+#[cw_serde]
+pub struct RefMedianData {
+    // Rate of an asset relative to USD
+    pub rates: Vec<Uint64>,
+    // The resolve time of the request ID
+    pub resolve_time: Uint64,
+    // The request ID where the rate was derived from
+    pub request_id: Uint64,
+}
+
+impl RefMedianData{
+    pub fn new(rates: Vec<Uint64>, resolve_time: Uint64, request_id: Uint64) -> Self {
+        RefMedianData {
+            rates,
             resolve_time,
             request_id,
         }

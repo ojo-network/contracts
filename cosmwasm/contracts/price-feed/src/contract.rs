@@ -7,8 +7,9 @@ use semver::Version;
 
 use crate::errors::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::state::{RefData, ReferenceData, ADMIN, REFDATA, RELAYERS};
+use crate::state::{RefData, ReferenceData, RefMedianData, ADMIN, DEVIATIONDATA, MEDIANREFDATA, REFDATA, RELAYERS};
 
+const E0: Uint64 = Uint64::zero();
 const E9: Uint64 = Uint64::new(1_000_000_000u64);
 const E18: Uint256 = Uint256::from_u128(1_000_000_000_000_000_000u128);
 
@@ -56,6 +57,38 @@ pub fn execute(
             resolve_time,
             request_id,
         } => execute_force_relay(deps, info, symbol_rates, resolve_time, request_id),
+        ExecuteMsg::RelayHistoricalMedian {
+            symbol_rates,
+            resolve_time,
+            request_id,
+        } => execute_relay_historical_median(deps, info, symbol_rates, resolve_time, request_id),
+        ExecuteMsg::ForceRelayHistoricalMedian {
+            symbol_rates,
+            resolve_time,
+            request_id,
+        } => execute_force_relay_historical_median(
+            deps,
+            info,
+            symbol_rates,
+            resolve_time,
+            request_id,
+        ),
+        ExecuteMsg::RelayHistoricalDeviation {
+            symbol_rates,
+            resolve_time,
+            request_id,
+        } => execute_relay_historical_deviation(deps, info, symbol_rates, resolve_time, request_id),
+        ExecuteMsg::ForceRelayHistoricalDeviation {
+            symbol_rates,
+            resolve_time,
+            request_id,
+        } => execute_force_relay_historical_deviation(
+            deps,
+            info,
+            symbol_rates,
+            resolve_time,
+            request_id,
+        ),
     }
 }
 
@@ -154,6 +187,39 @@ fn execute_relay(
     Ok(Response::default().add_attribute("action", "execute_relay"))
 }
 
+fn execute_relay_historical_median(
+    deps: DepsMut,
+    info: MessageInfo,
+    symbol_rates: Vec<(String, Vec<Uint64>)>,
+    resolve_time: Uint64,
+    request_id: Uint64,
+) -> Result<Response, ContractError> {
+    // Checks if sender is a relayer
+    let sender_addr = &info.sender;
+    if !query_is_relayer(deps.as_ref(), sender_addr)? {
+        return Err(ContractError::Unauthorized {
+            msg: String::from("Sender is not a relayer"),
+        });
+    }
+
+    // Saves price data
+    for (symbol, rates) in symbol_rates {
+        if let Some(existing_refdata) = MEDIANREFDATA.may_load(deps.storage, &symbol)? {
+            if existing_refdata.resolve_time >= resolve_time {
+                continue;
+            }
+        }
+
+        MEDIANREFDATA.save(
+            deps.storage,
+            &symbol,
+            &RefMedianData::new(rates, resolve_time, request_id),
+        )?
+    }
+
+    Ok(Response::default().add_attribute("action", "execute_relay_historical"))
+}
+
 fn execute_force_relay(
     deps: DepsMut,
     info: MessageInfo,
@@ -180,6 +246,92 @@ fn execute_force_relay(
     Ok(Response::default().add_attribute("action", "execute_force_relay"))
 }
 
+fn execute_force_relay_historical_median(
+    deps: DepsMut,
+    info: MessageInfo,
+    symbol_rates: Vec<(String, Vec<Uint64>)>,
+    resolve_time: Uint64,
+    request_id: Uint64,
+) -> Result<Response, ContractError> {
+    let sender_addr = &info.sender;
+
+    if !query_is_relayer(deps.as_ref(), sender_addr)? {
+        return Err(ContractError::Unauthorized {
+            msg: String::from("Sender is not a relayer"),
+        });
+    }
+
+    for (symbol, rates) in symbol_rates {
+        MEDIANREFDATA.save(
+            deps.storage,
+            &symbol,
+            &RefMedianData::new(rates, resolve_time, request_id),
+        )?;
+    }
+
+    Ok(Response::default().add_attribute("action", "execute_force_relay_median"))
+}
+
+fn execute_relay_historical_deviation(
+    deps: DepsMut,
+    info: MessageInfo,
+    symbol_rates: Vec<(String, Uint64)>,
+    resolve_time: Uint64,
+    request_id: Uint64,
+) -> Result<Response, ContractError> {
+    // Checks if sender is a relayer
+    let sender_addr = &info.sender;
+    if !query_is_relayer(deps.as_ref(), sender_addr)? {
+        return Err(ContractError::Unauthorized {
+            msg: String::from("Sender is not a relayer"),
+        });
+    }
+
+    // Saves price data
+    for (symbol, rate) in symbol_rates {
+        if let Some(existing_refdata) = DEVIATIONDATA.may_load(deps.storage, &symbol)? {
+            if existing_refdata.resolve_time >= resolve_time {
+                continue;
+            }
+        }
+
+        DEVIATIONDATA.save(
+            deps.storage,
+            &symbol,
+            &RefData::new(rate, resolve_time, request_id),
+        )?
+    }
+
+    Ok(Response::default().add_attribute("action", "execute_relay_historical_deviation"))
+}
+
+fn execute_force_relay_historical_deviation(
+    deps: DepsMut,
+    info: MessageInfo,
+    symbol_rates: Vec<(String, Uint64)>,
+    resolve_time: Uint64,
+    request_id: Uint64,
+) -> Result<Response, ContractError> {
+    // Checks if sender is a relayer
+    let sender_addr = &info.sender;
+    if !query_is_relayer(deps.as_ref(), sender_addr)? {
+        return Err(ContractError::Unauthorized {
+            msg: String::from("Sender is not a relayer"),
+        });
+    }
+
+    // Saves price data
+    for (symbol, rate) in symbol_rates {
+        DEVIATIONDATA.save(
+            deps.storage,
+            &symbol,
+            &RefData::new(rate, resolve_time, request_id),
+        )?
+    }
+
+    Ok(Response::default().add_attribute("action", "execute_force_relay_historical_deviation"))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -193,6 +345,14 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::GetReferenceDataBulk { symbol_pairs } => {
             to_binary(&query_reference_data_bulk(deps, &symbol_pairs)?)
+        }
+        QueryMsg::GetMedianRef { symbol } => to_binary(&query_median_ref(deps, &symbol)?),
+        QueryMsg::GetMedianRefDataBulk { symbols } => {
+            to_binary(&query_median_ref_data_bulk(deps, &symbols)?)
+        }
+        QueryMsg::GetDeviationRef { symbol } => to_binary(&query_deviation_ref(deps, &symbol)?),
+        QueryMsg::GetDeviationRefBulk { symbols } => {
+            to_binary(&query_deviation_ref_bulk(deps, &symbols)?)
         }
     }
 }
@@ -229,6 +389,40 @@ fn query_reference_data_bulk(
     symbol_pairs
         .iter()
         .map(|pair| query_reference_data(deps, pair))
+        .collect()
+}
+
+// can only support USD
+fn query_median_ref(deps: Deps, symbol: &str) -> StdResult<RefMedianData> {
+    if symbol == "USD" {
+        Ok(RefMedianData::new(vec![E9], Uint64::MAX, Uint64::zero()))
+    } else {
+        MEDIANREFDATA.load(deps.storage, symbol)
+    }
+}
+
+fn query_median_ref_data_bulk(
+    deps: Deps,
+    symbols: &[String],
+) -> StdResult<Vec<RefMedianData>> {
+    symbols
+        .iter()
+        .map(|symbol| query_median_ref(deps, symbol))
+        .collect()
+}
+
+fn query_deviation_ref(deps: Deps, symbol: &str) -> StdResult<RefData> {
+    if symbol == "USD" {
+        Ok(RefData::new(E0, Uint64::MAX, Uint64::zero()))
+    } else {
+        DEVIATIONDATA.load(deps.storage, symbol)
+    }
+}
+
+fn query_deviation_ref_bulk(deps: Deps, symbols: &[String]) -> StdResult<Vec<RefData>> {
+    symbols
+        .iter()
+        .map(|symbol| query_deviation_ref(deps, symbol))
         .collect()
 }
 
@@ -310,7 +504,10 @@ mod tests {
 
         use cw_controllers::AdminError;
 
-        use crate::msg::ExecuteMsg::{AddRelayers, ForceRelay, Relay, RemoveRelayers};
+        use crate::msg::ExecuteMsg::{
+            AddRelayers, ForceRelay, ForceRelayHistoricalDeviation, ForceRelayHistoricalMedian,
+            Relay, RelayHistoricalDeviation, RelayHistoricalMedian, RemoveRelayers,
+        };
 
         use super::*;
 
@@ -608,6 +805,213 @@ mod tests {
                 .map(|r| Uint256::from(*r as u128))
                 .collect::<Vec<Uint256>>();
             assert_eq!(retrieved_rates, expected_rates);
+        }
+
+        #[test]
+        fn attempt_median_relay_by_relayer() {
+            // Setup
+            let mut deps = mock_dependencies();
+            let relayer = String::from("relayer");
+            setup_relayers(deps.as_mut(), "owner", vec![relayer.clone()]);
+
+            // Test authorized attempt to relay data
+            let info = mock_info(relayer.as_str(), &[]);
+            let env = mock_env();
+            let symbols = vec!["AAA", "BBB", "CCC"]
+                .into_iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>();
+            let rates = [1000, 2000, 3000]
+                .iter()
+                .map(|r| Uint64::new(*r))
+                .collect::<Vec<Uint64>>();
+
+            let symbol_rates:Vec<(String, Vec<Uint64>)>=symbols.iter().zip(std::iter::repeat(rates.clone()))
+                .map(|(s, r)| (s.to_owned(), r))
+                .collect();
+
+            let msg = RelayHistoricalMedian {
+                symbol_rates:symbol_rates.clone(),
+                resolve_time: Uint64::from(100u64),
+                request_id: Uint64::one(),
+            };
+
+            execute(deps.as_mut(), env, info, msg).unwrap();
+
+            // Check if relay was successful
+            let reference_datas = query_median_ref_data_bulk(
+                deps.as_ref(),
+                &symbols
+                    .clone()
+            )
+            .unwrap();
+
+            for (expected,actual) in symbol_rates.iter().zip(reference_datas.iter()){
+                assert_eq!(expected.1, actual.rates)
+            }
+        }
+
+        #[test]
+        fn attempt_median_force_relay_by_relayer() {
+            // Setup
+            let mut deps = mock_dependencies();
+            let relayer = String::from("relayer");
+            setup_relayers(deps.as_mut(), "owner", vec![relayer.clone()]);
+
+            // Test authorized attempt to relay data
+            let info = mock_info(relayer.as_str(), &[]);
+            let env = mock_env();
+            let symbols = vec!["AAA", "BBB", "CCC"]
+                .into_iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>();
+            let rates = [1000, 2000, 3000]
+                .iter()
+                .map(|r| Uint64::new(*r))
+                .collect::<Vec<Uint64>>();
+
+            let symbol_rates:Vec<(String, Vec<Uint64>)>=symbols.iter().zip(std::iter::repeat(rates.clone()))
+                .map(|(s, r)| (s.to_owned(), r))
+                .collect();
+
+            let msg = ForceRelayHistoricalMedian {
+                symbol_rates:symbol_rates.clone(),
+                resolve_time: Uint64::from(100u64),
+                request_id: Uint64::from(2u64),
+            };
+
+            execute(deps.as_mut(), env, info, msg).unwrap();
+
+            // Test authorized attempt to relay median data
+            let info = mock_info(relayer.as_str(), &[]);
+            let env = mock_env();
+
+            let forced_rates = [1001, 2001, 3001]
+                .iter()
+                .map(|r| Uint64::new(*r))
+                .collect::<Vec<Uint64>>();
+
+            let forced_symbol_rates:Vec<(String, Vec<Uint64>)>=symbols.iter().zip(std::iter::repeat(forced_rates.clone()))
+                .map(|(s, r)| (s.to_owned(), r))
+                .collect();
+
+            let msg = ForceRelayHistoricalMedian {
+                symbol_rates:forced_symbol_rates.clone(),
+                resolve_time: Uint64::from(100u64),
+                request_id: Uint64::from(2u64),
+            };
+
+            execute(deps.as_mut(), env, info, msg).unwrap();
+
+            // Check if relay was successful
+            let reference_datas = query_median_ref_data_bulk(
+                deps.as_ref(),
+                &symbols
+                    .clone()
+            )
+                .unwrap();
+
+            for (expected,actual) in forced_symbol_rates.iter().zip(reference_datas.iter()){
+                assert_eq!(expected.1, actual.rates)
+            }
+        }
+
+        #[test]
+        fn attempt_deviation_relay_by_relayer() {
+            // Setup
+            let mut deps = mock_dependencies();
+            let relayer = String::from("relayer");
+            setup_relayers(deps.as_mut(), "owner", vec![relayer.clone()]);
+
+            // Test authorized attempt to relay data
+            let info = mock_info(relayer.as_str(), &[]);
+            let env = mock_env();
+            let symbols = vec!["AAA", "BBB", "CCC"]
+                .into_iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>();
+            let rates = [1000, 2000, 3000]
+                .iter()
+                .map(|r| Uint64::new(*r))
+                .collect::<Vec<Uint64>>();
+
+            let msg = RelayHistoricalDeviation {
+                symbol_rates: zip(symbols.clone(), rates.clone())
+                    .collect::<Vec<(String, Uint64)>>(),
+                resolve_time: Uint64::from(10u64),
+                request_id: Uint64::one(),
+            };
+            execute(deps.as_mut(), env, info, msg).unwrap();
+
+            // Check if relay was successful
+            let reference_datas =
+                query_deviation_ref_bulk(deps.as_ref(), &symbols.clone()).unwrap();
+
+            let retrieved_rates = reference_datas
+                .clone()
+                .iter()
+                .map(|r| r.rate)
+                .collect::<Vec<Uint64>>();
+
+            assert_eq!(retrieved_rates, rates);
+        }
+
+        #[test]
+        fn attempt_deviation_force_relay_by_relayer() {
+            // Setup
+            let mut deps = mock_dependencies();
+            let relayer = String::from("relayer");
+            setup_relayers(deps.as_mut(), "owner", vec![relayer.clone()]);
+
+            // Test authorized attempt to relay data
+            let info = mock_info(relayer.as_str(), &[]);
+            let env = mock_env();
+            let symbols = vec!["AAA", "BBB", "CCC"]
+                .into_iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>();
+            let deviations = [1000, 2000, 3000]
+                .iter()
+                .map(|r| Uint64::new(*r))
+                .collect::<Vec<Uint64>>();
+
+            let msg = ForceRelayHistoricalDeviation {
+                symbol_rates: zip(symbols.clone(), deviations.clone())
+                    .collect::<Vec<(String, Uint64)>>(),
+                resolve_time: Uint64::from(100u64),
+                request_id: Uint64::from(2u64),
+            };
+            execute(deps.as_mut(), env, info, msg).unwrap();
+
+            // Test attempt to force relay
+            let info = mock_info(relayer.as_str(), &[]);
+            let env = mock_env();
+            let forced_deviations = [1001, 2001, 3001]
+                .iter()
+                .map(|r| Uint64::new(*r))
+                .collect::<Vec<Uint64>>();
+
+            let msg = ForceRelayHistoricalDeviation {
+                symbol_rates: zip(symbols.clone(), forced_deviations.clone())
+                    .collect::<Vec<(String, Uint64)>>(),
+                resolve_time: Uint64::from(10u64),
+                request_id: Uint64::zero(),
+            };
+            execute(deps.as_mut(), env, info, msg).unwrap();
+
+
+
+            // Check if relay was successful
+            let reference_datas =
+                query_deviation_ref_bulk(deps.as_ref(), &symbols.clone()).unwrap();
+
+            let retrieved_rates = reference_datas
+                .clone()
+                .iter()
+                .map(|r| r.rate)
+                .collect::<Vec<Uint64>>();
+
+            assert_eq!(retrieved_rates, forced_deviations);
         }
 
         #[test]

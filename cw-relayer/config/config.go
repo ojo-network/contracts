@@ -36,6 +36,7 @@ type (
 
 		// force relay prices and reset epoch time in contracts if err in broadcasting tx
 		MissedThreshold int64 `mapstructure:"missed_threshold"`
+		MedianDuration  int64 `mapstructure:"median_duration"`
 
 		GasAdjustment float64 `mapstructure:"gas_adjustment" validate:"required"`
 		GasPrices     string  `mapstructure:"gas_prices" validate:"required"`
