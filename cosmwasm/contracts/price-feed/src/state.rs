@@ -1,7 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint256, Uint64};
 use cw_controllers::Admin;
-use cw_storage_plus::Map;
+use cw_storage_plus::{Map,Item};
 
 // Administrator account
 pub const ADMIN: Admin = Admin::new("admin");
@@ -14,6 +14,9 @@ pub const REFDATA: Map<&str, RefData> = Map::new("refdata");
 
 // Used to store Median data
 pub const MEDIANREFDATA: Map<&str, RefMedianData> = Map::new("medianrefdata");
+
+// Used to store Median Enabled
+pub const MEDIANSTATUS:Item<bool> = Item::new("medianstatus");
 
 // Used to store Deviation data
 pub const DEVIATIONDATA: Map<&str, RefData> = Map::new("deviationdata");

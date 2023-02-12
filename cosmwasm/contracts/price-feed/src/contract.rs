@@ -7,7 +7,7 @@ use semver::Version;
 
 use crate::errors::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::state::{RefData, ReferenceData, RefMedianData, ADMIN, DEVIATIONDATA, MEDIANREFDATA, REFDATA, RELAYERS};
+use crate::state::{RefData, ReferenceData, RefMedianData, ADMIN, DEVIATIONDATA, MEDIANREFDATA, REFDATA, RELAYERS, MEDIANSTATUS};
 
 const E0: Uint64 = Uint64::zero();
 const E9: Uint64 = Uint64::new(1_000_000_000u64);
@@ -29,6 +29,7 @@ pub fn instantiate(
 
     // Set sender as admin
     ADMIN.set(deps.branch(), Some(info.sender))?;
+    MEDIANSTATUS.save(deps.storage, &true)?;
 
     Ok(Response::default())
 }
@@ -44,6 +45,11 @@ pub fn execute(
         ExecuteMsg::UpdateAdmin { admin } => {
             let admin = deps.api.addr_validate(&admin)?;
             Ok(ADMIN.execute_update_admin(deps, info, Some(admin))?)
+        }
+        ExecuteMsg::MedianStatus { status } => {
+            ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+            MEDIANSTATUS.save(deps.storage, &status)?;
+            Ok(Response::default().add_attribute("action", "execute_median_status"))
         }
         ExecuteMsg::AddRelayers { relayers } => execute_add_relayers(deps, info, relayers),
         ExecuteMsg::RemoveRelayers { relayers } => execute_remove_relayers(deps, info, relayers),
@@ -200,6 +206,10 @@ fn execute_relay_historical_median(
         return Err(ContractError::Unauthorized {
             msg: String::from("Sender is not a relayer"),
         });
+    }
+
+    if !MEDIANSTATUS.load(deps.storage)?{
+        return Err(ContractError::MedianDisabled {})
     }
 
     // Saves price data
@@ -394,6 +404,10 @@ fn query_reference_data_bulk(
 
 // can only support USD
 fn query_median_ref(deps: Deps, symbol: &str) -> StdResult<RefMedianData> {
+    if !MEDIANSTATUS.load(deps.storage)?{
+        return Err(StdError::GenericErr { msg: "MEDIAN DISABLED".to_string()})
+    }
+
     if symbol == "USD" {
         Ok(RefMedianData::new(vec![E9], Uint64::MAX, Uint64::zero()))
     } else {

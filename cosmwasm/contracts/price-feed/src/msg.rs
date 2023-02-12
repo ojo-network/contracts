@@ -16,6 +16,11 @@ pub enum ExecuteMsg {
         // Address of the new owner
         admin: String,
     },
+    // Updates the contract config
+    MedianStatus {
+        // Address of the new owner
+        status: bool,
+    },
     // Whitelists addresses into relayer set
     AddRelayers {
         // Addresses of the to-be relayers
