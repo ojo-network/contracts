@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint64;
 
-use crate::state::{RefData, ReferenceData, RefMedianData};
+use crate::state::{RefData, RefMedianData, ReferenceData};
 
 #[cw_serde]
 pub struct InstantiateMsg {}
@@ -91,6 +91,9 @@ pub enum QueryMsg {
     // Returns admin accounts
     #[returns(cw_controllers::AdminResponse)]
     Admin {},
+    //return median status
+    #[returns(bool)]
+    MedianStatus {},
     // Queries if given a address is a relayer
     #[returns(bool)]
     IsRelayer {
