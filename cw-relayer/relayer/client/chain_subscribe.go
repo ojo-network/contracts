@@ -13,6 +13,8 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
+var tickEventType = "ojo.oracle.v1.EventSetFxRate"
+
 type EventSubscribe struct {
 	Logger zerolog.Logger
 	Tick   chan struct{}
@@ -82,8 +84,19 @@ func (event *EventSubscribe) subscribe(
 				continue
 			}
 
-			if len(data.ResultEndBlock.GetEvents()) > 0 {
-				event.Tick <- struct{}{}
+			events := data.ResultEndBlock.GetEvents()
+			if len(events) > 0 {
+				tick := false
+				for _, event := range events {
+					if event.Type == tickEventType {
+						tick = true
+						break
+					}
+				}
+
+				if tick {
+					event.Tick <- struct{}{}
+				}
 			}
 		}
 	}

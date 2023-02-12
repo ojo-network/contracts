@@ -3,7 +3,6 @@ package e2e
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
@@ -86,7 +85,6 @@ func (s *IntegrationTestSuite) TestQueryRateAndReferenceData() {
 			prepare: func() ([]byte, error) {
 				msg := rateMsg{Ref: symbol{Symbol: mockPrices[0].Denom}}
 				data, err := json.Marshal(msg)
-				fmt.Println(string(data))
 				if err != nil {
 					return nil, err
 				}
@@ -229,7 +227,7 @@ func (s *IntegrationTestSuite) TestQueryReferenceDataBulk() {
 				QueryData: data,
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 			defer cancel()
 
 			s.Require().Eventually(func() bool {
@@ -326,7 +324,7 @@ func (s *IntegrationTestSuite) TestQueryMedianRates() {
 				QueryData: data,
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 			defer cancel()
 
 			s.Require().Eventually(func() bool {
