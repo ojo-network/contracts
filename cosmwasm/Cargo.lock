@@ -674,7 +674,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-controllers",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1",
  "cw2 1.0.1",
  "semver",
  "serde_json",
