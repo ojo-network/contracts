@@ -109,7 +109,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 
 	resolveDuration, err := time.ParseDuration(cfg.ResolveDuration)
 	if err != nil {
-		fmt.Errorf("failed to parse Resolve Duration: %w", err)
+		return fmt.Errorf("failed to parse Resolve Duration: %w", err)
 	}
 
 	// Gather pass via env variable || std input
