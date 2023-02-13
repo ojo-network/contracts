@@ -10,7 +10,7 @@ require (
 	github.com/golangci/golangci-lint v1.51.1
 	github.com/ojo-network/ojo v0.1.1
 	github.com/ory/dockertest/v3 v3.9.1
-	github.com/rs/zerolog v1.28.0
+	github.com/rs/zerolog v1.29.0
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.14.0
 	github.com/stretchr/testify v1.8.1
