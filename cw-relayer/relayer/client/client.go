@@ -39,7 +39,6 @@ type (
 		Encoding          wasmparams.EncodingConfig
 		GasPrices         string
 		GasAdjustment     float64
-		GRPCEndpoint      string
 		KeyringPassphrase string
 		ChainHeight       *ChainHeight
 	}
@@ -60,7 +59,6 @@ func NewRelayerClient(
 	tmRPC string,
 	rpcTimeout time.Duration,
 	RelayerAddrString string,
-	grpcEndpoint string,
 	accPrefix string,
 	gasAdjustment float64,
 	GasPrices string,
@@ -86,7 +84,6 @@ func NewRelayerClient(
 		RelayerAddrString: RelayerAddrString,
 		Encoding:          MakeEncodingConfig(),
 		GasAdjustment:     gasAdjustment,
-		GRPCEndpoint:      grpcEndpoint,
 		GasPrices:         GasPrices,
 	}
 

@@ -107,6 +107,11 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to parse Event timeout: %w", err)
 	}
 
+	resolveDuration, err := time.ParseDuration(cfg.ResolveDuration)
+	if err != nil {
+		fmt.Errorf("failed to parse Resolve Duration: %w", err)
+	}
+
 	// Gather pass via env variable || std input
 	keyringPass, err := getKeyringPassword()
 	if err != nil {
@@ -124,7 +129,6 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		cfg.RPC.TMRPCEndpoint,
 		rpcTimeout,
 		cfg.Account.Address,
-		cfg.RPC.GRPCEndpoint,
 		cfg.Account.AccPrefix,
 		cfg.GasAdjustment,
 		cfg.GasPrices,
@@ -139,7 +143,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	newRelayer := relayer.New(logger, client, cfg.ContractAddress, cfg.TimeoutHeight, cfg.MissedThreshold, cfg.QueryRPC, blockEvent.Tick, cfg.MedianDuration)
+	newRelayer := relayer.New(logger, client, cfg.ContractAddress, cfg.TimeoutHeight, cfg.MissedThreshold, cfg.QueryRPC, blockEvent.Tick, cfg.MedianDuration, resolveDuration)
 	g.Go(func() error {
 		// start the process that queries the prices on Ojo & submits them on Wasmd
 		return startPriceRelayer(ctx, logger, newRelayer)
