@@ -2,6 +2,7 @@
 contract_address = "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0phg4d"
 query_rpc = "api.devnet-n0.ojo-devnet.node.ojo.network:9090"
 event_rpc = "0.0.0.0:9090"
+event_timeout = "1000ms"
 gas_adjustment = 1.5
 timeout_height = 10
 gas_prices = "0.2stake"

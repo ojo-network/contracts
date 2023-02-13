@@ -59,6 +59,8 @@ type (
 	}
 )
 
+const testConfigTimeout = 2 * time.Minute
+
 var (
 	// used to convert rate from reference data queries to USD
 	refDataFactor = types.NewDec(10).Power(18)
@@ -132,7 +134,7 @@ func (s *IntegrationTestSuite) TestQueryRateAndReferenceData() {
 				QueryData: data,
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+			ctx, cancel := context.WithTimeout(context.Background(), testConfigTimeout)
 			defer cancel()
 
 			s.Require().Eventually(func() bool {
@@ -227,7 +229,7 @@ func (s *IntegrationTestSuite) TestQueryReferenceDataBulk() {
 				QueryData: data,
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+			ctx, cancel := context.WithTimeout(context.Background(), testConfigTimeout)
 			defer cancel()
 
 			s.Require().Eventually(func() bool {
@@ -324,7 +326,7 @@ func (s *IntegrationTestSuite) TestQueryMedianRates() {
 				QueryData: data,
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+			ctx, cancel := context.WithTimeout(context.Background(), testConfigTimeout)
 			defer cancel()
 
 			s.Require().Eventually(func() bool {

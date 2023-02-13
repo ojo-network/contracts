@@ -13,16 +13,20 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
-var tickEventType = "ojo.oracle.v1.EventSetFxRate"
+const (
+	wsEndpoint    = "/websocket"
+	tickEventType = "ojo.oracle.v1.EventSetFxRate"
+)
 
 type EventSubscribe struct {
 	Logger zerolog.Logger
 	Tick   chan struct{}
 }
 
-func NewEventSubscribe(
+func NewBlockHeightSubscription(
 	ctx context.Context,
 	rpcAddress string,
+	timeout time.Duration,
 	logger zerolog.Logger,
 ) (*EventSubscribe, error) {
 	httpClient, err := tmjsonclient.DefaultHTTPClient(rpcAddress)
@@ -30,8 +34,8 @@ func NewEventSubscribe(
 		return nil, err
 	}
 
-	httpClient.Timeout = 2 * time.Minute
-	rpcClient, err := rpchttp.NewWithClient(rpcAddress, "/websocket", httpClient)
+	httpClient.Timeout = timeout
+	rpcClient, err := rpchttp.NewWithClient(rpcAddress, wsEndpoint, httpClient)
 	if err != nil {
 		return nil, err
 	}

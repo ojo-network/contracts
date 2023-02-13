@@ -14,6 +14,7 @@ const (
 	defaultQueryRPC        = "0.0.0.0:9091"
 	defaultMissedThreshold = 5
 	defaultTimeoutHeight   = 5
+	defaultEventTimeout    = 1 * time.Minute
 )
 
 var (
@@ -33,6 +34,7 @@ type (
 		ProviderTimeout string `mapstructure:"provider_timeout"`
 		ContractAddress string `mapstructure:"contract_address"`
 		TimeoutHeight   int64  `mapsturture:"timeout_height"`
+		EventTimeout    string `mapstrucutre:"event_timeout"`
 
 		// force relay prices and reset epoch time in contracts if err in broadcasting tx
 		MissedThreshold int64 `mapstructure:"missed_threshold"`
@@ -111,6 +113,10 @@ func ParseConfig(configPath string) (Config, error) {
 
 	if cfg.TimeoutHeight == 0 {
 		cfg.TimeoutHeight = defaultTimeoutHeight
+	}
+
+	if len(cfg.EventTimeout) == 0 {
+		cfg.EventTimeout = defaultEventTimeout.String()
 	}
 
 	return cfg, cfg.Validate()
