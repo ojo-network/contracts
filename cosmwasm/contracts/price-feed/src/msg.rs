@@ -122,29 +122,28 @@ pub enum QueryMsg {
         symbol_pairs: Vec<(String, String)>,
     },
     #[returns(RefMedianData)]
-    // Returns the RefData of a given symbol
+    // Returns the RefMedianData of a given symbol
     GetMedianRef {
         // Symbol to query
         symbol: String,
     },
     #[returns(Vec < RefMedianData >)]
-    // Returns the RefMedianData of the given asset pairings
+    // Returns the RefMedianData of the given symbols
     GetMedianRefDataBulk {
-        // Vector of Symbol pair to query
-        // e.g. <BTC/USD ETH/USD, BAND/BTC> ≡ <("BTC", "USD"), ("ETH", "USD"), ("BAND", "BTC")>
+        // Vector of Symbols to query
         symbols: Vec<String>,
     },
     #[returns(RefData)]
-    // Returns the RefData of a given symbol
+    // Returns the deviation RefData of a given symbol
     GetDeviationRef {
         // Symbol to query
         symbol: String,
     },
 
     #[returns(Vec < RefData >)]
-    // Returns the RefData of a given symbol
+    // Returns the deviation RefData of the given symbols
     GetDeviationRefBulk {
-        // Symbol to query
+        // Vector of Symbols to query
         symbols: Vec<String>,
     },
 }

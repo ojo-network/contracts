@@ -51,6 +51,30 @@ pub enum QueryMsg {
         // e.g. <BTC/USD ETH/USD, BAND/BTC> ≡ <("BTC", "USD"), ("ETH", "USD"), ("BAND", "BTC")>
         symbol_pairs: Vec<(String, String)>,
     },
+    
+    // Returns the RefMedianData of a given symbol
+    GetMedianRef {
+      // Symbol to query
+      symbol: String,
+    },
+    
+    // Returns the RefMedianData of the given symbols
+    GetMedianRefDataBulk {
+      // Vector of Symbols to query
+      symbols: Vec<String>,
+    },
+
+    // Returns the deviation RefData of a given symbol
+    GetDeviationRef {
+      // Symbol to query
+      symbol: String,
+    },
+  
+    // Returns the deviation RefData of the given symbols
+    GetDeviationRefBulk {
+      // Vector of Symbols to query
+      symbols: Vec<String>,
+    },
 }
 ```
 
@@ -140,3 +164,45 @@ and the results can be interpreted as:
     - `rate = 0.07160177543213148 ETH/BTC`
     - `lastUpdatedBase = 1659588229`
     - `lastUpdatedQuote = 1659588229`
+
+
+### RefMedianData
+
+`RefMedianData` is the struct that is returned when querying with `GetMedianRef` or `GetMedianRefDataBulk` where the
+bulk variant returns `Vec<RefMedianData>`
+
+`RefMedianData` is defined as:
+
+```rust
+pub struct RefMedianData {
+  // Median Rates of an asset relative to USD
+  pub rates: Vec<Uint64>,
+  // The resolve time of the request ID
+  pub resolve_time: Uint64,
+  // The request ID where the rate was derived from
+  pub request_id: Uint64,
+}
+```
+
+### DeviationData
+
+`RefData` is the struct that is returned when querying with `GetDeviationRef` or `GetDeviationRefBulk` where the
+bulk variant returns `Vec<RefData>`
+
+`RefData` is defined as:
+
+```rust
+pub struct RefData {
+  // Rate of an asset relative to USD (deviation of assets when used with deviation queries)
+  pub rate: Uint64,
+  // The resolve time of the request ID
+  pub resolve_time: Uint64,
+  // The request ID where the rate was derived from
+  pub request_id: Uint64,
+}
+```
+
+### Median status
+Median status tells us when posting medians to contract is allowed, would error otherwise, if median status is set as false
+then queries would also fail with err "MEDIAN DISABLED"
+

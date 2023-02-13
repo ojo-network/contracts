@@ -23,7 +23,7 @@ pub const DEVIATIONDATA: Map<&str, RefData> = Map::new("deviationdata");
 
 #[cw_serde]
 pub struct RefData {
-    // Rate of an asset relative to USD
+    // Rate of an asset relative to USD (deviation of assets when used with deviation queries)
     pub rate: Uint64,
     // The resolve time of the request ID
     pub resolve_time: Uint64,
@@ -43,7 +43,7 @@ impl RefData {
 
 #[cw_serde]
 pub struct RefMedianData {
-    // Rate of an asset relative to USD
+    // Median Rates of an asset relative to USD
     pub rates: Vec<Uint64>,
     // The resolve time of the request ID
     pub resolve_time: Uint64,
