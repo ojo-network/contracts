@@ -13,6 +13,9 @@ pub enum ContractError {
     #[error("Unauthorized: {msg}")]
     Unauthorized { msg: String },
 
+    #[error("Median is disabled")]
+    MedianDisabled {},
+
     #[error("Cannot migrate from different contract type: {previous_contract}")]
     CannotMigrate { previous_contract: String },
 
