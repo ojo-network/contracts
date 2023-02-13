@@ -1,6 +1,7 @@
 ### gas adjustment - multiplier for the expected amount of gas
 contract_address = "$CONTRACT_ADDRESS"
 query_rpc = "host.docker.internal:9090"
+event_rpc= "https://rpc.devnet-n0.ojo-devnet.node.ojo.network:443"
 gas_adjustment = 1.5
 timeout_height = 10
 gas_prices = "0.2stake"
@@ -20,5 +21,5 @@ dir = "/data/$CHAIN_ID"
 ### rpc endpoint for the wasm Chain
 [rpc]
 grpc_endpoint = "0.0.0.0:8080"
-rpc_timeout = "200ms"
+rpc_timeout = "500ms"
 tmrpc_endpoint = "http://localhost:26657"

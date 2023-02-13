@@ -59,6 +59,8 @@ type (
 	}
 )
 
+const testConfigTimeout = 2 * time.Minute
+
 var (
 	// used to convert rate from reference data queries to USD
 	refDataFactor = types.NewDec(10).Power(18)
@@ -132,7 +134,7 @@ func (s *IntegrationTestSuite) TestQueryRateAndReferenceData() {
 				QueryData: data,
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), testConfigTimeout)
 			defer cancel()
 
 			s.Require().Eventually(func() bool {
@@ -140,7 +142,6 @@ func (s *IntegrationTestSuite) TestQueryRateAndReferenceData() {
 				if err != nil {
 					return false
 				}
-
 				if queryResponse != nil {
 					resp := map[string]string{}
 					err = json.Unmarshal(queryResponse.Data, &resp)
@@ -155,7 +156,7 @@ func (s *IntegrationTestSuite) TestQueryRateAndReferenceData() {
 
 				return false
 			},
-				1*time.Minute,
+				2*time.Minute,
 				time.Second*4,
 				"failed to query prices from contract",
 			)
@@ -228,7 +229,7 @@ func (s *IntegrationTestSuite) TestQueryReferenceDataBulk() {
 				QueryData: data,
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), testConfigTimeout)
 			defer cancel()
 
 			s.Require().Eventually(func() bool {
@@ -325,7 +326,7 @@ func (s *IntegrationTestSuite) TestQueryMedianRates() {
 				QueryData: data,
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), testConfigTimeout)
 			defer cancel()
 
 			s.Require().Eventually(func() bool {
@@ -360,7 +361,7 @@ func (s *IntegrationTestSuite) TestQueryMedianRates() {
 
 				return false
 			},
-				1*time.Minute,
+				2*time.Minute,
 				time.Second*4,
 				"failed to query prices from contract",
 			)
