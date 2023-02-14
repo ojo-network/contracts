@@ -219,12 +219,7 @@ func (r *Relayer) tick(ctx context.Context) error {
 		}
 
 		msgs = append(msgs, r.genWasmMsg(medianMsg))
-
-		r.medianRequestID += 1
 	}
-
-	// increment request id to be stored in contracts
-	r.requestID += 1
 
 	r.logger.Info().
 		Str("Contract Address", r.contractAddress).
@@ -241,6 +236,12 @@ func (r *Relayer) tick(ctx context.Context) error {
 	// reset missed counter if force relay is successful
 	if forceRelay {
 		r.missedCounter = 0
+	}
+
+	// increment request id to be stored in contracts
+	r.requestID += 1
+	if postMedian {
+		r.medianRequestID += 1
 	}
 
 	return nil
