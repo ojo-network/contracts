@@ -67,7 +67,7 @@ type (
 		Dir     string `mapstructure:"dir" validate:"required"`
 	}
 
-	// RPC defines RPC configuration of both the wasmd chain gRPC and Tendermint nodes.
+	// RPC defines RPC configuration of both the wasmd chain and Tendermint nodes.
 	RPC struct {
 		TMRPCEndpoint string `mapstructure:"tmrpc_endpoint" validate:"required"`
 		RPCTimeout    string `mapstructure:"rpc_timeout" validate:"required"`
