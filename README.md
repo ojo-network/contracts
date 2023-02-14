@@ -8,3 +8,5 @@ This monorepo is intended to contain Ojo's Price Feeding Contracts. It will be o
 The Contracts in this repo are a fork of Band Protocol's Cosmwasm Contracts, with a few key changes outlined in the [Readme](./cosmwasm/README.md).
 
 The relayer will be a golang-based implementation to upload pricing information into the standard cosmwasm contract.
+
+- In case of relayer restart modify median request id and request id in config.toml, accordingly

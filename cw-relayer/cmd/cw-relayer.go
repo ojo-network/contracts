@@ -143,7 +143,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	newRelayer := relayer.New(logger, client, cfg.ContractAddress, cfg.TimeoutHeight, cfg.MissedThreshold, cfg.QueryRPC, blockEvent.Tick, cfg.MedianDuration, resolveDuration)
+	newRelayer := relayer.New(logger, client, cfg.ContractAddress, cfg.TimeoutHeight, cfg.MissedThreshold, cfg.QueryRPC, blockEvent.Tick, cfg.MedianDuration, resolveDuration, cfg.RequestID, cfg.MedianRequestID)
 	g.Go(func() error {
 		// start the process that queries the prices on Ojo & submits them on Wasmd
 		return startPriceRelayer(ctx, logger, newRelayer)

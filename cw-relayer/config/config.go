@@ -37,6 +37,9 @@ type (
 		TimeoutHeight   int64  `mapsturture:"timeout_height"`
 		EventTimeout    string `mapstrucutre:"event_timeout"`
 
+		MedianRequestID uint64 `mapstructure:"median_request_id"`
+		RequestID       uint64 `mapstructure:"request_id"`
+
 		// force relay prices and reset epoch time in contracts if err in broadcasting tx
 		MissedThreshold int64  `mapstructure:"missed_threshold"`
 		MedianDuration  int64  `mapstructure:"median_duration"`

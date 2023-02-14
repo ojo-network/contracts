@@ -59,6 +59,8 @@ func New(
 	event chan struct{},
 	medianDuration int64,
 	resolveDuration time.Duration,
+	requestID uint64,
+	medianRequestID uint64,
 ) *Relayer {
 	return &Relayer{
 		queryRPC:        queryRPC,
@@ -69,6 +71,8 @@ func New(
 		timeoutHeight:   timeoutHeight,
 		medianDuration:  medianDuration,
 		resolveDuration: resolveDuration,
+		requestID:       requestID,
+		medianRequestID: medianRequestID,
 		closer:          sync.NewCloser(),
 		event:           event,
 	}
@@ -192,9 +196,6 @@ func (r *Relayer) tick(ctx context.Context) error {
 	nextBlockHeight := blockHeight + 1
 
 	forceRelay := r.missedCounter >= r.missedThreshold
-	if forceRelay {
-		r.missedCounter = 0
-	}
 
 	// set the next resolve time for price feeds on wasm contract
 	nextBlockTime := blockTimestamp.Add(r.resolveDuration).Unix()
@@ -235,6 +236,11 @@ func (r *Relayer) tick(ctx context.Context) error {
 	if err := r.relayerClient.BroadcastTx(nextBlockHeight, r.timeoutHeight, msgs...); err != nil {
 		r.missedCounter += 1
 		return err
+	}
+
+	// reset missed counter if force relay is successful
+	if forceRelay {
+		r.missedCounter = 0
 	}
 
 	return nil
