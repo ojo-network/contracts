@@ -9,4 +9,4 @@ The Contracts in this repo are a fork of Band Protocol's Cosmwasm Contracts, wit
 
 The relayer will be a golang-based implementation to upload pricing information into the standard cosmwasm contract.
 
-- In case of relayer restart modify median request id and request id in config.toml, accordingly
+- In case of relayer restart modify median request id and request id in config.toml, according to the current request id
