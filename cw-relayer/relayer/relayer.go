@@ -18,10 +18,6 @@ import (
 	"github.com/ojo-network/cw-relayer/relayer/client"
 )
 
-const (
-	resolveTime = 1000 * time.Millisecond
-)
-
 var (
 	// RateFactor is used to convert ojo prices to contract-compatible values.
 	RateFactor = types.NewDec(10).Power(9)
@@ -43,6 +39,7 @@ type Relayer struct {
 	historicalMedians    types.DecCoins
 	historicalDeviations types.DecCoins
 	medianDuration       int64
+	resolveDuration      time.Duration
 
 	// if missedCounter >= missedThreshold, force relay prices (bypasses timing restrictions)
 	missedCounter   int64
@@ -61,6 +58,9 @@ func New(
 	queryRPC string,
 	event chan struct{},
 	medianDuration int64,
+	resolveDuration time.Duration,
+	requestID uint64,
+	medianRequestID uint64,
 ) *Relayer {
 	return &Relayer{
 		queryRPC:        queryRPC,
@@ -70,6 +70,9 @@ func New(
 		missedThreshold: missedThreshold,
 		timeoutHeight:   timeoutHeight,
 		medianDuration:  medianDuration,
+		resolveDuration: resolveDuration,
+		requestID:       requestID,
+		medianRequestID: medianRequestID,
 		closer:          sync.NewCloser(),
 		event:           event,
 	}
@@ -193,12 +196,9 @@ func (r *Relayer) tick(ctx context.Context) error {
 	nextBlockHeight := blockHeight + 1
 
 	forceRelay := r.missedCounter >= r.missedThreshold
-	if forceRelay {
-		r.missedCounter = 0
-	}
 
 	// set the next resolve time for price feeds on wasm contract
-	nextBlockTime := blockTimestamp.Unix() + int64(resolveTime.Seconds())
+	nextBlockTime := blockTimestamp.Add(r.resolveDuration).Unix()
 	exchangeMsg, err := genRateMsgData(forceRelay, RelayRate, r.requestID, nextBlockTime, r.exchangeRates)
 	if err != nil {
 		return err
@@ -219,12 +219,7 @@ func (r *Relayer) tick(ctx context.Context) error {
 		}
 
 		msgs = append(msgs, r.genWasmMsg(medianMsg))
-
-		r.medianRequestID += 1
 	}
-
-	// increment request id to be stored in contracts
-	r.requestID += 1
 
 	r.logger.Info().
 		Str("Contract Address", r.contractAddress).
@@ -234,7 +229,19 @@ func (r *Relayer) tick(ctx context.Context) error {
 		Msg("broadcasting execute to contract")
 
 	if err := r.relayerClient.BroadcastTx(nextBlockHeight, r.timeoutHeight, msgs...); err != nil {
+		r.missedCounter += 1
 		return err
+	}
+
+	// reset missed counter if force relay is successful
+	if forceRelay {
+		r.missedCounter = 0
+	}
+
+	// increment request id to be stored in contracts
+	r.requestID += 1
+	if postMedian {
+		r.medianRequestID += 1
 	}
 
 	return nil

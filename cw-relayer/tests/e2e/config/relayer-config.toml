@@ -20,6 +20,5 @@ dir = "/data/$CHAIN_ID"
 
 ### rpc endpoint for the wasm Chain
 [rpc]
-grpc_endpoint = "0.0.0.0:8080"
 rpc_timeout = "500ms"
 tmrpc_endpoint = "http://localhost:26657"

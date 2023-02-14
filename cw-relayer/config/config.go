@@ -15,6 +15,7 @@ const (
 	defaultMissedThreshold = 5
 	defaultTimeoutHeight   = 5
 	defaultEventTimeout    = 1 * time.Minute
+	defaultResolveDuration = 2 * time.Second
 )
 
 var (
@@ -36,9 +37,13 @@ type (
 		TimeoutHeight   int64  `mapsturture:"timeout_height"`
 		EventTimeout    string `mapstrucutre:"event_timeout"`
 
+		MedianRequestID uint64 `mapstructure:"median_request_id"`
+		RequestID       uint64 `mapstructure:"request_id"`
+
 		// force relay prices and reset epoch time in contracts if err in broadcasting tx
-		MissedThreshold int64 `mapstructure:"missed_threshold"`
-		MedianDuration  int64 `mapstructure:"median_duration"`
+		MissedThreshold int64  `mapstructure:"missed_threshold"`
+		MedianDuration  int64  `mapstructure:"median_duration"`
+		ResolveDuration string `mapstructure:"resolve_duration"`
 
 		GasAdjustment float64 `mapstructure:"gas_adjustment" validate:"required"`
 		GasPrices     string  `mapstructure:"gas_prices" validate:"required"`
@@ -62,10 +67,9 @@ type (
 		Dir     string `mapstructure:"dir" validate:"required"`
 	}
 
-	// RPC defines RPC configuration of both the wasmd chain gRPC and Tendermint nodes.
+	// RPC defines RPC configuration of both the wasmd chain and Tendermint nodes.
 	RPC struct {
 		TMRPCEndpoint string `mapstructure:"tmrpc_endpoint" validate:"required"`
-		GRPCEndpoint  string `mapstructure:"grpc_endpoint" validate:"required"`
 		RPCTimeout    string `mapstructure:"rpc_timeout" validate:"required"`
 	}
 )
@@ -117,6 +121,10 @@ func ParseConfig(configPath string) (Config, error) {
 
 	if len(cfg.EventTimeout) == 0 {
 		cfg.EventTimeout = defaultEventTimeout.String()
+	}
+
+	if len(cfg.ResolveDuration) == 0 {
+		cfg.ResolveDuration = defaultResolveDuration.String()
 	}
 
 	return cfg, cfg.Validate()

@@ -409,9 +409,7 @@ fn query_reference_data_bulk(
 // can only support USD
 fn query_median_ref(deps: Deps, symbol: &str) -> StdResult<RefMedianData> {
     if !MEDIANSTATUS.load(deps.storage)? {
-        return Err(StdError::GenericErr {
-            msg: "MEDIAN DISABLED".to_string(),
-        });
+        return Err(StdError::generic_err ("MEDIAN DISABLED"));
     }
 
     if symbol == "USD" {
@@ -929,9 +927,7 @@ mod tests {
 
             assert_eq!(
                 err,
-                StdError::GenericErr {
-                    msg: "MEDIAN DISABLED".to_string()
-                }
+                StdError::generic_err ("MEDIAN DISABLED")
             );
         }
 
