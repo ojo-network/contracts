@@ -6,6 +6,7 @@ gas_adjustment = 1.5
 timeout_height = 10
 gas_prices = "0.2stake"
 median_duration = 1
+missed_threshold = 2
 
 ### account & chain-id for the wasmd relayer account
 [account]

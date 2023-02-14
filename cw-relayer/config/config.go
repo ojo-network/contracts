@@ -12,7 +12,6 @@ import (
 const (
 	defaultProviderTimeout = 100 * time.Millisecond
 	defaultQueryRPC        = "0.0.0.0:9091"
-	defaultMissedThreshold = 5
 	defaultTimeoutHeight   = 5
 	defaultEventTimeout    = 1 * time.Minute
 	defaultResolveDuration = 2 * time.Second
@@ -109,10 +108,6 @@ func ParseConfig(configPath string) (Config, error) {
 
 	if len(cfg.ContractAddress) == 0 {
 		return cfg, fmt.Errorf("contract address cannot be nil")
-	}
-
-	if cfg.MissedThreshold <= 0 {
-		cfg.MissedThreshold = defaultMissedThreshold
 	}
 
 	if cfg.TimeoutHeight == 0 {
