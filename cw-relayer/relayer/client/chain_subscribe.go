@@ -14,8 +14,7 @@ import (
 )
 
 const (
-	wsEndpoint    = "/websocket"
-	tickEventType = "ojo.oracle.v1.EventSetFxRate"
+	wsEndpoint = "/websocket"
 )
 
 type EventSubscribe struct {
@@ -27,6 +26,7 @@ func NewBlockHeightSubscription(
 	ctx context.Context,
 	rpcAddress string,
 	timeout time.Duration,
+	tickEventType string,
 	logger zerolog.Logger,
 ) (*EventSubscribe, error) {
 	httpClient, err := tmjsonclient.DefaultHTTPClient(rpcAddress)
@@ -57,7 +57,7 @@ func NewBlockHeightSubscription(
 		Logger: logger.With().Str("relayer_client", eventType).Logger(),
 	}
 
-	go newEvent.subscribe(ctx, rpcClient, queryType, newSubscription)
+	go newEvent.subscribe(ctx, rpcClient, queryType, tickEventType, newSubscription)
 	newEvent.Tick = make(chan struct{})
 
 	return newEvent, nil
@@ -68,13 +68,14 @@ func NewBlockHeightSubscription(
 func (event *EventSubscribe) subscribe(
 	ctx context.Context,
 	eventsClient tmrpcclient.EventsClient,
-	eventType string,
+	queryType string,
+	tickEventType string,
 	newBlockHeader <-chan tmctypes.ResultEvent,
 ) {
 	for {
 		select {
 		case <-ctx.Done():
-			err := eventsClient.Unsubscribe(ctx, eventType, queryEventNewBlockHeader.String())
+			err := eventsClient.Unsubscribe(ctx, queryType, queryEventNewBlockHeader.String())
 			if err != nil {
 				event.Logger.Err(err)
 			}

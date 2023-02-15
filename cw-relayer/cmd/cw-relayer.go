@@ -138,7 +138,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 	}
 
 	// subscribe to new block heights
-	blockEvent, err := relayerclient.NewBlockHeightSubscription(ctx, cfg.EventRPC, eventTimeout, logger)
+	blockEvent, err := relayerclient.NewBlockHeightSubscription(ctx, cfg.EventRPC, eventTimeout, cfg.TickEventType, logger)
 	if err != nil {
 		return err
 	}
