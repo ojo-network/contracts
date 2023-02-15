@@ -15,6 +15,7 @@ const (
 	defaultTimeoutHeight   = 5
 	defaultEventTimeout    = 1 * time.Minute
 	defaultResolveDuration = 2 * time.Second
+	defaultTickEventType   = "ojo.oracle.v1.EventSetFxRate"
 )
 
 var (
@@ -48,8 +49,9 @@ type (
 		GasPrices     string  `mapstructure:"gas_prices" validate:"required"`
 
 		// query rpc for ojo node
-		QueryRPC string `mapstructure:"query_rpc"`
-		EventRPC string `mapstructure:"event_rpc"`
+		QueryRPC      string `mapstructure:"query_rpc"`
+		EventRPC      string `mapstructure:"event_rpc"`
+		TickEventType string `mapstructure:"event_type"`
 	}
 
 	// Account defines account related configuration that is related to the Client
@@ -120,6 +122,10 @@ func ParseConfig(configPath string) (Config, error) {
 
 	if len(cfg.ResolveDuration) == 0 {
 		cfg.ResolveDuration = defaultResolveDuration.String()
+	}
+
+	if len(cfg.TickEventType) == 0 {
+		cfg.TickEventType = defaultTickEventType
 	}
 
 	return cfg, cfg.Validate()
