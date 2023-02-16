@@ -1,2 +1,3 @@
-cosmwasm/*
+cosmwasm/artifacts
+cosmwasm/target
 cw-relayer/build

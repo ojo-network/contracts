@@ -18,10 +18,6 @@ import (
 	"github.com/ojo-network/cw-relayer/relayer/client"
 )
 
-const (
-	tickerSleep = 1000 * time.Millisecond
-)
-
 var (
 	// RateFactor is used to convert ojo prices to contract-compatible values.
 	RateFactor = types.NewDec(10).Power(9)
@@ -33,15 +29,23 @@ type Relayer struct {
 	closer *sync.Closer
 
 	relayerClient   client.RelayerClient
-	exchangeRates   types.DecCoins
 	queryRPC        string
 	contractAddress string
 	requestID       uint64
+	medianRequestID uint64
 	timeoutHeight   int64
+
+	exchangeRates        types.DecCoins
+	historicalMedians    types.DecCoins
+	historicalDeviations types.DecCoins
+	medianDuration       int64
+	resolveDuration      time.Duration
 
 	// if missedCounter >= missedThreshold, force relay prices (bypasses timing restrictions)
 	missedCounter   int64
 	missedThreshold int64
+
+	event chan struct{}
 }
 
 // New returns an instance of the relayer.
@@ -52,6 +56,11 @@ func New(
 	timeoutHeight int64,
 	missedThreshold int64,
 	queryRPC string,
+	event chan struct{},
+	medianDuration int64,
+	resolveDuration time.Duration,
+	requestID uint64,
+	medianRequestID uint64,
 ) *Relayer {
 	return &Relayer{
 		queryRPC:        queryRPC,
@@ -60,7 +69,12 @@ func New(
 		contractAddress: contractAddress,
 		missedThreshold: missedThreshold,
 		timeoutHeight:   timeoutHeight,
+		medianDuration:  medianDuration,
+		resolveDuration: resolveDuration,
+		requestID:       requestID,
+		medianRequestID: medianRequestID,
 		closer:          sync.NewCloser(),
+		event:           event,
 	}
 }
 
@@ -70,9 +84,8 @@ func (r *Relayer) Start(ctx context.Context) error {
 		case <-ctx.Done():
 			r.closer.Close()
 
-		default:
-			r.logger.Debug().Msg("starting relayer tick")
-
+		case <-r.event:
+			r.logger.Debug().Msg("starting relayer")
 			startTime := time.Now()
 			if err := r.tick(ctx); err != nil {
 				telemetry.IncrCounter(1, "failure", "tick")
@@ -81,8 +94,6 @@ func (r *Relayer) Start(ctx context.Context) error {
 
 			telemetry.MeasureSince(startTime, "runtime", "tick")
 			telemetry.IncrCounter(1, "new", "tick")
-
-			time.Sleep(tickerSleep)
 		}
 	}
 }
@@ -93,7 +104,7 @@ func (r *Relayer) Stop() {
 	<-r.closer.Done()
 }
 
-func (r *Relayer) setActiveDenomPrices(ctx context.Context) error {
+func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 	grpcConn, err := grpc.Dial(
 		r.queryRPC,
 		// the Cosmos SDK doesn't support any transport security mechanism
@@ -116,7 +127,39 @@ func (r *Relayer) setActiveDenomPrices(ctx context.Context) error {
 		return err
 	}
 
+	if queryResponse.ExchangeRates.Empty() {
+		return fmt.Errorf("exchange rates empty")
+	}
+
 	r.exchangeRates = queryResponse.ExchangeRates
+
+	deviationsQueryResponse, err := queryClient.MedianDeviations(ctx, &oracletypes.QueryMedianDeviations{})
+	if err != nil {
+		return err
+	}
+
+	if deviationsQueryResponse.MedianDeviations.Empty() {
+		return fmt.Errorf("median deviations empty")
+	}
+
+	r.historicalDeviations = deviationsQueryResponse.MedianDeviations
+
+	if postMedian {
+		ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+		defer cancel()
+
+		medianQueryResponse, err := queryClient.Medians(ctx, &oracletypes.QueryMedians{})
+		if err != nil {
+			return err
+		}
+
+		if medianQueryResponse.Medians.Empty() {
+			return fmt.Errorf("median rates empty")
+		}
+
+		r.historicalMedians = medianQueryResponse.Medians
+	}
+
 	return nil
 }
 
@@ -141,62 +184,121 @@ func (r *Relayer) tick(ctx context.Context) error {
 		return fmt.Errorf("expected positive blocktimestamp")
 	}
 
-	if err := r.setActiveDenomPrices(ctx); err != nil {
+	var postMedian bool
+	if r.medianDuration != 0 {
+		postMedian = blockHeight%r.medianDuration == 0
+	}
+
+	if err := r.setDenomPrices(ctx, postMedian); err != nil {
 		return err
 	}
+
 	nextBlockHeight := blockHeight + 1
 
 	forceRelay := r.missedCounter >= r.missedThreshold
-	if forceRelay {
-		r.missedCounter = 0
-	}
 
 	// set the next resolve time for price feeds on wasm contract
-	nextBlockTime := blockTimestamp.Unix() + int64(tickerSleep.Seconds())
-	msg, err := generateContractRelayMsg(forceRelay, r.requestID, nextBlockTime, r.exchangeRates)
+	nextBlockTime := blockTimestamp.Add(r.resolveDuration).Unix()
+	exchangeMsg, err := genRateMsgData(forceRelay, RelayRate, r.requestID, nextBlockTime, r.exchangeRates)
 	if err != nil {
 		return err
 	}
 
-	// increment request id to be stored in contracts
-	r.requestID += 1
+	deviationMsg, err := genRateMsgData(forceRelay, RelayHistoricalDeviation, r.requestID, nextBlockTime, r.historicalDeviations)
+	if err != nil {
+		return err
+	}
 
-	executeMsg := &wasmtypes.MsgExecuteContract{
-		Sender:   r.relayerClient.RelayerAddrString,
-		Contract: r.contractAddress,
-		Msg:      msg,
-		Funds:    nil,
+	var msgs []types.Msg
+	msgs = append(msgs, r.genWasmMsg(exchangeMsg), r.genWasmMsg(deviationMsg))
+
+	if postMedian {
+		medianMsg, err := genRateMsgData(forceRelay, RelayHistoricalMedian, r.medianRequestID, nextBlockTime, r.historicalMedians)
+		if err != nil {
+			return err
+		}
+
+		msgs = append(msgs, r.genWasmMsg(medianMsg))
 	}
 
 	r.logger.Info().
-		Str("Contract Address", executeMsg.Contract).
-		Str("relayer addr", executeMsg.Sender).
+		Str("Contract Address", r.contractAddress).
+		Str("Relayer Address", r.relayerClient.RelayerAddrString).
 		Str("block timestamp", blockTimestamp.String()).
+		Bool("Median posted", postMedian).
 		Msg("broadcasting execute to contract")
 
-	if err := r.relayerClient.BroadcastTx(nextBlockHeight, r.timeoutHeight, executeMsg); err != nil {
+	if err := r.relayerClient.BroadcastTx(nextBlockHeight, r.timeoutHeight, msgs...); err != nil {
+		r.missedCounter += 1
 		return err
+	}
+
+	// reset missed counter if force relay is successful
+	if forceRelay {
+		r.missedCounter = 0
+	}
+
+	// increment request id to be stored in contracts
+	r.requestID += 1
+	if postMedian {
+		r.medianRequestID += 1
 	}
 
 	return nil
 }
 
-func generateContractRelayMsg(forceRelay bool, requestID uint64, resolveTime int64, exchangeRates types.DecCoins) ([]byte, error) {
+func (r *Relayer) genWasmMsg(msgData []byte) *wasmtypes.MsgExecuteContract {
+	return &wasmtypes.MsgExecuteContract{
+		Sender:   r.relayerClient.RelayerAddrString,
+		Contract: r.contractAddress,
+		Msg:      msgData,
+		Funds:    nil,
+	}
+}
+
+func genRateMsgData(forceRelay bool, msgType MsgType, requestID uint64, resolveTime int64, rates types.DecCoins) (msgData []byte, err error) {
 	msg := Msg{
 		SymbolRates: nil,
 		ResolveTime: resolveTime,
 		RequestID:   requestID,
 	}
 
-	for _, rate := range exchangeRates {
-		msg.SymbolRates = append(msg.SymbolRates, [2]string{rate.Denom, rate.Amount.Mul(RateFactor).TruncateInt().String()})
+	if msgType != RelayHistoricalMedian {
+		for _, rate := range rates {
+			msg.SymbolRates = append(msg.SymbolRates, [2]interface{}{rate.Denom, rate.Amount.Mul(RateFactor).TruncateInt().String()})
+		}
 	}
 
-	if forceRelay {
-		msgData, err := json.Marshal(MsgForceRelay{Relay: msg})
-		return msgData, err
+	switch msgType {
+	case RelayRate:
+		if forceRelay {
+			msgData, err = json.Marshal(MsgForceRelay{Relay: msg})
+		} else {
+			msgData, err = json.Marshal(MsgRelay{Relay: msg})
+		}
+	case RelayHistoricalMedian:
+		// collect denom's medians
+		medianRates := map[string][]string{}
+		for _, rate := range rates {
+			medianRates[rate.Denom] = append(medianRates[rate.Denom], rate.Amount.Mul(RateFactor).TruncateInt().String())
+		}
+
+		for denom, medians := range medianRates {
+			msg.SymbolRates = append(msg.SymbolRates, [2]interface{}{denom, medians})
+		}
+
+		if forceRelay {
+			msgData, err = json.Marshal(MsgForceRelayHistoricalMedian{Relay: msg})
+		} else {
+			msgData, err = json.Marshal(MsgRelayHistoricalMedian{Relay: msg})
+		}
+	case RelayHistoricalDeviation:
+		if forceRelay {
+			msgData, err = json.Marshal(MsgForceRelayHistoricalDeviation{Relay: msg})
+		} else {
+			msgData, err = json.Marshal(MsgRelayHistoricalDeviation{Relay: msg})
+		}
 	}
 
-	msgData, err := json.Marshal(MsgRelay{Relay: msg})
-	return msgData, err
+	return
 }

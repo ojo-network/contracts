@@ -2,7 +2,6 @@
 
 BINARY=wasmd
 CONTRACT_PATH=config/std_reference.wasm
-DEMO_MNEMONIC_1="pony glide frown crisp unfold lawn cup loan trial govern usual matrix theory wash fresh address pioneer between meadow visa buffalo keep gallery swear"
 RPC="http://0.0.0.0:26657"
 HOME=/data/$E2E_WASMD_CHAIN_ID
 

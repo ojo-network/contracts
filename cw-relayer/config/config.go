@@ -12,8 +12,10 @@ import (
 const (
 	defaultProviderTimeout = 100 * time.Millisecond
 	defaultQueryRPC        = "0.0.0.0:9091"
-	defaultMissedThreshold = 5
 	defaultTimeoutHeight   = 5
+	defaultEventTimeout    = 1 * time.Minute
+	defaultResolveDuration = 2 * time.Second
+	defaultTickEventType   = "ojo.oracle.v1.EventSetFxRate"
 )
 
 var (
@@ -33,15 +35,23 @@ type (
 		ProviderTimeout string `mapstructure:"provider_timeout"`
 		ContractAddress string `mapstructure:"contract_address"`
 		TimeoutHeight   int64  `mapsturture:"timeout_height"`
+		EventTimeout    string `mapstrucutre:"event_timeout"`
+
+		MedianRequestID uint64 `mapstructure:"median_request_id"`
+		RequestID       uint64 `mapstructure:"request_id"`
 
 		// force relay prices and reset epoch time in contracts if err in broadcasting tx
-		MissedThreshold int64 `mapstructure:"missed_threshold"`
+		MissedThreshold int64  `mapstructure:"missed_threshold"`
+		MedianDuration  int64  `mapstructure:"median_duration"`
+		ResolveDuration string `mapstructure:"resolve_duration"`
 
 		GasAdjustment float64 `mapstructure:"gas_adjustment" validate:"required"`
 		GasPrices     string  `mapstructure:"gas_prices" validate:"required"`
 
 		// query rpc for ojo node
-		QueryRPC string `mapstructure:"query_rpc"`
+		QueryRPC      string `mapstructure:"query_rpc"`
+		EventRPC      string `mapstructure:"event_rpc"`
+		TickEventType string `mapstructure:"event_type"`
 	}
 
 	// Account defines account related configuration that is related to the Client
@@ -58,10 +68,9 @@ type (
 		Dir     string `mapstructure:"dir" validate:"required"`
 	}
 
-	// RPC defines RPC configuration of both the wasmd chain gRPC and Tendermint nodes.
+	// RPC defines RPC configuration of both the wasmd chain and Tendermint nodes.
 	RPC struct {
 		TMRPCEndpoint string `mapstructure:"tmrpc_endpoint" validate:"required"`
-		GRPCEndpoint  string `mapstructure:"grpc_endpoint" validate:"required"`
 		RPCTimeout    string `mapstructure:"rpc_timeout" validate:"required"`
 	}
 )
@@ -103,12 +112,20 @@ func ParseConfig(configPath string) (Config, error) {
 		return cfg, fmt.Errorf("contract address cannot be nil")
 	}
 
-	if cfg.MissedThreshold <= 0 {
-		cfg.MissedThreshold = defaultMissedThreshold
-	}
-
 	if cfg.TimeoutHeight == 0 {
 		cfg.TimeoutHeight = defaultTimeoutHeight
+	}
+
+	if len(cfg.EventTimeout) == 0 {
+		cfg.EventTimeout = defaultEventTimeout.String()
+	}
+
+	if len(cfg.ResolveDuration) == 0 {
+		cfg.ResolveDuration = defaultResolveDuration.String()
+	}
+
+	if len(cfg.TickEventType) == 0 {
+		cfg.TickEventType = defaultTickEventType
 	}
 
 	return cfg, cfg.Validate()
