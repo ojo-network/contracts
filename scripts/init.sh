@@ -34,6 +34,7 @@ $BINARY add-genesis-account $($BINARY --home $CHAIN_DIR/$CHAINID_1 keys show dem
 $BINARY add-genesis-account $($BINARY --home $CHAIN_DIR/$CHAINID_1 keys show rly1 --keyring-backend test -a) 100000000000000000000000000stake  --home $CHAIN_DIR/$CHAINID_1
 
 sed -i -e 's/enable = false/enable = true/g' $CHAIN_DIR/$CHAINID_1/config/app.toml
+sed -i -e 's/pruning = "default"/pruning = "everything"/g' $CHAIN_DIR/$CHAINID_1/config/app.toml
 
 echo "Creating and collecting gentx..."
 $BINARY gentx val1 1000000000000000000000stake  --home $CHAIN_DIR/$CHAINID_1 --chain-id $CHAINID_1 --keyring-backend test

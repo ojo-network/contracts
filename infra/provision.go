@@ -39,6 +39,53 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 		PrivateKey: sshPrivate,
 	}
 
+	// reinit wasmd chain
+	reinitChainScript := pulumi.String(reInitChain())
+	reinitChain, err := remote.NewCommand(
+		ctx,
+		"wasm-chain-reinit",
+		&remote.CommandArgs{
+			Connection: conn,
+			Create:     reinitChainScript,
+		},
+		pulumi.DependsOn([]pulumi.Resource{instance}),
+		pulumi.Timeouts(&pulumi.CustomTimeouts{Create: "10m"}),
+	)
+	if err != nil {
+		return err
+	}
+
+	// restart wasmd chain
+	restartChain, err := remote.NewCommand(
+		ctx,
+		"wasm-chain-restart",
+		&remote.CommandArgs{
+			Connection: conn,
+			Create: pulumi.Sprintf(`
+						    set -e
+							sudo systemctl restart /etc/systemd/system/wasmd.service`,
+			),
+		}, pulumi.DependsOn([]pulumi.Resource{reinitChain}),
+	)
+	if err != nil {
+		return err
+	}
+
+	// deploy contract
+	deployContractScript := pulumi.String(deployContract())
+	deployContract, err := remote.NewCommand(
+		ctx,
+		"wasm-chain-reinit",
+		&remote.CommandArgs{
+			Connection: conn,
+			Create:     deployContractScript,
+		},
+		pulumi.DependsOn([]pulumi.Resource{restartChain}),
+	)
+	if err != nil {
+		return err
+	}
+
 	// ".cw-relayer"
 	techName := network.RelayerHomeFolderName[1:]
 	relayerSpec := unit.UnitSpec{
@@ -61,7 +108,7 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 		// TODO: don't assume /usr/local/ as the base path (brittle); will work for now since we control action file, may not work on a particular devs machine
 		LocalPath:  pulumi.Sprintf("/usr/local/bin/%s", network.LocalRelayerBinary),
 		RemotePath: pulumi.Sprintf("/home/ubuntu/%s", network.LocalRelayerBinary),
-	}, pulumi.DependsOn([]pulumi.Resource{instance}))
+	}, pulumi.DependsOn([]pulumi.Resource{deployContract, instance}))
 	if err != nil {
 		return err
 	}
