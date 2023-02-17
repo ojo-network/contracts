@@ -24,7 +24,6 @@ func TestValidate(t *testing.T) {
 				TMRPCEndpoint: "http://localhost:26657",
 				RPCTimeout:    "100ms",
 			},
-			GasAdjustment:   1.5,
 			ContractAddress: "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0phg4d",
 		}
 	}

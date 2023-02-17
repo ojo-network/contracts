@@ -1,0 +1,55 @@
+name: Tests
+on:
+  pull_request:
+    branches:
+      - secret
+  push:
+    branches:
+      - secret
+      - release/secret/**
+
+jobs:
+  test-unit-relayer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v3
+      - uses: technote-space/get-diff-action@v6.1.2
+        with:
+          PATTERNS: |
+            cw-relayer/**/**.go
+            cw-relayer/go.mod
+            cw-relayer/go.sum
+      - uses: actions/setup-go@v3
+        if: env.GIT_DIFF
+        with:
+          go-version: 1.19
+          cache: true
+          cache-dependency-path: cw-relayer/go.sum
+
+      - name: Test Relayer
+        if: env.GIT_DIFF
+        run: |
+          make test-unit-relayer
+
+  test-unit-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v3
+      - uses: technote-space/get-diff-action@v6.1.2
+        with:
+          PATTERNS: |
+            cosmwasm/contracts/price-feed/src/*
+            cosmwasm/contracts/price-feed/Cargo.toml
+            cosmwasm/Cargo.toml
+            cosmwasm/Cargo.lock
+      - uses: actions-rs/toolchain@v1
+        if: env.GIT_DIFF
+        with:
+          toolchain: stable
+
+      - name: Test Contracts
+        if: env.GIT_DIFF
+        run: |
+          make test-unit-contract
