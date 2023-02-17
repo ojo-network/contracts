@@ -44,9 +44,8 @@ type (
 		MissedThreshold int64  `mapstructure:"missed_threshold"`
 		ResolveDuration string `mapstructure:"resolve_duration"`
 
-		GasAdjustment float64 `mapstructure:"gas_adjustment" validate:"required"`
-		GasPrices     string  `mapstructure:"gas_prices" validate:"required"`
-		GasLimit      uint64  `mapstructure:"gas_limit" validate:"required"`
+		GasPrices string `mapstructure:"gas_prices" validate:"required"`
+		GasLimit  uint64 `mapstructure:"gas_limit" validate:"required"`
 
 		// query rpc for ojo node
 		QueryRPC      string `mapstructure:"query_rpc"`

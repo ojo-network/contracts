@@ -61,7 +61,6 @@ func NewRelayerClient(
 	rpcTimeout time.Duration,
 	RelayerAddrString string,
 	accPrefix string,
-	gasAdjustment float64,
 	GasPrices string,
 	gasLimit uint64,
 ) (RelayerClient, error) {
@@ -85,7 +84,6 @@ func NewRelayerClient(
 		RelayerAddr:       RelayerAddr,
 		RelayerAddrString: RelayerAddrString,
 		Encoding:          MakeEncodingConfig(),
-		GasAdjustment:     gasAdjustment,
 		GasPrices:         GasPrices,
 		gasLimit:          gasLimit,
 	}
@@ -274,7 +272,6 @@ func (oc RelayerClient) CreateTxFactory() (tx.Factory, error) {
 		WithAccountRetriever(clientCtx.AccountRetriever).
 		WithChainID(oc.ChainID).
 		WithTxConfig(clientCtx.TxConfig).
-		WithGasAdjustment(oc.GasAdjustment).
 		WithGasPrices(oc.GasPrices).
 		WithGas(oc.gasLimit).
 		WithKeybase(clientCtx.Keyring).

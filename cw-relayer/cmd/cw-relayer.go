@@ -130,7 +130,6 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		rpcTimeout,
 		cfg.Account.Address,
 		cfg.Account.AccPrefix,
-		cfg.GasAdjustment,
 		cfg.GasPrices,
 		cfg.GasLimit,
 	)
