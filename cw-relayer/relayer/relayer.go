@@ -104,9 +104,8 @@ func (r *Relayer) Start(ctx context.Context) error {
 		case <-ctx.Done():
 			r.closer.Close()
 
-		default:
-			r.logger.Debug().Msg("starting relayer tick")
-
+		case <-r.event:
+			r.logger.Debug().Msg("starting relayer")
 			startTime := time.Now()
 			if err := r.tick(ctx); err != nil {
 				telemetry.IncrCounter(1, "failure", "tick")

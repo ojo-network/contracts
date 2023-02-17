@@ -158,11 +158,13 @@ func (oc RelayerClient) BroadcastTx(clientCtx client.Context, nextBlockHeight, t
 			continue
 		}
 
+		// set last check height to latest block height
 		lastCheckHeight = latestBlockHeight
+
 		resp, err := BroadcastTx(clientCtx, factory, msgs...)
 		if resp != nil && resp.Code != 0 {
 			telemetry.IncrCounter(1, "failure", "tx", "code")
-			oc.logger.Debug().Msg(resp.String())
+			oc.logger.Error().Msg(resp.String())
 			err = fmt.Errorf("invalid response code from tx: %d", resp.Code)
 		}
 
