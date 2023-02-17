@@ -27,7 +27,7 @@ import (
 type (
 	// RelayerClient defines a structure that interfaces with the smart-contract-enabled chain.
 	RelayerClient struct {
-		Logger            zerolog.Logger
+		logger            zerolog.Logger
 		ChainID           string
 		KeyringBackend    string
 		KeyringDir        string
@@ -39,7 +39,6 @@ type (
 		Encoding          params.EncodingConfig
 		GasPrices         string
 		GasAdjustment     float64
-		GRPCEndpoint      string
 		KeyringPassphrase string
 		ChainHeight       *ChainHeight
 		gasLimit          uint64
@@ -61,7 +60,6 @@ func NewRelayerClient(
 	tmRPC string,
 	rpcTimeout time.Duration,
 	RelayerAddrString string,
-	grpcEndpoint string,
 	accPrefix string,
 	gasAdjustment float64,
 	GasPrices string,
@@ -77,7 +75,7 @@ func NewRelayerClient(
 	}
 
 	relayerClient := RelayerClient{
-		Logger:            logger.With().Str("module", "relayer_client").Logger(),
+		logger:            logger.With().Str("module", "relayer_client").Logger(),
 		ChainID:           chainID,
 		KeyringBackend:    keyringBackend,
 		KeyringDir:        keyringDir,
@@ -88,7 +86,6 @@ func NewRelayerClient(
 		RelayerAddrString: RelayerAddrString,
 		Encoding:          MakeEncodingConfig(),
 		GasAdjustment:     gasAdjustment,
-		GRPCEndpoint:      grpcEndpoint,
 		GasPrices:         GasPrices,
 		gasLimit:          gasLimit,
 	}
@@ -111,7 +108,7 @@ func NewRelayerClient(
 	chainHeight, err := NewChainHeight(
 		ctx,
 		clientCtx.Client,
-		relayerClient.Logger,
+		relayerClient.logger,
 		blockHeight,
 		blockTime,
 	)
@@ -167,7 +164,7 @@ func (oc RelayerClient) BroadcastTx(clientCtx client.Context, nextBlockHeight, t
 		resp, err := BroadcastTx(clientCtx, factory, msgs...)
 		if resp != nil && resp.Code != 0 {
 			telemetry.IncrCounter(1, "failure", "tx", "code")
-			oc.Logger.Debug().Msg(resp.String())
+			oc.logger.Debug().Msg(resp.String())
 			err = fmt.Errorf("invalid response code from tx: %d", resp.Code)
 		}
 
@@ -181,7 +178,7 @@ func (oc RelayerClient) BroadcastTx(clientCtx client.Context, nextBlockHeight, t
 				hash = resp.TxHash
 			}
 
-			oc.Logger.Debug().
+			oc.logger.Debug().
 				Err(err).
 				Int64("max_height", maxBlockHeight).
 				Int64("last_check_height", lastCheckHeight).
@@ -193,7 +190,7 @@ func (oc RelayerClient) BroadcastTx(clientCtx client.Context, nextBlockHeight, t
 			continue
 		}
 
-		oc.Logger.Info().
+		oc.logger.Info().
 			Uint32("tx_code", resp.Code).
 			Str("tx_hash", resp.TxHash).
 			Int64("tx_height", resp.Height).

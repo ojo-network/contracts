@@ -102,9 +102,14 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to parse RPC timeout: %w", err)
 	}
 
-	tickerTime, err := time.ParseDuration(cfg.Ticker)
+	eventTimeout, err := time.ParseDuration(cfg.EventTimeout)
 	if err != nil {
-		return fmt.Errorf("failed to parse Ticker time: %w", err)
+		return fmt.Errorf("failed to parse Event timeout: %w", err)
+	}
+
+	resolveDuration, err := time.ParseDuration(cfg.ResolveDuration)
+	if err != nil {
+		return fmt.Errorf("failed to parse Resolve Duration: %w", err)
 	}
 
 	// Gather pass via env variable || std input
@@ -124,7 +129,6 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		cfg.RPC.TMRPCEndpoint,
 		rpcTimeout,
 		cfg.Account.Address,
-		cfg.RPC.GRPCEndpoint,
 		cfg.Account.AccPrefix,
 		cfg.GasAdjustment,
 		cfg.GasPrices,
@@ -134,7 +138,13 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	newRelayer := relayer.New(logger, client, cfg.ContractAddress, cfg.TimeoutHeight, cfg.MissedThreshold, cfg.QueryRPC, cfg.CodeHash, tickerTime)
+	// subscribe to new block heights
+	blockEvent, err := relayerclient.NewBlockHeightSubscription(ctx, cfg.EventRPC, eventTimeout, cfg.TickEventType, logger)
+	if err != nil {
+		return err
+	}
+
+	newRelayer := relayer.New(logger, client, cfg.ContractAddress, cfg.TimeoutHeight, cfg.MissedThreshold, cfg.QueryRPC, cfg.CodeHash, resolveDuration, cfg.RequestID, blockEvent.Tick)
 	g.Go(func() error {
 		// start the process that queries the prices on Ojo & submits them on Wasmd
 		return startPriceRelayer(ctx, logger, newRelayer)
