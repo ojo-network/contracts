@@ -190,9 +190,6 @@ func (r *Relayer) tick(ctx context.Context) error {
 		return err
 	}
 
-	// increment request id to be stored in contracts
-	r.requestID += 1
-
 	execMsg := scrttypes.NewSecretMsg([]byte(r.codeHash), msg)
 	clientCtx, err := r.relayerClient.CreateClientContext()
 	if err != nil {
