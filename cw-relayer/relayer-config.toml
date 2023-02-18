@@ -11,7 +11,6 @@ request_id = 1
 
 gas_prices = "0.015uscrt"
 code_hash = "85a123f01c278a714d4bdabb60600434ddd9db83354e3a9d86f51b263cd4e376"
-ticker = "1000ms"
 gas_limit = "50000"
 
 ### account & chain-id for the wasmd relayer account
