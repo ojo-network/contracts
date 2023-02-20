@@ -43,7 +43,6 @@ runs:
 
     - uses: dsaltares/fetch-gh-release-asset@master
       with:
-        #relayer config remaining
         version: 'tags/${{ inputs.RELEASE_VERSION }}'
         file: 'cosmwasm-artifacts-${{ inputs.RELEASE_VERSION }}.tar.gz'
         target: '/usr/local/bin/cosmwasm-artifacts-${{ inputs.RELEASE_VERSION }}.tar.gz'

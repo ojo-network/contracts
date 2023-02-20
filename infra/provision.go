@@ -68,13 +68,26 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 			Connection: conn,
 			Create: pulumi.Sprintf(`
 						    set -e
-							sudo systemctl restart /etc/systemd/system/wasmd.service`,
+							sudo systemctl restart wasmd.service`,
 			),
 		}, pulumi.DependsOn([]pulumi.Resource{reinitChain}),
 	)
 	if err != nil {
 		return err
 	}
+
+	// restart caddy
+	restartCaddy, err := remote.NewCommand(
+		ctx,
+		"wasm-chain-restart",
+		&remote.CommandArgs{
+			Connection: conn,
+			Create: pulumi.Sprintf(`
+						    set -e
+							sudo systemctl restart caddy.service`,
+			),
+		}, pulumi.DependsOn([]pulumi.Resource{reinitChain}),
+	)
 
 	// ".cw-relayer"
 	techName := network.LocalRelayerBinary
@@ -209,6 +222,7 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 		installCwRelayerBinary,
 		configInit,
 		relayerInstall,
+		restartCaddy,
 	}
 
 	_, err = remote.NewCommand(
