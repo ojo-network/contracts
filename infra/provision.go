@@ -122,7 +122,10 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 			Create: pulumi.Sprintf(`
 						    set -e
 							tar -zxvf /home/ubuntu/%s /home/ubuntu/
-						`, network.LocalContractTar),
+							cp /home/ubuntu/std_reference.wasm /home/ubuntu/
+							rm -r /home/ubuntu/%s
+							rm -r /home/ubuntu/cosmwasm
+						`, network.LocalContractTar, network.LocalContractTar),
 		}, pulumi.DependsOn([]pulumi.Resource{uploadContract}),
 	)
 	if err != nil {
