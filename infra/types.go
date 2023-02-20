@@ -1,12 +1,12 @@
 package main
 
 type Network struct {
-	ChainID               string
-	LocalRelayerBinary    string
-	RelayerHomeFolderName string
-	UserAddress           string
-	ContractAddress       string
-	NodeConfig            NodeConfig
+	ChainID            string
+	LocalRelayerBinary string
+	LocalContractTar   string
+	UserAddress        string
+	ContractAddress    string
+	NodeConfig         NodeConfig
 }
 
 type NodeConfig struct {

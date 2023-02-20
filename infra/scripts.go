@@ -4,7 +4,7 @@ func reInitChain() string {
 	return `
 #!/bin/bash -xeu
 BINARY=wasmd
-CHAIN_DIR=./data
+CHAIN_DIR=/home/ubuntu/data
 CHAINID_1="wasm-test"
 VAL_MNEMONIC_1="copper push brief egg scan entry inform record adjust fossil boss egg comic alien upon aspect dry avoid interest fury window hint race symptom"
 DEMO_MNEMONIC_1="pony glide frown crisp unfold lawn cup loan trial govern usual matrix theory wash fresh address pioneer between meadow visa buffalo keep gallery swear"
@@ -51,22 +51,22 @@ func deployContract() string {
 #!/bin/bash -xeu
 BINARY=wasmd
 CHAINID_1="wasm-test"
-CONTRACT_PATH=./std_reference.wasm
-DEMO_MNEMONIC_1="pony glide frown crisp unfold lawn cup loan trial govern usual matrix theory wash fresh address pioneer between meadow visa buffalo keep gallery swear"
+CHAIN_DIR=/home/ubuntu/data
+CONTRACT_PATH=/home/ubuntu/cosmwasm/artifacts/std_reference.wasm
 RPC="http://0.0.0.0:26657"
 
 NODE="--node $RPC"
 TXFLAG="$NODE --chain-id $CHAINID_1 --gas-prices 0.25stake --keyring-backend test --gas auto --gas-adjustment 1.3"
 # network check
-export DEMOWALLET=$($BINARY keys show demowallet1 -a --keyring-backend test --home ./data/$CHAINID_1) && echo $DEMOWALLET;
+export DEMOWALLET=$($BINARY keys show demowallet1 -a --keyring-backend test --home $CHAIN_DIR/$CHAINID_1) && echo $DEMOWALLET;
 #$BINARY query wasm list-code $NODE
 
 # deploy smart contract
-$BINARY tx wasm store $CONTRACT_PATH --from $DEMOWALLET --home ./data/$CHAINID_1 $TXFLAG -y
+$BINARY tx wasm store $CONTRACT_PATH --from $DEMOWALLET --home $CHAIN_DIR/$CHAINID_1 $TXFLAG -y
 sleep 5
 
 #instantiate contract
-$BINARY tx wasm instantiate 1 '{}' --label test --admin $DEMOWALLET --from $DEMOWALLET --home ./data/$CHAINID_1 $TXFLAG -y
+$BINARY tx wasm instantiate 1 '{}' --label test --admin $DEMOWALLET --from $DEMOWALLET --home $CHAIN_DIR/$CHAINID_1 $TXFLAG -y
 sleep 5
 
 # query contract address
@@ -75,11 +75,11 @@ echo $CONTRACT
 
 #sample transactions
 ADD_RELAYERS='{"add_relayers": {"relayers": ["wasm1usr9g5a4s2qrwl63sdjtrs2qd4a7huh6qksawp"]}}'
-$BINARY tx wasm execute $CONTRACT "$ADD_RELAYERS" --home ./data/$CHAINID_1 --from $DEMOWALLET $TXFLAG -y
+$BINARY tx wasm execute $CONTRACT "$ADD_RELAYERS" --home $CHAIN_DIR/$CHAINID_1 --from $DEMOWALLET $TXFLAG -y
 sleep 5
 
 RELAY='{"force_relay": {"symbol_rates": [["stake","30"]], "resolve_time":"10", "request_id":"1"}}'
-$BINARY tx wasm execute $CONTRACT "$RELAY" --home ./data/$CHAINID_1 --from $DEMOWALLET $TXFLAG -y
+$BINARY tx wasm execute $CONTRACT "$RELAY" --home $CHAIN_DIR/$CHAINID_1 --from $DEMOWALLET $TXFLAG -y
 sleep 5
 
 QUERY='{"get_ref": {"symbol": "stake"}}'

@@ -16,6 +16,11 @@ import (
 	"contracts-relayer/unit"
 )
 
+const (
+	relayerpath = "/home/ubuntu/"
+	localpath   = "/usr/local/bin"
+)
+
 func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig) error {
 	var addrs pulumi.StringArray
 
@@ -71,30 +76,15 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 		return err
 	}
 
-	// deploy contract
-	deployContractScript := pulumi.String(deployContract())
-	deployContract, err := remote.NewCommand(
-		ctx,
-		"wasm-chain-reinit",
-		&remote.CommandArgs{
-			Connection: conn,
-			Create:     deployContractScript,
-		},
-		pulumi.DependsOn([]pulumi.Resource{restartChain}),
-	)
-	if err != nil {
-		return err
-	}
-
 	// ".cw-relayer"
-	techName := network.RelayerHomeFolderName[1:]
+	techName := "cw-relayer"
 	relayerSpec := unit.UnitSpec{
 		Name:              techName,
 		Description:       fmt.Sprintf("%s daemon", techName),
 		User:              "ubuntu",
-		BinaryInstallPath: fmt.Sprintf("/usr/local/bin/%s", network.LocalRelayerBinary),
+		BinaryInstallPath: fmt.Sprintf("%s/%s", localpath, network.LocalRelayerBinary),
 	}
-	relayerUnit := relayerSpec.ToUnit(fmt.Sprintf("/home/ubuntu/%s/relayer-config.toml", network.RelayerHomeFolderName))
+	relayerUnit := relayerSpec.ToUnit(fmt.Sprintf("%s/relayer-config.toml", relayerpath))
 
 	// set environment for relayer keyring pass
 	keyPass := conf.RequireSecret("keypass")
@@ -106,9 +96,50 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 	uploadCwRelayerBinary, err := remote.NewCopyFile(ctx, relayerUnit.Name+"-"+"binary-upload", &remote.CopyFileArgs{
 		Connection: conn,
 		// TODO: don't assume /usr/local/ as the base path (brittle); will work for now since we control action file, may not work on a particular devs machine
-		LocalPath:  pulumi.Sprintf("/usr/local/bin/%s", network.LocalRelayerBinary),
-		RemotePath: pulumi.Sprintf("/home/ubuntu/%s", network.LocalRelayerBinary),
-	}, pulumi.DependsOn([]pulumi.Resource{deployContract, instance}))
+		LocalPath:  pulumi.Sprintf("%s/%s", localpath, network.LocalRelayerBinary),
+		RemotePath: pulumi.Sprintf("%s/%s", relayerpath, network.LocalRelayerBinary),
+	}, pulumi.DependsOn([]pulumi.Resource{restartChain, instance}))
+	if err != nil {
+		return err
+	}
+
+	uploadContract, err := remote.NewCopyFile(ctx, "cw-relayer-contract-upload", &remote.CopyFileArgs{
+		Connection: conn,
+		// TODO: don't assume /usr/local/ as the base path (brittle); will work for now since we control action file, may not work on a particular devs machine
+		LocalPath:  pulumi.Sprintf("%s/%s", localpath, network.LocalContractTar),
+		RemotePath: pulumi.Sprintf("%s/%s", relayerpath, network.LocalContractTar),
+	}, pulumi.DependsOn([]pulumi.Resource{uploadCwRelayerBinary, instance}))
+	if err != nil {
+		return err
+	}
+
+	// /home/ubuntu/tarfile
+	unzipContracts, err := remote.NewCommand(
+		ctx,
+		"cw-relayer-contract-unzip",
+		&remote.CommandArgs{
+			Connection: conn,
+			Create: pulumi.Sprintf(`
+						    set -e
+							tar -zxvf /home/ubuntu/%s /home/ubuntu/
+						`, network.LocalContractTar),
+		}, pulumi.DependsOn([]pulumi.Resource{uploadContract}),
+	)
+	if err != nil {
+		return err
+	}
+
+	// deploy contract
+	storeContractScript := pulumi.String(deployContract())
+	storeAndInitContract, err := remote.NewCommand(
+		ctx,
+		"wasm-chain-reinit",
+		&remote.CommandArgs{
+			Connection: conn,
+			Create:     storeContractScript,
+		},
+		pulumi.DependsOn([]pulumi.Resource{unzipContracts, restartChain}),
+	)
 	if err != nil {
 		return err
 	}
@@ -123,7 +154,7 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 							sudo cp /home/ubuntu/%s /usr/local/bin/
 							sudo chmod a+x /usr/local/bin/%s
 						`, network.LocalRelayerBinary, network.LocalRelayerBinary),
-		}, pulumi.DependsOn([]pulumi.Resource{uploadCwRelayerBinary}),
+		}, pulumi.DependsOn([]pulumi.Resource{storeAndInitContract, uploadCwRelayerBinary}),
 	)
 	if err != nil {
 		return err
@@ -134,7 +165,7 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 		ContractAddress: network.ContractAddress,
 	}
 	configBody := relayerConfig.GenRelayerConfig()
-	configPath := pulumi.String(fmt.Sprintf("/home/ubuntu/%s/relayer-config.toml", network.RelayerHomeFolderName))
+	configPath := pulumi.String("/home/ubuntu/relayer-config.toml")
 	configInit, err := resources.NewStringToRemoteFileCommand(ctx, relayerUnit.Name+"-"+"relayer-config", resources.StringToRemoteFileCommandArgs{
 		Connection:      conn,
 		Body:            configBody,

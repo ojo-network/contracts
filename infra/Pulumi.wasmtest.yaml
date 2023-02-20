@@ -4,10 +4,10 @@ config:
     chainID: wasm-test
     contractAddress: "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0phg4d"
     localRelayerBinary: cw-relayer
+    localContractTar: cosmwasm-artifacts.tar.gz
     nodeConfig:
       instanceID: 2488808662151011601
       instanceName: devnet-n3-cw
-    relayerHomeFolderName: .cw-relayer
     userAddress: "wasm1usr9g5a4s2qrwl63sdjtrs2qd4a7huh6qksawp"
   ojo-testnet:keypass: "PASS"
   ojo-testnet:sshprivate:

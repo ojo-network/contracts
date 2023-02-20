@@ -1,4 +1,4 @@
-name: Release cw-relayer
+name: Release cw-relayer and contracts
 
 on:
   push:
@@ -13,6 +13,40 @@ permissions:
   id-token: write
 
 jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install latest stable
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+
+      - name: Set env
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/tags/*}" >> $GITHUB_ENV
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Generate Cargo.lock
+        run: |
+          cargo fetch --verbose --manifest-path ./cosmwasm/Cargo.toml
+      - name: Build/Release Artifacts
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          docker run --rm -v "$(pwd)/cosmwasm":/code \
+          --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
+          --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+          cosmwasm/workspace-optimizer:0.12.7
+          tar -zcvf cosmwasm-artifacts-${{ env.RELEASE_VERSION }}.tar.gz cosmwasm/artifacts
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            cosmwasm-artifacts-${{ env.RELEASE_VERSION }}.tar.gz
+
   goreleaser:
     runs-on: ubuntu-latest
     steps:
@@ -63,6 +97,26 @@ jobs:
         with:
           RELAYER_BINARY_NAME: cw-relayer
           RELAYER_BINARY_VERSION: ${{ env.RELEASE_VERSION }}
+          PULUMI_PROJECT_DIR: infra/pulumi/testnet
+          PULUMI_STACK_NAME: ojo-network/cw-relayer
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UMEE_INFRA_SSH_KEY: ${{ secrets.UMEE_INFRA_SSH_KEY }}
+
+  update-infra:
+    needs: [contract, goreleaser]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set env
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/tags/*}" >> $GITHUB_ENV
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: testnet
+        uses: ./.github/relayer-testnet
+        with:
+          RELAYER_BINARY_NAME: cw-relayer
+          RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
           PULUMI_PROJECT_DIR: infra/pulumi/testnet
           PULUMI_STACK_NAME: ojo-network/cw-relayer
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
