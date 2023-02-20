@@ -90,7 +90,7 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 	)
 
 	// ".cw-relayer"
-	techName := network.LocalRelayerBinary
+	techName := "cw-relayer"
 	relayerSpec := unit.UnitSpec{
 		Name:              techName,
 		Description:       fmt.Sprintf("%s daemon", techName),
