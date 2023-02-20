@@ -77,7 +77,7 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 	}
 
 	// ".cw-relayer"
-	techName := "cw-relayer"
+	techName := network.LocalRelayerBinary
 	relayerSpec := unit.UnitSpec{
 		Name:              techName,
 		Description:       fmt.Sprintf("%s daemon", techName),
@@ -103,7 +103,7 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 		return err
 	}
 
-	uploadContract, err := remote.NewCopyFile(ctx, "cw-relayer-contract-upload", &remote.CopyFileArgs{
+	uploadContract, err := remote.NewCopyFile(ctx, relayerUnit.Name+"-"+"contract-upload", &remote.CopyFileArgs{
 		Connection: conn,
 		// TODO: don't assume /usr/local/ as the base path (brittle); will work for now since we control action file, may not work on a particular devs machine
 		LocalPath:  pulumi.Sprintf("%s/%s", localpath, network.LocalContractTar),
@@ -116,7 +116,7 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 	// /home/ubuntu/tarfile
 	unzipContracts, err := remote.NewCommand(
 		ctx,
-		"cw-relayer-contract-unzip",
+		relayerUnit.Name+"-"+"contract-unzip",
 		&remote.CommandArgs{
 			Connection: conn,
 			Create: pulumi.Sprintf(`
@@ -136,7 +136,7 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 	storeContractScript := pulumi.String(deployContract())
 	storeAndInitContract, err := remote.NewCommand(
 		ctx,
-		"wasm-chain-reinit",
+		relayerUnit.Name+"-"+"deploy-contract",
 		&remote.CommandArgs{
 			Connection: conn,
 			Create:     storeContractScript,
@@ -168,7 +168,7 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 		ContractAddress: network.ContractAddress,
 	}
 	configBody := relayerConfig.GenRelayerConfig()
-	configPath := pulumi.String("/home/ubuntu/relayer-config.toml")
+	configPath := pulumi.Sprintf("%/relayer-config.toml", relayerpath)
 	configInit, err := resources.NewStringToRemoteFileCommand(ctx, relayerUnit.Name+"-"+"relayer-config", resources.StringToRemoteFileCommandArgs{
 		Connection:      conn,
 		Body:            configBody,
@@ -188,7 +188,7 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 	// start relayer demon, can also be removed as it already exists
 	unitBody := relayerUnit.GenSystemdUnit()
 	unitPath := pulumi.String(path.Join("/etc/systemd/system", relayerUnit.Name+".service"))
-	relayerInstall, err := resources.NewStringToRemoteFileCommand(ctx, relayerUnit.Name+"-systemd-unit", resources.StringToRemoteFileCommandArgs{
+	relayerInstall, err := resources.NewStringToRemoteFileCommand(ctx, relayerUnit.Name+"-"+"systemd-unit", resources.StringToRemoteFileCommandArgs{
 		Connection:      conn,
 		Body:            unitBody,
 		DestinationPath: unitPath,
@@ -200,7 +200,7 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 		FolderGroup:     relayerUnit.User,
 		RunAfter:        pulumi.Sprintf("sudo systemctl daemon-reload && sudo systemctl enable %s", relayerUnit.Name),
 		Triggers:        pulumi.Array{unitPath, unitBody},
-	}, pulumi.DependsOn([]pulumi.Resource{instance, installCwRelayerBinary, configInit}))
+	}, pulumi.DependsOn([]pulumi.Resource{instance, configInit}))
 	if err != nil {
 		return err
 	}
@@ -213,7 +213,7 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 
 	_, err = remote.NewCommand(
 		ctx,
-		"relayer-reboot",
+		relayerUnit.Name+"-"+"relayer-reboot",
 		&remote.CommandArgs{
 			Connection: conn,
 			Update:     pulumi.String("echo updates disabled..."),
