@@ -19,6 +19,10 @@ import (
 const (
 	relayerpath = "/home/ubuntu/"
 	localpath   = "/usr/local/bin"
+	fileMode    = pulumi.String("0644")
+	folderMode  = pulumi.String("0755")
+	port        = pulumi.Float64(22)
+	user        = pulumi.String("ubuntu")
 )
 
 func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig) error {
@@ -39,8 +43,8 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 
 	conn := remote.ConnectionArgs{
 		Host:       addrs.ToStringArrayOutput().Index(pulumi.Int(0)),
-		Port:       pulumi.Float64(22),
-		User:       pulumi.String("ubuntu"),
+		Port:       port,
+		User:       user,
 		PrivateKey: sshPrivate,
 	}
 
@@ -186,10 +190,10 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 		Connection:      conn,
 		Body:            configBody,
 		DestinationPath: configPath,
-		FileMode:        pulumi.String("0644"),
+		FileMode:        fileMode,
 		FileUser:        relayerUnit.User,
 		FileGroup:       relayerUnit.User,
-		FolderMode:      pulumi.String("0755"),
+		FolderMode:      folderMode,
 		FolderUser:      relayerUnit.User,
 		FolderGroup:     relayerUnit.User,
 		Triggers:        pulumi.Array{configPath, configBody},
@@ -198,17 +202,17 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 		return err
 	}
 
-	// start relayer demon, can also be removed as it already exists
+	// start relayer daemon, can also be removed as it already exists
 	unitBody := relayerUnit.GenSystemdUnit()
 	unitPath := pulumi.String(path.Join("/etc/systemd/system", relayerUnit.Name+".service"))
 	relayerInstall, err := resources.NewStringToRemoteFileCommand(ctx, relayerUnit.Name+"-"+"systemd-unit", resources.StringToRemoteFileCommandArgs{
 		Connection:      conn,
 		Body:            unitBody,
 		DestinationPath: unitPath,
-		FileMode:        pulumi.String("0644"),
+		FileMode:        fileMode,
 		FileUser:        relayerUnit.User,
 		FileGroup:       relayerUnit.User,
-		FolderMode:      pulumi.String("0755"),
+		FolderMode:      folderMode,
 		FolderUser:      relayerUnit.User,
 		FolderGroup:     relayerUnit.User,
 		RunAfter:        pulumi.Sprintf("sudo systemctl daemon-reload && sudo systemctl enable %s", relayerUnit.Name),
