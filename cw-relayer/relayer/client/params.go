@@ -1,6 +1,5 @@
 package client
 
-//
 import (
 	"github.com/cosmos/cosmos-sdk/simapp/params"
 	"github.com/cosmos/cosmos-sdk/std"

@@ -22,10 +22,8 @@ func TestValidate(t *testing.T) {
 			},
 			RPC: config.RPC{
 				TMRPCEndpoint: "http://localhost:26657",
-				GRPCEndpoint:  "localhost:9090",
 				RPCTimeout:    "100ms",
 			},
-			GasAdjustment:   1.5,
 			ContractAddress: "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0phg4d",
 		}
 	}
@@ -70,7 +68,6 @@ dir = "/Users/username/.wasm"
 
 [rpc]
 tmrpc_endpoint = "http://localhost:26657"
-grpc_endpoint = "localhost:9090"
 rpc_timeout = "100ms"
 `)
 	_, err = tmpFile.Write(content)

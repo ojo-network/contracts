@@ -1,6 +1,8 @@
 use crate::errors::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::state::{RefData, RefStore, ReferenceData, WhitelistedRelayers, ADMIN, REFDATA, RELAYERS};
+use crate::state::{
+    RefData, RefStore, ReferenceData, WhitelistedRelayers, ADMIN, REFDATA, RELAYERS,
+};
 use cosmwasm_std::{
     entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
     StdResult, Uint256, Uint64,

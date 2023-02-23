@@ -24,13 +24,15 @@ kill:
 	@echo "Killing wasmd"
 	-@killall -9 wasmd 2>/dev/null
 
-test-unit:
-	@echo "Testing unit"
+test-unit-relayer:
+	@echo "Testing Relayer"
 	cd cw-relayer && ${MAKE} test-unit
+
+test-unit-contract:
+	@echo "Testing contract"
 	cd cosmwasm && cargo test
 
-test-e2e:
-	@echo "Running e2e tests"
-	cd cw-relayer && ${MAKE} test-e2e
+compile-contract:
+	cosmwasm/scripts/build_artifacts.sh
 
 .PHONY: test-e2e

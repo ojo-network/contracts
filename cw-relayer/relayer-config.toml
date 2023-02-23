@@ -1,11 +1,16 @@
 ### gas adjustment - multiplier for the expected amount of gas
-contract_address = "secret1pxehd23wmcp06hk0r7vpaxmpd0nwn6eyv5hkj7"
+contract_address = "secret1mzw4d7sq7k55jatg2mzc9vrn8eelkva5wmwqk3"
 query_rpc = "api.devnet-n0.ojo-devnet.node.ojo.network:9090"
-gas_adjustment = 1.5
+event_rpc = "https://rpc.devnet-n0.ojo-devnet.node.ojo.network:443"
+event_type = "ojo.oracle.v1.EventSetFxRate"
+event_timeout = "1000ms"
 timeout_height = 10
-gas_prices = "0.025uscrt"
-code_hash = "c5068e249d2486bc1be8caa3e60faf60e5d017dbe68498429e40225a996843b3"
-ticker = "1000ms"
+resolve_duration = "1000ms"
+missed_threshold = 5
+request_id = 1
+
+gas_prices = "0.015uscrt"
+code_hash = "85a123f01c278a714d4bdabb60600434ddd9db83354e3a9d86f51b263cd4e376"
 gas_limit = "50000"
 
 ### account & chain-id for the wasmd relayer account
@@ -17,10 +22,9 @@ acc_prefix = "secret"
 ### keyring for the relayer account on the wasmd chain
 [keyring]
 backend = "test"
-dir = "/path/to/relayer"
+dir = "/path/to/keyring"
 
 ### rpc endpoint for the wasm Chain
 [rpc]
-grpc_endpoint = "0.0.0.0:8080"
 rpc_timeout = "5000ms"
 tmrpc_endpoint = "https://rpc.pulsar.scrttestnet.com:443"
