@@ -17,8 +17,8 @@ median_duration = 0
 resolve_duration = "1000ms"
 missed_threshold = 2
 #default median data and ref request id at start/restart
-median_request_id = 1
-request_id = 1
+median_request_id = 0
+request_id = 0
 
 ### account & chain-id for the wasmd relayer account
 [account]
