@@ -213,7 +213,8 @@ func (r *Relayer) tick(ctx context.Context) error {
 	msgs = append(msgs, r.genWasmMsg(exchangeMsg), r.genWasmMsg(deviationMsg))
 
 	if postMedian {
-		nextMedianBlockTime := blockTimestamp.Add(time.Duration(r.resolveDuration.Nanoseconds() * r.medianDuration)).Unix()
+		resolveTime := time.Duration(r.resolveDuration.Nanoseconds() * r.medianDuration)
+		nextMedianBlockTime := blockTimestamp.Add(resolveTime).Unix()
 		medianMsg, err := genRateMsgData(forceRelay, RelayHistoricalMedian, r.medianRequestID, nextMedianBlockTime, r.historicalMedians)
 		if err != nil {
 			return err
@@ -222,24 +223,18 @@ func (r *Relayer) tick(ctx context.Context) error {
 		msgs = append(msgs, r.genWasmMsg(medianMsg))
 	}
 
+	logs := r.logger.Info()
+	logs.Str("contract address", r.contractAddress).
+		Str("relayer address", r.relayerClient.RelayerAddrString).
+		Str("block timestamp", blockTimestamp.String()).
+		Bool("median posted", postMedian).
+		Uint64("request id", r.requestID)
+
 	if postMedian {
-		r.logger.Info().
-			Str("Contract Address", r.contractAddress).
-			Str("Relayer Address", r.relayerClient.RelayerAddrString).
-			Str("block timestamp", blockTimestamp.String()).
-			Bool("Median posted", postMedian).
-			Uint64("Request ID", r.requestID).
-			Uint64("Median Request ID", r.medianRequestID).
-			Msg("broadcasting execute to contract")
-	} else {
-		r.logger.Info().
-			Str("Contract Address", r.contractAddress).
-			Str("Relayer Address", r.relayerClient.RelayerAddrString).
-			Str("block timestamp", blockTimestamp.String()).
-			Bool("Median posted", postMedian).
-			Uint64("Request ID", r.requestID).
-			Msg("broadcasting execute to contract")
+		logs.Uint64("median request id", r.medianRequestID)
 	}
+
+	logs.Msg("broadcasting execute to contract")
 
 	if err := r.relayerClient.BroadcastTx(nextBlockHeight, r.timeoutHeight, msgs...); err != nil {
 		r.missedCounter += 1
