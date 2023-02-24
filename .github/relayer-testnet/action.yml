@@ -78,7 +78,7 @@ runs:
         service_account: "${{ inputs.GCP_SERVICE_ACCOUNT }}"
     - name: Inject Pulumi Config
       shell: bash
-      working-directory: infra/pulumi/testnet
+      working-directory: infra/
       run: |
         relayer_binary_name=${{ inputs.RELAYER_BINARY_NAME }}-${{ inputs.RELEASE_VERSION }}
         contract_tar=cosmwasm-artifacts-${{ inputs.RELEASE_VERSION }}.tar.gz
@@ -91,7 +91,7 @@ runs:
       shell: bash
       working-directory: infra/pulumi/testnet
       run: |
-        pulumi destroy --yes --skip-preview --color never --exec-kind auto.local --stack contracts-wasmtest --non-interactive
-        pulumi up --yes --skip-preview --color never --exec-kind auto.local --stack contracts-wasmtest --non-interactive
+        pulumi destroy --yes --skip-preview --color never --exec-kind auto.local --stack wasmtest --non-interactive
+        pulumi up --yes --skip-preview --color never --exec-kind auto.local --stack wasmtest --non-interactive
       env:
         PULUMI_ACCESS_TOKEN: ${{ inputs.PULUMI_ACCESS_TOKEN }}

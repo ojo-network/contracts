@@ -3,7 +3,7 @@ config:
     chainID: wasm-test
     contractAddress: "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0phg4d"
     localContractTar: cosmwasm-artifacts.tar.gz
-    localRelayerBinary: cw-relayer-v2.0.1-rc4-linux-amd64-glibc-2.31
+    localRelayerBinary: cw-relayer
     nodeConfig:
       instanceName: "devnet-n3-cw"
       location:

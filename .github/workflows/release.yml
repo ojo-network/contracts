@@ -123,7 +123,7 @@ jobs:
           RELAYER_BINARY_NAME: cw-relayer
           GLIBC_VERSION: ${{ env.GLIBC_VERSION }}
           RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
-          PULUMI_PROJECT_DIR: infra/pulumi/testnet
+          PULUMI_PROJECT_DIR: infra/
           PULUMI_STACK_NAME: contracts-wasmtest
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
