@@ -11,7 +11,12 @@ type Network struct {
 
 type NodeConfig struct {
 	InstanceName string
-	InstanceID   string
+	Location     NodeLocation
+}
+
+type NodeLocation struct {
+	Region string
+	Zone   string
 }
 
 type NodeSecretConfig struct {

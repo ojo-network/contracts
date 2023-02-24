@@ -4,7 +4,6 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"fmt"
-	"path"
 
 	"github.com/pulumi/pulumi-command/sdk/go/command/remote"
 	"github.com/pulumi/pulumi-gcp/sdk/v6/go/gcp/compute"
@@ -17,7 +16,7 @@ import (
 )
 
 const (
-	relayerpath = "/home/ubuntu/"
+	relayerpath = "/home/ubuntu"
 	localpath   = "/usr/local/bin"
 	fileMode    = pulumi.String("0644")
 	folderMode  = pulumi.String("0755")
@@ -25,9 +24,13 @@ const (
 	user        = pulumi.String("ubuntu")
 )
 
-func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig) error {
-	var addrs pulumi.StringArray
+var (
+	relayerInstallPath = fmt.Sprintf("%s/%s", relayerpath, "cw-relayer")
+	relayerConfigPath  = fmt.Sprintf("%s/relayer-config.toml", relayerpath)
+	contractPath       = pulumi.Sprintf("%s/%s", relayerpath, "cosmwasm-artifacts.tar.gz")
+)
 
+func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig) error {
 	conf := config.New(ctx, "")
 	sshPrivate := conf.RequireSecret("sshprivate").ApplyT(func(b64private string) (string, error) {
 		privatebytes, err := base64.StdEncoding.DecodeString(b64private)
@@ -38,17 +41,36 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 		return string(privatebytes), nil
 	}).(pulumi.StringOutput)
 
-	instanceID := pulumi.IDInput(pulumi.ID(network.NodeConfig.InstanceID))
-	instance, err := compute.GetInstance(ctx, network.NodeConfig.InstanceName, instanceID, &compute.InstanceState{})
+	instance, err := compute.LookupInstance(ctx, &compute.LookupInstanceArgs{
+		Name: &network.NodeConfig.InstanceName,
+		Zone: pulumi.StringRef(network.NodeConfig.Location.Zone),
+	})
+	if err != nil {
+		return err
+	}
 
 	conn := remote.ConnectionArgs{
-		Host:       addrs.ToStringArrayOutput().Index(pulumi.Int(0)),
+		Host:       pulumi.String(instance.NetworkInterfaces[0].AccessConfigs[0].NatIp),
 		Port:       port,
 		User:       user,
 		PrivateKey: sshPrivate,
 	}
 
-	// reinit wasmd chain
+	// reset and cleanup files
+	cleanupScript := pulumi.String(cleanupServices())
+	cleanup, err := remote.NewCommand(
+		ctx,
+		"wasm-cleanup",
+		&remote.CommandArgs{
+			Connection: conn,
+			Create:     cleanupScript,
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	//reinit wasmd chain
 	reinitChainScript := pulumi.String(reInitChain())
 	reinitChain, err := remote.NewCommand(
 		ctx,
@@ -57,7 +79,7 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 			Connection: conn,
 			Create:     reinitChainScript,
 		},
-		pulumi.DependsOn([]pulumi.Resource{instance}),
+		pulumi.DependsOn([]pulumi.Resource{cleanup}),
 		pulumi.Timeouts(&pulumi.CustomTimeouts{Create: "10m"}),
 	)
 	if err != nil {
@@ -70,38 +92,34 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 		"wasm-chain-restart",
 		&remote.CommandArgs{
 			Connection: conn,
-			Create: pulumi.Sprintf(`
-						    set -e
-							sudo systemctl restart wasmd.service`,
-			),
-		}, pulumi.DependsOn([]pulumi.Resource{reinitChain}),
+			Create:     serviceRestartScript("wasmd"),
+		},
+		pulumi.DependsOn([]pulumi.Resource{cleanup, reinitChain}),
 	)
 	if err != nil {
 		return err
 	}
 
-	// restart caddy
+	//restart caddy
 	restartCaddy, err := remote.NewCommand(
 		ctx,
-		"wasm-chain-restart",
+		"caddy-restart",
 		&remote.CommandArgs{
 			Connection: conn,
-			Create: pulumi.Sprintf(`
-						    set -e
-							sudo systemctl restart caddy.service`,
-			),
-		}, pulumi.DependsOn([]pulumi.Resource{reinitChain}),
+			Update:     serviceRestartScript("caddy"),
+		},
+		pulumi.DependsOn([]pulumi.Resource{cleanup, restartChain, reinitChain}),
 	)
 
-	// ".cw-relayer"
+	// ".cw-relayer
 	techName := "cw-relayer"
 	relayerSpec := unit.UnitSpec{
 		Name:              techName,
 		Description:       fmt.Sprintf("%s daemon", techName),
 		User:              "ubuntu",
-		BinaryInstallPath: fmt.Sprintf("%s/%s", localpath, network.LocalRelayerBinary),
+		BinaryInstallPath: relayerInstallPath,
 	}
-	relayerUnit := relayerSpec.ToUnit(fmt.Sprintf("%s/relayer-config.toml", relayerpath))
+	relayerUnit := relayerSpec.ToUnit(relayerConfigPath)
 
 	// set environment for relayer keyring pass
 	keyPass := conf.RequireSecret("keypass")
@@ -114,8 +132,8 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 		Connection: conn,
 		// TODO: don't assume /usr/local/ as the base path (brittle); will work for now since we control action file, may not work on a particular devs machine
 		LocalPath:  pulumi.Sprintf("%s/%s", localpath, network.LocalRelayerBinary),
-		RemotePath: pulumi.Sprintf("%s/%s", relayerpath, network.LocalRelayerBinary),
-	}, pulumi.DependsOn([]pulumi.Resource{restartChain, instance}))
+		RemotePath: pulumi.String(relayerInstallPath),
+	}, pulumi.DependsOn([]pulumi.Resource{restartCaddy, restartChain}), pulumi.Timeouts(&pulumi.CustomTimeouts{Create: "20m"}))
 	if err != nil {
 		return err
 	}
@@ -124,26 +142,22 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 		Connection: conn,
 		// TODO: don't assume /usr/local/ as the base path (brittle); will work for now since we control action file, may not work on a particular devs machine
 		LocalPath:  pulumi.Sprintf("%s/%s", localpath, network.LocalContractTar),
-		RemotePath: pulumi.Sprintf("%s/%s", relayerpath, network.LocalContractTar),
-	}, pulumi.DependsOn([]pulumi.Resource{uploadCwRelayerBinary, instance}))
+		RemotePath: contractPath,
+	}, pulumi.DependsOn([]pulumi.Resource{restartChain, restartCaddy, uploadCwRelayerBinary}), pulumi.Timeouts(&pulumi.CustomTimeouts{Create: "20m"}))
 	if err != nil {
 		return err
 	}
 
-	// /home/ubuntu/tarfile
-	unzipContracts, err := remote.NewCommand(
+	// prep contracts and keyring
+	prepScript := pulumi.String(prepArtifactAndKeyring())
+	prep, err := remote.NewCommand(
 		ctx,
-		relayerUnit.Name+"-"+"contract-unzip",
+		relayerUnit.Name+"-"+"prep-contracts-keyring",
 		&remote.CommandArgs{
 			Connection: conn,
-			Create: pulumi.Sprintf(`
-						    set -e
-							tar -zxvf /home/ubuntu/%s /home/ubuntu/
-							cp /home/ubuntu/std_reference.wasm /home/ubuntu/
-							rm -r /home/ubuntu/%s
-							rm -r /home/ubuntu/cosmwasm
-						`, network.LocalContractTar, network.LocalContractTar),
-		}, pulumi.DependsOn([]pulumi.Resource{uploadContract}),
+			Create:     prepScript,
+		},
+		pulumi.DependsOn([]pulumi.Resource{uploadContract, restartChain}),
 	)
 	if err != nil {
 		return err
@@ -158,23 +172,7 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 			Connection: conn,
 			Create:     storeContractScript,
 		},
-		pulumi.DependsOn([]pulumi.Resource{unzipContracts, restartChain}),
-	)
-	if err != nil {
-		return err
-	}
-
-	installCwRelayerBinary, err := remote.NewCommand(
-		ctx,
-		relayerUnit.Name+"-"+"binary-install",
-		&remote.CommandArgs{
-			Connection: conn,
-			Create: pulumi.Sprintf(`
-						    set -e
-							sudo cp /home/ubuntu/%s /usr/local/bin/
-							sudo chmod a+x /usr/local/bin/%s
-						`, network.LocalRelayerBinary, network.LocalRelayerBinary),
-		}, pulumi.DependsOn([]pulumi.Resource{storeAndInitContract, uploadCwRelayerBinary}),
+		pulumi.DependsOn([]pulumi.Resource{uploadContract, prep, restartChain}),
 	)
 	if err != nil {
 		return err
@@ -185,7 +183,7 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 		ContractAddress: network.ContractAddress,
 	}
 	configBody := relayerConfig.GenRelayerConfig()
-	configPath := pulumi.Sprintf("%/relayer-config.toml", relayerpath)
+	configPath := pulumi.String(relayerConfigPath)
 	configInit, err := resources.NewStringToRemoteFileCommand(ctx, relayerUnit.Name+"-"+"relayer-config", resources.StringToRemoteFileCommandArgs{
 		Connection:      conn,
 		Body:            configBody,
@@ -197,15 +195,15 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 		FolderUser:      relayerUnit.User,
 		FolderGroup:     relayerUnit.User,
 		Triggers:        pulumi.Array{configPath, configBody},
-	}, pulumi.DependsOn([]pulumi.Resource{instance, installCwRelayerBinary}))
+	}, pulumi.DependsOn([]pulumi.Resource{uploadCwRelayerBinary, prep, storeAndInitContract}))
 	if err != nil {
 		return err
 	}
 
 	// start relayer daemon, can also be removed as it already exists
 	unitBody := relayerUnit.GenSystemdUnit()
-	unitPath := pulumi.String(path.Join("/etc/systemd/system", relayerUnit.Name+".service"))
-	relayerInstall, err := resources.NewStringToRemoteFileCommand(ctx, relayerUnit.Name+"-"+"systemd-unit", resources.StringToRemoteFileCommandArgs{
+	unitPath := pulumi.Sprintf("/etc/systemd/system/%s.service", relayerUnit.Name)
+	_, err = resources.NewStringToRemoteFileCommand(ctx, relayerUnit.Name+"-"+"systemd-unit", resources.StringToRemoteFileCommandArgs{
 		Connection:      conn,
 		Body:            unitBody,
 		DestinationPath: unitPath,
@@ -215,33 +213,16 @@ func (network Network) Provision(ctx *pulumi.Context, secrets []NodeSecretConfig
 		FolderMode:      folderMode,
 		FolderUser:      relayerUnit.User,
 		FolderGroup:     relayerUnit.User,
-		RunAfter:        pulumi.Sprintf("sudo systemctl daemon-reload && sudo systemctl enable %s", relayerUnit.Name),
+		RunAfter:        serviceRestartScript(relayerUnit.Name),
 		Triggers:        pulumi.Array{unitPath, unitBody},
-	}, pulumi.DependsOn([]pulumi.Resource{instance, configInit}))
-	if err != nil {
-		return err
-	}
-
-	rebootDeps := []pulumi.Resource{
-		installCwRelayerBinary,
-		configInit,
-		relayerInstall,
-		restartCaddy,
-	}
-
-	_, err = remote.NewCommand(
-		ctx,
-		relayerUnit.Name+"-"+"relayer-reboot",
-		&remote.CommandArgs{
-			Connection: conn,
-			Update:     pulumi.String("echo updates disabled..."),
-			Create:     pulumi.String("sleep 30 && sudo shutdown -r 1"),
-		},
-		pulumi.DependsOn(rebootDeps),
-	)
+	}, pulumi.DependsOn([]pulumi.Resource{configInit, storeAndInitContract}))
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func serviceRestartScript(service string) pulumi.StringOutput {
+	return pulumi.Sprintf(`sudo systemctl daemon-reload && sudo systemctl enable %s && sudo systemctl start %s`, service, service)
 }

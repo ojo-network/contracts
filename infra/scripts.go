@@ -1,5 +1,21 @@
 package main
 
+func cleanupServices() string {
+	return `
+#!/bin/bash -xeu
+sudo systemctl stop wasmd
+sudo systemctl disable wasmd
+
+sudo systemctl stop cw-relayer
+sudo systemctl disable cw-relayer
+if [ "$(ls /home/ubuntu)" ]; then
+	sudo rm -r /home/ubuntu/*
+else
+  echo "/home/ubuntu directory is already empty"
+fi
+`
+}
+
 func reInitChain() string {
 	return `
 #!/bin/bash -xeu
@@ -52,7 +68,7 @@ func deployContract() string {
 BINARY=wasmd
 CHAINID_1="wasm-test"
 CHAIN_DIR=/home/ubuntu/data
-CONTRACT_PATH=/home/ubuntu/std_reference.wasm
+CONTRACT_PATH=/home/ubuntu/artifacts/std_reference.wasm
 RPC="http://0.0.0.0:26657"
 
 NODE="--node $RPC"
@@ -84,5 +100,15 @@ sleep 5
 
 QUERY='{"get_ref": {"symbol": "stake"}}'
 $BINARY query wasm contract-state smart $CONTRACT "$QUERY" $NODE --output json
+`
+}
+
+func prepArtifactAndKeyring() string {
+	return `
+#!/bin/bash -xeu
+sudo chmod +x /home/ubuntu/cw-relayer
+tar -zxvf /home/ubuntu/cosmwasm-artifacts.tar.gz
+cp -r /home/ubuntu/data/wasm-test/keyring-test /home/ubuntu/
+sudo rm -r /home/ubuntu/cosmwasm-artifacts.tar.gz
 `
 }

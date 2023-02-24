@@ -13,6 +13,9 @@ inputs:
   PULUMI_PROJECT_DIR:
     description: location of pulumi project for automation
     required: true
+  GLIBC_VERSION:
+    description: glibc version compatible for infra
+    required: true
   PULUMI_STACK_NAME:
     description: name of pulumi stack optionally including organization prefix
     required: true
@@ -37,7 +40,7 @@ runs:
     - uses: dsaltares/fetch-gh-release-asset@master
       with:
         version: 'tags/${{ inputs.RELEASE_VERSION }}'
-        file: '${{ inputs.RELAYER_BINARY_NAME }}-${{ inputs.RELEASE_VERSION }}-linux-amd64'
+        file: '${{ inputs.RELAYER_BINARY_NAME }}-${{ inputs.RELEASE_VERSION }}-linux-amd64-glibc-${{ inputs.GLIBC_VERSION }}'
         target: '/usr/local/bin/${{ inputs.RELAYER_BINARY_NAME }}-${{ inputs.RELEASE_VERSION }}'
         token: ${{ inputs.GITHUB_TOKEN }}
 
@@ -88,6 +91,7 @@ runs:
       shell: bash
       working-directory: infra/pulumi/testnet
       run: |
-        pulumi up --yes --skip-preview --color never --exec-kind auto.local --stack ojo-network/devnet --non-interactive
+        pulumi destroy --yes --skip-preview --color never --exec-kind auto.local --stack contracts-wasmtest --non-interactive
+        pulumi up --yes --skip-preview --color never --exec-kind auto.local --stack contracts-wasmtest --non-interactive
       env:
         PULUMI_ACCESS_TOKEN: ${{ inputs.PULUMI_ACCESS_TOKEN }}
