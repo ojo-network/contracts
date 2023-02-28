@@ -68,7 +68,7 @@ func deployContract() string {
 BINARY=wasmd
 CHAINID_1="wasm-test"
 CHAIN_DIR=/home/ubuntu/data
-CONTRACT_PATH=/home/ubuntu/artifacts/std_reference.wasm
+CONTRACT_PATH=/home/ubuntu/cosmwasm/artifacts/std_reference.wasm
 RPC="http://0.0.0.0:26657"
 
 NODE="--node $RPC"
