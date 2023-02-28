@@ -91,7 +91,7 @@ runs:
       shell: bash
       working-directory: infra/
       run: |
-        pulumi destroy --yes --skip-preview --color never --exec-kind auto.local --stack wasmtest --non-interactive
-        pulumi up --yes --skip-preview --color never --exec-kind auto.local --stack wasmtest --non-interactive
+        pulumi destroy --yes --skip-preview --color never --exec-kind auto.local --stack ${{ inputs.PULUMI_STACK_NAME }} --non-interactive
+        pulumi up --yes --skip-preview --color never --exec-kind auto.local --stack ${{ inputs.PULUMI_STACK_NAME }} --non-interactive
       env:
         PULUMI_ACCESS_TOKEN: ${{ inputs.PULUMI_ACCESS_TOKEN }}
