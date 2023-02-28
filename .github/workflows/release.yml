@@ -113,7 +113,6 @@ jobs:
           fetch-depth: 0
 
       - name: Check GLIBC version
-        if: startsWith(matrix.os, 'ubuntu-')
         run: |
           echo "GLIBC_VERSION=$(ldd --version | grep ldd | awk '{print $NF}')" >> $GITHUB_ENV
 
