@@ -56,7 +56,7 @@ runs:
       working-directory: /usr/local/bin
       run: |
         set -xeu
-        relayer_binary_name=${{ inputs.RELAYER_BINARY_NAME }}-${{ inputs.RELAYER_BINARY_VERSION }}
+        relayer_binary_name=${{ inputs.RELAYER_BINARY_NAME }}-${{ inputs.RELEASE_VERSION }}
         sudo chmod a+x ${relayer_binary_name}
         sudo apt install -y wamerican-large
     - name: Setup Private SSH Key for Umee-Infra libs
