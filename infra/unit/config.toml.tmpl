@@ -1,0 +1,28 @@
+contract_address = "{{.ContractAddress}}"
+query_rpc = "api.devnet-n0.ojo-devnet.node.ojo.network:9090"
+event_rpc = "https://rpc.devnet-n0.ojo-devnet.node.ojo.network:443"
+event_type = "ojo.oracle.v1.EventSetFxRate"
+event_timeout = "1000ms"
+gas_adjustment = 1.5
+timeout_height = 10
+gas_prices = "0.2stake"
+median_duration = 1
+resolve_duration = "1000ms"
+missed_threshold = 2
+median_request_id = 1
+request_id = 1
+
+### account & chain-id for the wasmd relayer account
+[account]
+address = "{{.UserAddress}}"
+chain_id = "wasm-test"
+acc_prefix = "wasm"
+
+[keyring]
+backend = "test"
+dir = "/home/ubuntu/"
+
+### rpc endpoint for the wasm Chain
+[rpc]
+rpc_timeout = "1000ms"
+tmrpc_endpoint = "http://localhost:26657"

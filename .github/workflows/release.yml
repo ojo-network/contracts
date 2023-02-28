@@ -1,0 +1,131 @@
+name: Release cw-relayer and contracts
+
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - "v[0-9]+\\.[0-9]+\\.[0-9]+" # Official release version tags e.g. v2.0.5
+      - "v[0-9]+\\.[0-9]+\\.[0-9]+-rc[0-9]+" # Release candidate tags e.g. v1.0.3-rc4
+      - "v[0-9]+\\.[0-9]+\\.[0-9]+-alpha[0-9]+" # Alpha release testing tags e.g. v0.0.3-alpha1
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install latest stable
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+
+      - name: Set env
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/tags/*}" >> $GITHUB_ENV
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Generate Cargo.lock
+        run: |
+          cargo fetch --verbose --manifest-path ./cosmwasm/Cargo.toml
+      - name: Build/Release Artifacts
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          docker run --rm -v "$(pwd)/cosmwasm":/code \
+          --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
+          --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+          cosmwasm/workspace-optimizer:0.12.7
+          tar -zcvf cosmwasm-artifacts-${{ env.RELEASE_VERSION }}.tar.gz cosmwasm/artifacts
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            cosmwasm-artifacts-${{ env.RELEASE_VERSION }}.tar.gz
+
+  goreleaser:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-20.04]
+    runs-on: ${{matrix.os}}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+          cache: true
+          cache-dependency-path: cw-relayer/go.sum
+
+      - name: Set env
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/tags/*}" >> $GITHUB_ENV
+
+      - name: Check GLIBC version
+        if: startsWith(matrix.os, 'ubuntu-')
+        run: |
+          echo "GLIBC_VERSION=$(ldd --version | grep ldd | awk '{print $NF}')" >> $GITHUB_ENV
+
+      # Ref: https://goreleaser.com/limitations/semver
+      - name: Tag without prefix locally to avoid error in goreleaser
+        run: |-
+          git tag -d ${{ env.RELEASE_VERSION }} || echo "No such a tag exists before"
+          git tag ${{ env.RELEASE_VERSION }} HEAD
+
+      - name: Build
+        uses: goreleaser/goreleaser-action@v4
+        if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'Enable:ReleaseBuild')
+        with:
+          version: latest
+          args: build --rm-dist --skip-validate # skip validate skips initial sanity checks in order to be able to fully run
+        env:
+          GORELEASER_CURRENT_TAG: ${{ env.RELEASE_VERSION }}
+          GLIBC_VERSION: ${{ env.GLIBC_VERSION }}
+
+      - name: release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: goreleaser/goreleaser-action@v4
+        with:
+          # Note, we have to pin to v0.179.0 due to newer releases enforcing
+          # correct semantic versioning even when '--skip-validate' is provided.
+          #
+          # Ref: https://github.com/goreleaser/goreleaser/pull/2503
+          version: v0.179.0
+          args: release --rm-dist --skip-validate
+          workdir: cw-relayer
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_CURRENT_TAG: ${{ env.RELEASE_VERSION }}
+          GLIBC_VERSION: ${{ env.GLIBC_VERSION }}
+
+  update-infra:
+    needs: [contract, goreleaser]
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Set env
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/tags/*}" >> $GITHUB_ENV
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Check GLIBC version
+        run: |
+          echo "GLIBC_VERSION=$(ldd --version | grep ldd | awk '{print $NF}')" >> $GITHUB_ENV
+
+      - name: testnet
+        uses: ./.github/relayer-testnet
+        with:
+          RELAYER_BINARY_NAME: cw-relayer
+          GLIBC_VERSION: ${{ env.GLIBC_VERSION }}
+          RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
+          PULUMI_PROJECT_DIR: infra/
+          PULUMI_STACK_NAME: wasmtest
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UMEE_INFRA_SSH_KEY: ${{ secrets.UMEE_INFRA_SSH_KEY }}
+          GCP_WORKLOAD_IDENTITY_PROVIDER: projects/451365972553/locations/global/workloadIdentityPools/ojo-pool/providers/ojo-gh-provider
+          GCP_SERVICE_ACCOUNT: 'ojo-gh-actions-service@ojo-network.iam.gserviceaccount.com'
