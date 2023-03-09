@@ -30,7 +30,7 @@ library = []
 [dependencies]
 cw2 = "1.0.1"
 cw-controllers = "1.0.1"
-cosmwasm-std = "1.2.1"
+cosmwasm-std = "1.2.2"
 cw-storage-plus = "1.0.1"
 serde_json = "1.0.93"
 cosmwasm-schema = "1.2.1"
