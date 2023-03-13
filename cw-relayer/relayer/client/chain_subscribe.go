@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -18,7 +17,7 @@ const (
 )
 
 type EventSubscribe struct {
-	Logger zerolog.Logger
+	logger zerolog.Logger
 	Tick   chan struct{}
 }
 
@@ -54,7 +53,7 @@ func NewBlockHeightSubscription(
 	}
 
 	newEvent := &EventSubscribe{
-		Logger: logger.With().Str("relayer_client", eventType).Logger(),
+		logger: logger.With().Str("relayer_client", eventType).Logger(),
 	}
 
 	go newEvent.subscribe(ctx, rpcClient, queryType, tickEventType, newSubscription)
@@ -77,15 +76,18 @@ func (event *EventSubscribe) subscribe(
 		case <-ctx.Done():
 			err := eventsClient.Unsubscribe(ctx, queryType, queryEventNewBlockHeader.String())
 			if err != nil {
-				event.Logger.Err(err)
+				event.logger.Err(err).Msg("unsubscribing error")
 			}
-			event.Logger.Info().Msg("closing the event subscription")
+			
+			event.logger.Info().Msg("closing the event subscription")
+			close(event.Tick)
+
 			return
 
 		case resultEvent := <-newBlockHeader:
 			data, ok := resultEvent.Data.(tmtypes.EventDataNewBlockHeader)
 			if !ok {
-				event.Logger.Err(errors.New("no new block"))
+				event.logger.Error().Msg("no new block header")
 				continue
 			}
 
@@ -100,6 +102,7 @@ func (event *EventSubscribe) subscribe(
 				}
 
 				if tick {
+					event.logger.Info().Msg("price update event")
 					event.Tick <- struct{}{}
 				}
 			}

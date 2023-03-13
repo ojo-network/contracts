@@ -33,17 +33,18 @@ type Relayer struct {
 	contractAddress string
 	requestID       uint64
 	medianRequestID uint64
-	timeoutHeight   int64
 
 	exchangeRates        types.DecCoins
 	historicalMedians    types.DecCoins
 	historicalDeviations types.DecCoins
-	medianDuration       int64
 	resolveDuration      time.Duration
+	queryTimeout         time.Duration
 
 	// if missedCounter >= missedThreshold, force relay prices (bypasses timing restrictions)
 	missedCounter   int64
 	missedThreshold int64
+	timeoutHeight   int64
+	medianDuration  int64
 
 	event chan struct{}
 }
@@ -59,6 +60,7 @@ func New(
 	event chan struct{},
 	medianDuration int64,
 	resolveDuration time.Duration,
+	queryTimeout time.Duration,
 	requestID uint64,
 	medianRequestID uint64,
 ) *Relayer {
@@ -69,6 +71,7 @@ func New(
 		contractAddress: contractAddress,
 		missedThreshold: missedThreshold,
 		timeoutHeight:   timeoutHeight,
+		queryTimeout:    queryTimeout,
 		medianDuration:  medianDuration,
 		resolveDuration: resolveDuration,
 		requestID:       requestID,
@@ -85,7 +88,7 @@ func (r *Relayer) Start(ctx context.Context) error {
 			r.closer.Close()
 
 		case <-r.event:
-			r.logger.Debug().Msg("starting relayer")
+			r.logger.Debug().Msg("relayer tick")
 			startTime := time.Now()
 			if err := r.tick(ctx); err != nil {
 				telemetry.IncrCounter(1, "failure", "tick")
@@ -119,7 +122,7 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 
 	queryClient := oracletypes.NewQueryClient(grpcConn)
 
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, r.queryTimeout)
 	defer cancel()
 
 	queryResponse, err := queryClient.ExchangeRates(ctx, &oracletypes.QueryExchangeRates{})
@@ -145,7 +148,7 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 	r.historicalDeviations = deviationsQueryResponse.MedianDeviations
 
 	if postMedian {
-		ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, r.queryTimeout)
 		defer cancel()
 
 		medianQueryResponse, err := queryClient.Medians(ctx, &oracletypes.QueryMedians{})

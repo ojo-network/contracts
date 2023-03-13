@@ -107,6 +107,11 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to parse Event timeout: %w", err)
 	}
 
+	queryTimeout, err := time.ParseDuration(cfg.QueryTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to parse Query timeout: %w", err)
+	}
+
 	resolveDuration, err := time.ParseDuration(cfg.ResolveDuration)
 	if err != nil {
 		return fmt.Errorf("failed to parse Resolve Duration: %w", err)
@@ -143,7 +148,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	newRelayer := relayer.New(logger, client, cfg.ContractAddress, cfg.TimeoutHeight, cfg.MissedThreshold, cfg.QueryRPC, blockEvent.Tick, cfg.MedianDuration, resolveDuration, cfg.RequestID, cfg.MedianRequestID)
+	newRelayer := relayer.New(logger, client, cfg.ContractAddress, cfg.TimeoutHeight, cfg.MissedThreshold, cfg.QueryRPC, blockEvent.Tick, cfg.MedianDuration, resolveDuration, queryTimeout, cfg.RequestID, cfg.MedianRequestID)
 	g.Go(func() error {
 		// start the process that queries the prices on Ojo & submits them on Wasmd
 		return startPriceRelayer(ctx, logger, newRelayer)

@@ -13,7 +13,7 @@ const (
 	defaultProviderTimeout = 100 * time.Millisecond
 	defaultQueryRPC        = "0.0.0.0:9091"
 	defaultTimeoutHeight   = 5
-	defaultEventTimeout    = 1 * time.Minute
+	defaultTimeout         = 1 * time.Minute
 	defaultResolveDuration = 2 * time.Second
 	defaultTickEventType   = "ojo.oracle.v1.EventSetFxRate"
 )
@@ -36,6 +36,7 @@ type (
 		ContractAddress string `mapstructure:"contract_address"`
 		TimeoutHeight   int64  `mapsturture:"timeout_height"`
 		EventTimeout    string `mapstrucutre:"event_timeout"`
+		QueryTimeout    string `mapstrucutre:"query_timeout"`
 
 		MedianRequestID uint64 `mapstructure:"median_request_id"`
 		RequestID       uint64 `mapstructure:"request_id"`
@@ -117,7 +118,11 @@ func ParseConfig(configPath string) (Config, error) {
 	}
 
 	if len(cfg.EventTimeout) == 0 {
-		cfg.EventTimeout = defaultEventTimeout.String()
+		cfg.EventTimeout = defaultTimeout.String()
+	}
+
+	if len(cfg.QueryTimeout) == 0 {
+		cfg.QueryTimeout = defaultTimeout.String()
 	}
 
 	if len(cfg.ResolveDuration) == 0 {
