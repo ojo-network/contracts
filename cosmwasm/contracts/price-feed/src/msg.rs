@@ -39,9 +39,9 @@ pub enum ExecuteMsg {
         // BTC = 19,343.34, ETH = 1,348.57
         // symbol_rates ≡ <("BTC", 19343340000000), ("ETH", 1348570000000)>
         symbol_rates: Vec<(String, Uint64)>,
-        // Resolve time of request on BandChain in Unix timestamp
+        // Resolve time of request on Ojo in Unix timestamp
         resolve_time: Uint64,
-        // Request ID of the results on BandChain
+        // Request ID of the results on Ojo
         request_id: Uint64,
     },
     // Relays a vector of symbols and their corresponding rates
@@ -52,16 +52,16 @@ pub enum ExecuteMsg {
         // BTC = 19,343.34, ETH = 1,348.57
         // symbol_rates ≡ <("BTC", 19343340000000), ("ETH", 1348570000000)>
         symbol_rates: Vec<(String, Vec<Uint64>)>,
-        // Resolve time of request on BandChain in Unix timestamp
+        // Resolve time of request on Ojo in Unix timestamp
         resolve_time: Uint64,
-        // Request ID of the results on BandChain
+        // Request ID of the results on Ojo
         request_id: Uint64,
     },
     // Relays a vector of symbols and their corresponding rates
     RelayHistoricalDeviation {
         symbol_rates: Vec<(String, Uint64)>,
         resolve_time: Uint64,
-        // Request ID of the results on BandChain
+        // Request ID of the results on Ojo
         request_id: Uint64,
     },
     // Same as Relay but without the resolve_time guard
@@ -80,7 +80,7 @@ pub enum ExecuteMsg {
     ForceRelayHistoricalDeviation {
         symbol_rates: Vec<(String, Uint64)>,
         resolve_time: Uint64,
-        // Request ID of the results on BandChain
+        // Request ID of the results on Ojo
         request_id: Uint64,
     },
 }
@@ -118,7 +118,7 @@ pub enum QueryMsg {
     // Returns the ReferenceDatas of the given asset pairings
     GetReferenceDataBulk {
         // Vector of Symbol pair to query
-        // e.g. <BTC/USD ETH/USD, BAND/BTC> ≡ <("BTC", "USD"), ("ETH", "USD"), ("BAND", "BTC")>
+        // e.g. <BTC/USD ETH/USD, OJO/BTC> ≡ <("BTC", "USD"), ("ETH", "USD"), ("OJO", "BTC")>
         symbol_pairs: Vec<(String, String)>,
     },
     #[returns(RefMedianData)]

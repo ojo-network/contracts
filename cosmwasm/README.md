@@ -31,8 +31,8 @@ repo root: `/scripts/build_schemas.sh` or run `cargo schema` in the smart contra
 
 ## Usage
 
-To query the prices from Band Protocol's StdReference contracts, the contract looking to use the price values should
-query Band Protocol's `std_reference` contract.
+To query the prices from Ojo Network, the contract looking to use the price values should
+query Ojo Network's `std_reference` contract.
 
 ### QueryMsg
 
@@ -48,16 +48,16 @@ pub enum QueryMsg {
     },
     GetReferenceDataBulk {
         // Vector of Symbol pair to query
-        // e.g. <BTC/USD ETH/USD, BAND/BTC> ≡ <("BTC", "USD"), ("ETH", "USD"), ("BAND", "BTC")>
+        // e.g. <BTC/USD ETH/USD, OJO/BTC> ≡ <("BTC", "USD"), ("ETH", "USD"), ("OJO", "BTC")>
         symbol_pairs: Vec<(String, String)>,
     },
-    
+
     // Returns the RefMedianData of a given symbol
     GetMedianRef {
       // Symbol to query
       symbol: String,
     },
-    
+
     // Returns the RefMedianData of the given symbols
     GetMedianRefDataBulk {
       // Vector of Symbols to query
@@ -69,7 +69,7 @@ pub enum QueryMsg {
       // Symbol to query
       symbol: String,
     },
-  
+
     // Returns the deviation RefData of the given symbols
     GetDeviationRefBulk {
       // Vector of Symbols to query
@@ -205,4 +205,3 @@ pub struct RefData {
 ### Median status
 Median status tells us when posting medians to contract is allowed, would error otherwise, if median status is set as false
 then queries would also fail with err "MEDIAN DISABLED"
-
