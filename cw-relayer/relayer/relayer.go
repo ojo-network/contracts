@@ -11,6 +11,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/types"
 	oracletypes "github.com/ojo-network/ojo/x/oracle/types"
 	"github.com/rs/zerolog"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -29,7 +30,7 @@ type Relayer struct {
 	closer *sync.Closer
 
 	relayerClient   client.RelayerClient
-	queryRPC        string
+	queryRPCS       []string
 	contractAddress string
 	requestID       uint64
 	medianRequestID uint64
@@ -56,7 +57,7 @@ func New(
 	contractAddress string,
 	timeoutHeight int64,
 	missedThreshold int64,
-	queryRPC string,
+	queryRPCS []string,
 	event chan struct{},
 	medianDuration int64,
 	resolveDuration time.Duration,
@@ -65,7 +66,7 @@ func New(
 	medianRequestID uint64,
 ) *Relayer {
 	return &Relayer{
-		queryRPC:        queryRPC,
+		queryRPCS:       queryRPCS,
 		logger:          logger.With().Str("module", "relayer").Logger(),
 		relayerClient:   oc,
 		contractAddress: contractAddress,
@@ -108,12 +109,17 @@ func (r *Relayer) Stop() {
 }
 
 func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
-	grpcConn, err := grpc.Dial(
-		r.queryRPC,
+	g, ctx := errgroup.WithContext(ctx)
+	grpcConn := &grpc.ClientConn{}
+	var err error
+	grpcConn, err = grpc.Dial(
+		r.queryRPCS[0],
 		// the Cosmos SDK doesn't support any transport security mechanism
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(dialerFunc),
 	)
+
+	// err if no rpc has successfully connected
 	if err != nil {
 		return err
 	}
@@ -125,45 +131,51 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 	ctx, cancel := context.WithTimeout(ctx, r.queryTimeout)
 	defer cancel()
 
-	queryResponse, err := queryClient.ExchangeRates(ctx, &oracletypes.QueryExchangeRates{})
-	if err != nil {
-		return err
-	}
-
-	if queryResponse.ExchangeRates.Empty() {
-		return fmt.Errorf("exchange rates empty")
-	}
-
-	r.exchangeRates = queryResponse.ExchangeRates
-
-	deviationsQueryResponse, err := queryClient.MedianDeviations(ctx, &oracletypes.QueryMedianDeviations{})
-	if err != nil {
-		return err
-	}
-
-	if deviationsQueryResponse.MedianDeviations.Empty() {
-		return fmt.Errorf("median deviations empty")
-	}
-
-	r.historicalDeviations = deviationsQueryResponse.MedianDeviations
-
-	if postMedian {
-		ctx, cancel := context.WithTimeout(ctx, r.queryTimeout)
-		defer cancel()
-
-		medianQueryResponse, err := queryClient.Medians(ctx, &oracletypes.QueryMedians{})
+	g.Go(func() error {
+		queryResponse, err := queryClient.ExchangeRates(ctx, &oracletypes.QueryExchangeRates{})
 		if err != nil {
 			return err
 		}
 
-		if medianQueryResponse.Medians.Empty() {
-			return fmt.Errorf("median rates empty")
+		if queryResponse.ExchangeRates.Empty() {
+			return fmt.Errorf("exchange rates empty")
 		}
 
-		r.historicalMedians = medianQueryResponse.Medians
+		r.exchangeRates = queryResponse.ExchangeRates
+		return nil
+	})
+
+	g.Go(func() error {
+		deviationsQueryResponse, err := queryClient.MedianDeviations(ctx, &oracletypes.QueryMedianDeviations{})
+		if err != nil {
+			return err
+		}
+
+		if deviationsQueryResponse.MedianDeviations.Empty() {
+			return fmt.Errorf("median deviations empty")
+		}
+
+		r.historicalDeviations = deviationsQueryResponse.MedianDeviations
+		return nil
+	})
+
+	if postMedian {
+		g.Go(func() error {
+			medianQueryResponse, err := queryClient.Medians(ctx, &oracletypes.QueryMedians{})
+			if err != nil {
+				return err
+			}
+
+			if medianQueryResponse.Medians.Empty() {
+				return fmt.Errorf("median rates empty")
+			}
+
+			r.historicalMedians = medianQueryResponse.Medians
+			return nil
+		})
 	}
 
-	return nil
+	return g.Wait()
 }
 
 // tick queries price from ojo and broadcasts wasm tx with prices to the wasm contract periodically.

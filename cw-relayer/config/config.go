@@ -50,9 +50,9 @@ type (
 		GasPrices     string  `mapstructure:"gas_prices" validate:"required"`
 
 		// query rpc for ojo node
-		QueryRPC      string `mapstructure:"query_rpc"`
-		EventRPC      string `mapstructure:"event_rpc"`
-		TickEventType string `mapstructure:"event_type"`
+		QueryRPCS     []string `mapstructure:"query_rpcs"`
+		EventRPC      string   `mapstructure:"event_rpc"`
+		TickEventType string   `mapstructure:"event_type"`
 	}
 
 	// Account defines account related configuration that is related to the Client
@@ -105,8 +105,8 @@ func ParseConfig(configPath string) (Config, error) {
 		cfg.ProviderTimeout = defaultProviderTimeout.String()
 	}
 
-	if len(cfg.QueryRPC) == 0 {
-		cfg.QueryRPC = defaultQueryRPC
+	if len(cfg.QueryRPCS) == 0 {
+		cfg.QueryRPCS = []string{defaultQueryRPC}
 	}
 
 	if len(cfg.ContractAddress) == 0 {
