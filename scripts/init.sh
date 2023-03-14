@@ -27,6 +27,7 @@ $BINARY init test --home $CHAIN_DIR/$CHAINID_1 --chain-id=$CHAINID_1
 echo "Adding genesis accounts..."
 echo $VAL_MNEMONIC_1 | $BINARY keys add val1 --home $CHAIN_DIR/$CHAINID_1 --recover --keyring-backend=test
 echo $DEMO_MNEMONIC_1 | $BINARY keys add demowallet1 --home $CHAIN_DIR/$CHAINID_1 --recover --keyring-backend=test
+echo $DEMO_MNEMONIC_1 | $BINARY keys add demowallet1 --home ./cw-relayer --recover --keyring-backend=test
 echo $RELAY_MNEMONIC_1 | $BINARY keys add rly1 --home $CHAIN_DIR/$CHAINID_1 --recover --keyring-backend=test
 
 $BINARY add-genesis-account $($BINARY --home $CHAIN_DIR/$CHAINID_1 keys show val1 --keyring-backend test -a) 100000000000000000000000000stake --home $CHAIN_DIR/$CHAINID_1

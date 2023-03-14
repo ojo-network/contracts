@@ -53,7 +53,7 @@ func NewBlockHeightSubscription(
 	}
 
 	newEvent := &EventSubscribe{
-		logger: logger.With().Str("relayer_client", eventType).Logger(),
+		logger: logger.With().Str("chain_event_client", eventType).Logger(),
 	}
 
 	go newEvent.subscribe(ctx, rpcClient, queryType, tickEventType, newSubscription)
@@ -78,7 +78,7 @@ func (event *EventSubscribe) subscribe(
 			if err != nil {
 				event.logger.Err(err).Msg("unsubscribing error")
 			}
-			
+
 			event.logger.Info().Msg("closing the event subscription")
 			close(event.Tick)
 
