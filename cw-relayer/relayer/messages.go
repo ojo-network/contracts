@@ -1,5 +1,11 @@
 package relayer
 
+import (
+	"encoding/json"
+
+	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
+)
+
 type MsgType int
 
 const (
@@ -42,4 +48,40 @@ type (
 		ResolveTime int64            `json:"resolve_time,string"`
 		RequestID   uint64           `json:"request_id,string"`
 	}
+
+	// for restart queries
+	rateMsg struct {
+		Ref symbol `json:"get_ref"`
+	}
+
+	medianRateMsg struct {
+		Ref symbol `json:"get_median_ref"`
+	}
+
+	symbol struct {
+		Symbol string `json:"symbol"`
+	}
 )
+
+func restartQuery(contractAddress, Denom string) []wasmtypes.QuerySmartContractStateRequest {
+	data, err := json.Marshal(rateMsg{Ref: symbol{Symbol: Denom}})
+	if err != nil {
+		panic(err)
+	}
+
+	medianData, err := json.Marshal(medianRateMsg{Ref: symbol{Denom}})
+	if err != nil {
+		panic(err)
+	}
+
+	return []wasmtypes.QuerySmartContractStateRequest{
+		{
+			Address:   contractAddress,
+			QueryData: data,
+		},
+		{
+			Address:   contractAddress,
+			QueryData: medianData,
+		},
+	}
+}

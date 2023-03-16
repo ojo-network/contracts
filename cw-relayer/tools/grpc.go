@@ -1,4 +1,4 @@
-package relayer
+package tools
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func dialerFunc(ctx context.Context, addr string) (net.Conn, error) {
+func DialerFunc(ctx context.Context, addr string) (net.Conn, error) {
 	return Connect(addr)
 }
 

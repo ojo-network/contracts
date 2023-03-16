@@ -28,9 +28,10 @@ var (
 type (
 	// Config defines all necessary cw-relayer configuration parameters.
 	Config struct {
-		Account Account `mapstructure:"account" validate:"required,gt=0,dive,required"`
-		Keyring Keyring `mapstructure:"keyring" validate:"required,gt=0,dive,required"`
-		RPC     RPC     `mapstructure:"rpc" validate:"required,gt=0,dive,required"`
+		Account Account       `mapstructure:"account" validate:"required,gt=0,dive,required"`
+		Keyring Keyring       `mapstructure:"keyring" validate:"required,gt=0,dive,required"`
+		RPC     RPC           `mapstructure:"rpc" validate:"required,gt=0,dive,required"`
+		Restart RestartConfig `mapstructure:"restart" validate:"required"`
 
 		ProviderTimeout string `mapstructure:"provider_timeout"`
 		ContractAddress string `mapstructure:"contract_address"`
@@ -69,10 +70,16 @@ type (
 		Dir     string `mapstructure:"dir" validate:"required"`
 	}
 
+	RestartConfig struct {
+		AutoID bool   `mapstructure:"auto_id"`
+		Denom  string `mapstrcture:"denom"`
+	}
+
 	// RPC defines RPC configuration of both the wasmd chain and Tendermint nodes.
 	RPC struct {
 		TMRPCEndpoint string `mapstructure:"tmrpc_endpoint" validate:"required"`
 		RPCTimeout    string `mapstructure:"rpc_timeout" validate:"required"`
+		QueryEndpoint string `mapstructure:"query_endpoint" validate:"required"`
 	}
 )
 

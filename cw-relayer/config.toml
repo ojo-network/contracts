@@ -35,4 +35,5 @@ dir = "./"
 ### rpc endpoint for the wasm Chain
 [rpc]
 rpc_timeout = "2000ms"
+query_endpoint = "localhost:1317"
 tmrpc_endpoint = "http://localhost:26657"

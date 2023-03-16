@@ -27,7 +27,7 @@ func NewBlockHeightSubscription(
 	timeout time.Duration,
 	tickEventType string,
 	logger zerolog.Logger,
-) (*EventSubscribe, error) {
+) (chan struct{}, error) {
 	httpClient, err := tmjsonclient.DefaultHTTPClient(rpcAddress)
 	if err != nil {
 		return nil, err
@@ -59,7 +59,7 @@ func NewBlockHeightSubscription(
 	go newEvent.subscribe(ctx, rpcClient, queryType, tickEventType, newSubscription)
 	newEvent.Tick = make(chan struct{})
 
-	return newEvent, nil
+	return newEvent.Tick, nil
 }
 
 // subscribe listens to new blocks being made

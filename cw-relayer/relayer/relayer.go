@@ -17,6 +17,7 @@ import (
 
 	"github.com/ojo-network/cw-relayer/pkg/sync"
 	"github.com/ojo-network/cw-relayer/relayer/client"
+	"github.com/ojo-network/cw-relayer/tools"
 )
 
 var (
@@ -47,7 +48,13 @@ type Relayer struct {
 	timeoutHeight   int64
 	medianDuration  int64
 
-	event chan struct{}
+	event  chan struct{}
+	config AutoRestartConfig
+}
+
+type AutoRestartConfig struct {
+	AutoRestart bool
+	Denom       string
 }
 
 // New returns an instance of the relayer.
@@ -64,6 +71,7 @@ func New(
 	queryTimeout time.Duration,
 	requestID uint64,
 	medianRequestID uint64,
+	config AutoRestartConfig,
 ) *Relayer {
 	return &Relayer{
 		queryRPCS:       queryRPCS,
@@ -79,10 +87,19 @@ func New(
 		medianRequestID: medianRequestID,
 		closer:          sync.NewCloser(),
 		event:           event,
+		config:          config,
 	}
 }
 
 func (r *Relayer) Start(ctx context.Context) error {
+	//config denom as the restart point
+	if r.config.AutoRestart {
+		err := r.restart(ctx)
+		if err != nil {
+			r.logger.Error().Err(err).Msg("error auto restarting relayer")
+		}
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -108,6 +125,22 @@ func (r *Relayer) Stop() {
 	<-r.closer.Done()
 }
 
+func (r *Relayer) restart(ctx context.Context) error {
+	queryMsg := restartQuery(r.contractAddress, r.config.Denom)
+	responses, err := r.relayerClient.BroadcastContractQuery(ctx, r.queryTimeout, queryMsg...)
+	if err != nil {
+		return err
+	} else {
+		for _, response := range responses {
+			if len(response.Data) != 0 {
+				fmt.Println(response.Data)
+			}
+		}
+	}
+
+	return nil
+}
+
 func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 	g, ctx := errgroup.WithContext(ctx)
 	grpcConn := &grpc.ClientConn{}
@@ -116,7 +149,7 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 		r.queryRPCS[0],
 		// the Cosmos SDK doesn't support any transport security mechanism
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithContextDialer(dialerFunc),
+		grpc.WithContextDialer(tools.DialerFunc),
 	)
 
 	// err if no rpc has successfully connected
