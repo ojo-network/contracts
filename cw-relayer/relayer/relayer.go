@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
@@ -30,11 +31,12 @@ type Relayer struct {
 	logger zerolog.Logger
 	closer *sync.Closer
 
-	relayerClient   client.RelayerClient
-	queryRPCS       []string
-	contractAddress string
-	requestID       uint64
-	medianRequestID uint64
+	relayerClient      client.RelayerClient
+	queryRPCS          []string
+	contractAddress    string
+	requestID          uint64
+	medianRequestID    uint64
+	deviationRequestID uint64
 
 	exchangeRates        types.DecCoins
 	historicalMedians    types.DecCoins
@@ -47,6 +49,9 @@ type Relayer struct {
 	missedThreshold int64
 	timeoutHeight   int64
 	medianDuration  int64
+	maxQueryRetries int64
+	queryRetries    int64
+	index           int
 
 	event  chan struct{}
 	config AutoRestartConfig
@@ -64,7 +69,7 @@ func New(
 	contractAddress string,
 	timeoutHeight int64,
 	missedThreshold int64,
-	queryRPCS []string,
+	maxQueryRetries int64,
 	event chan struct{},
 	medianDuration int64,
 	resolveDuration time.Duration,
@@ -72,6 +77,7 @@ func New(
 	requestID uint64,
 	medianRequestID uint64,
 	config AutoRestartConfig,
+	queryRPCS []string,
 ) *Relayer {
 	return &Relayer{
 		queryRPCS:       queryRPCS,
@@ -85,6 +91,7 @@ func New(
 		resolveDuration: resolveDuration,
 		requestID:       requestID,
 		medianRequestID: medianRequestID,
+		maxQueryRetries: maxQueryRetries,
 		closer:          sync.NewCloser(),
 		event:           event,
 		config:          config,
@@ -92,12 +99,17 @@ func New(
 }
 
 func (r *Relayer) Start(ctx context.Context) error {
-	//config denom as the restart point
+	// auto restart
 	if r.config.AutoRestart {
 		err := r.restart(ctx)
 		if err != nil {
 			r.logger.Error().Err(err).Msg("error auto restarting relayer")
 		}
+
+		r.logger.Info().
+			Uint64("request id", r.requestID).
+			Uint64("median request id", r.medianRequestID).
+			Uint64("deviation request id", r.deviationRequestID).Msg("relayer state startup successful")
 	}
 
 	for {
@@ -126,14 +138,33 @@ func (r *Relayer) Stop() {
 }
 
 func (r *Relayer) restart(ctx context.Context) error {
-	queryMsg := restartQuery(r.contractAddress, r.config.Denom)
-	responses, err := r.relayerClient.BroadcastContractQuery(ctx, r.queryTimeout, queryMsg...)
+	queryMsgs := restartQuery(r.contractAddress, r.config.Denom)
+	responses, err := r.relayerClient.BroadcastContractQuery(ctx, r.queryTimeout, queryMsgs...)
 	if err != nil {
 		return err
-	} else {
-		for _, response := range responses {
-			if len(response.Data) != 0 {
-				fmt.Println(response.Data)
+	}
+
+	for _, response := range responses {
+		if len(response.QueryResponse.Data) != 0 {
+			var resp map[string]interface{}
+			err := json.Unmarshal(response.QueryResponse.Data, &resp)
+			if err != nil {
+				return nil
+			}
+
+			id, err := strconv.ParseInt(resp["request_id"].(string), 10, 64)
+			if err != nil {
+				return err
+			}
+
+			requestID := uint64(id)
+			switch response.QueryType {
+			case int(QueryRateMsg):
+				r.requestID = requestID
+			case int(QueryMedianRateMsg):
+				r.medianRequestID = requestID
+			case int(QueryDeviationRateMsg):
+				r.deviationRequestID = requestID
 			}
 		}
 	}
@@ -141,42 +172,47 @@ func (r *Relayer) restart(ctx context.Context) error {
 	return nil
 }
 
+func (r *Relayer) increment() {
+	r.index = (r.index + 1) % len(r.queryRPCS)
+}
+
 func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
+	if r.queryRetries > r.maxRetries {
+		r.queryRetries = 0
+		return fmt.Errorf("retry threshold exceeded")
+	}
+
 	g, ctx := errgroup.WithContext(ctx)
 	grpcConn := &grpc.ClientConn{}
 	var err error
 	grpcConn, err = grpc.Dial(
-		r.queryRPCS[0],
+		r.queryRPCS[r.index],
 		// the Cosmos SDK doesn't support any transport security mechanism
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(tools.DialerFunc),
 	)
 
-	// err if no rpc has successfully connected
-	if err != nil {
-		return err
-	}
-
 	defer grpcConn.Close()
+
+	// switch rpc
+	if err != nil {
+		r.increment()
+		return r.setDenomPrices(ctx, postMedian)
+	}
 
 	queryClient := oracletypes.NewQueryClient(grpcConn)
 
 	ctx, cancel := context.WithTimeout(ctx, r.queryTimeout)
 	defer cancel()
 
-	g.Go(func() error {
-		queryResponse, err := queryClient.ExchangeRates(ctx, &oracletypes.QueryExchangeRates{})
-		if err != nil {
-			return err
-		}
+	queryResponse, err := queryClient.ExchangeRates(ctx, &oracletypes.QueryExchangeRates{})
+	if err != nil || queryResponse.ExchangeRates.Empty() {
+		r.logger.Debug().Msg("rates empty")
+		r.increment()
+		return r.setDenomPrices(ctx, postMedian)
+	}
 
-		if queryResponse.ExchangeRates.Empty() {
-			return fmt.Errorf("exchange rates empty")
-		}
-
-		r.exchangeRates = queryResponse.ExchangeRates
-		return nil
-	})
+	r.exchangeRates = queryResponse.ExchangeRates
 
 	g.Go(func() error {
 		deviationsQueryResponse, err := queryClient.MedianDeviations(ctx, &oracletypes.QueryMedianDeviations{})
@@ -252,7 +288,7 @@ func (r *Relayer) tick(ctx context.Context) error {
 		return err
 	}
 
-	deviationMsg, err := genRateMsgData(forceRelay, RelayHistoricalDeviation, r.requestID, nextBlockTime, r.historicalDeviations)
+	deviationMsg, err := genRateMsgData(forceRelay, RelayHistoricalDeviation, r.deviationRequestID, nextBlockTime, r.historicalDeviations)
 	if err != nil {
 		return err
 	}
@@ -296,6 +332,7 @@ func (r *Relayer) tick(ctx context.Context) error {
 
 	// increment request id to be stored in contracts
 	r.requestID += 1
+	r.deviationRequestID += 1
 	if postMedian {
 		r.medianRequestID += 1
 	}

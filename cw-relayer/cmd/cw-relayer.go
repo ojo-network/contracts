@@ -144,7 +144,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 	}
 
 	// subscribe to new block heights
-	tick, err := relayerclient.NewBlockHeightSubscription(ctx, cfg.EventRPC, eventTimeout, cfg.TickEventType, logger)
+	tick, err := relayerclient.NewBlockHeightSubscription(ctx, cfg.EventRPCS, eventTimeout, cfg.TickEventType, logger)
 	if err != nil {
 		return err
 	}
@@ -155,14 +155,17 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		cfg.ContractAddress,
 		cfg.TimeoutHeight,
 		cfg.MissedThreshold,
-		cfg.QueryRPCS, tick,
+		cfg.MaxQueryRetries,
+		tick.Tick,
 		cfg.MedianDuration,
 		resolveDuration,
 		queryTimeout,
 		cfg.RequestID,
 		cfg.MedianRequestID,
-		relayer.AutoRestartConfig{AutoRestart: true, Denom: "ATOM"},
+		relayer.AutoRestartConfig{AutoRestart: cfg.Restart.AutoID, Denom: cfg.Restart.Denom},
+		cfg.QueryRPCS,
 	)
+
 	g.Go(func() error {
 		// start the process that queries the prices on Ojo & submits them on Wasmd
 		return startPriceRelayer(ctx, logger, newRelayer)

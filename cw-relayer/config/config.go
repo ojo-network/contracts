@@ -15,6 +15,7 @@ const (
 	defaultTimeoutHeight   = 5
 	defaultTimeout         = 1 * time.Minute
 	defaultResolveDuration = 2 * time.Second
+	defaultQueryRetries    = 5
 	defaultTickEventType   = "ojo.oracle.v1.EventSetFxRate"
 )
 
@@ -38,6 +39,7 @@ type (
 		TimeoutHeight   int64  `mapsturture:"timeout_height"`
 		EventTimeout    string `mapstrucutre:"event_timeout"`
 		QueryTimeout    string `mapstrucutre:"query_timeout"`
+		MaxQueryRetries int64  `mapstrucutre:"max_query_retries"`
 
 		MedianRequestID uint64 `mapstructure:"median_request_id"`
 		RequestID       uint64 `mapstructure:"request_id"`
@@ -52,7 +54,7 @@ type (
 
 		// query rpc for ojo node
 		QueryRPCS     []string `mapstructure:"query_rpcs"`
-		EventRPC      string   `mapstructure:"event_rpc"`
+		EventRPCS     []string `mapstructure:"event_rpcs"`
 		TickEventType string   `mapstructure:"event_type"`
 	}
 
@@ -138,6 +140,9 @@ func ParseConfig(configPath string) (Config, error) {
 
 	if len(cfg.TickEventType) == 0 {
 		cfg.TickEventType = defaultTickEventType
+	}
+	if cfg.MaxQueryRetries == 0 {
+		cfg.MaxQueryRetries = defaultQueryRetries
 	}
 
 	return cfg, cfg.Validate()

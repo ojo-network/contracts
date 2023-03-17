@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	tmrpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	tmctypes "github.com/tendermint/tendermint/rpc/core/types"
 	tmjsonclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
@@ -17,64 +16,85 @@ const (
 )
 
 type EventSubscribe struct {
-	logger zerolog.Logger
-	Tick   chan struct{}
+	logger     zerolog.Logger
+	duration   time.Duration
+	rpcAddress []string
+	index      int
+	rpcClient  *rpchttp.HTTP
+	timeout    time.Duration
+	eventChan  <-chan tmctypes.ResultEvent
+	Tick       chan struct{}
 }
 
 func NewBlockHeightSubscription(
 	ctx context.Context,
-	rpcAddress string,
+	rpcAddress []string,
 	timeout time.Duration,
 	tickEventType string,
 	logger zerolog.Logger,
-) (chan struct{}, error) {
-	httpClient, err := tmjsonclient.DefaultHTTPClient(rpcAddress)
+) (*EventSubscribe, error) {
+
+	newEvent := &EventSubscribe{
+		logger: logger.With().Str("event", tickEventType).Logger(),
+	}
+	newEvent.Tick = make(chan struct{})
+	newEvent.duration = timeout
+	newEvent.rpcAddress = rpcAddress
+
+	err := newEvent.setNewEventChan(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	httpClient.Timeout = timeout
-	rpcClient, err := rpchttp.NewWithClient(rpcAddress, wsEndpoint, httpClient)
+	go newEvent.subscribe(ctx, tickEventType)
+
+	return newEvent, nil
+}
+
+func (event *EventSubscribe) setNewEventChan(ctx context.Context) error {
+	httpClient, err := tmjsonclient.DefaultHTTPClient(event.rpcAddress[event.index])
 	if err != nil {
-		return nil, err
+		return err
+	}
+
+	rpcClient, err := rpchttp.NewWithClient(event.rpcAddress[event.index], wsEndpoint, httpClient)
+	if err != nil {
+		return err
 	}
 
 	if !rpcClient.IsRunning() {
 		if err := rpcClient.Start(); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
+	event.rpcClient = rpcClient
+
 	eventType := tmtypes.EventNewBlockHeader
 	queryType := tmtypes.QueryForEvent(eventType).String()
-	newSubscription, err := rpcClient.Subscribe(ctx, eventType, queryType)
+
+	// tendermint overrides subscriber param
+	newSubscription, err := rpcClient.Subscribe(ctx, "", queryType)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	newEvent := &EventSubscribe{
-		logger: logger.With().Str("chain_event_client", eventType).Logger(),
-	}
+	event.eventChan = newSubscription
 
-	go newEvent.subscribe(ctx, rpcClient, queryType, tickEventType, newSubscription)
-	newEvent.Tick = make(chan struct{})
-
-	return newEvent.Tick, nil
+	return nil
 }
 
 // subscribe listens to new blocks being made
 // and updates the chain height.
 func (event *EventSubscribe) subscribe(
 	ctx context.Context,
-	eventsClient tmrpcclient.EventsClient,
-	queryType string,
 	tickEventType string,
-	newBlockHeader <-chan tmctypes.ResultEvent,
 ) {
+	current := time.Now()
 	for {
 		select {
 		case <-ctx.Done():
-			err := eventsClient.Unsubscribe(ctx, queryType, queryEventNewBlockHeader.String())
+			err := event.rpcClient.Unsubscribe(ctx, "", queryEventNewBlockHeader.String())
 			if err != nil {
 				event.logger.Err(err).Msg("unsubscribing error")
 			}
@@ -84,7 +104,7 @@ func (event *EventSubscribe) subscribe(
 
 			return
 
-		case resultEvent := <-newBlockHeader:
+		case resultEvent := <-event.eventChan:
 			data, ok := resultEvent.Data.(tmtypes.EventDataNewBlockHeader)
 			if !ok {
 				event.logger.Error().Msg("no new block header")
@@ -102,9 +122,36 @@ func (event *EventSubscribe) subscribe(
 				}
 
 				if tick {
+					current = time.Now()
 					event.logger.Info().Msg("price update event")
 					event.Tick <- struct{}{}
 				}
+			}
+		default:
+			lapsed := time.Since(current)
+			if lapsed.Seconds() > event.duration.Seconds() {
+				// reconnect to different rpc
+				event.logger.Info().Msgf("no tick since %s seconds", lapsed)
+
+				err := event.rpcClient.UnsubscribeAll(ctx, "")
+				if err != nil {
+					continue
+				}
+
+				err = event.rpcClient.Stop()
+				if err != nil {
+					continue
+				}
+
+				// switching to alternative
+				event.index = (event.index + 1) % len(event.rpcAddress)
+				event.logger.Info().Str("new rpc", event.rpcAddress[event.index]).Msg("switching to alternative rpc")
+				err = event.setNewEventChan(ctx)
+				if err != nil {
+					continue
+				}
+
+				current = time.Now()
 			}
 		}
 	}

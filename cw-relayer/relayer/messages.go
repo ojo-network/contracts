@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
+
+	"github.com/ojo-network/cw-relayer/relayer/client"
 )
 
 type MsgType int
@@ -12,6 +14,9 @@ const (
 	RelayRate MsgType = iota + 1
 	RelayHistoricalMedian
 	RelayHistoricalDeviation
+	QueryRateMsg
+	QueryMedianRateMsg
+	QueryDeviationRateMsg
 )
 
 func (m MsgType) String() string {
@@ -58,13 +63,17 @@ type (
 		Ref symbol `json:"get_median_ref"`
 	}
 
+	deviationRateMsg struct {
+		Ref symbol `json:"get_deviation_ref"`
+	}
+
 	symbol struct {
 		Symbol string `json:"symbol"`
 	}
 )
 
-func restartQuery(contractAddress, Denom string) []wasmtypes.QuerySmartContractStateRequest {
-	data, err := json.Marshal(rateMsg{Ref: symbol{Symbol: Denom}})
+func restartQuery(contractAddress, Denom string) []client.SmartQuery {
+	rateData, err := json.Marshal(rateMsg{Ref: symbol{Symbol: Denom}})
 	if err != nil {
 		panic(err)
 	}
@@ -74,14 +83,29 @@ func restartQuery(contractAddress, Denom string) []wasmtypes.QuerySmartContractS
 		panic(err)
 	}
 
-	return []wasmtypes.QuerySmartContractStateRequest{
+	deviationData, err := json.Marshal(deviationRateMsg{Ref: symbol{Denom}})
+
+	return []client.SmartQuery{
 		{
-			Address:   contractAddress,
-			QueryData: data,
+			QueryType: int(QueryRateMsg),
+			QueryMsg: wasmtypes.QuerySmartContractStateRequest{
+				Address:   contractAddress,
+				QueryData: rateData,
+			},
 		},
 		{
-			Address:   contractAddress,
-			QueryData: medianData,
+			QueryType: int(QueryMedianRateMsg),
+			QueryMsg: wasmtypes.QuerySmartContractStateRequest{
+				Address:   contractAddress,
+				QueryData: medianData,
+			},
+		},
+		{
+			QueryType: int(QueryDeviationRateMsg),
+			QueryMsg: wasmtypes.QuerySmartContractStateRequest{
+				Address:   contractAddress,
+				QueryData: deviationData,
+			},
 		},
 	}
 }

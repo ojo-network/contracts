@@ -28,8 +28,6 @@ import (
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	tmjsonclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 	"google.golang.org/grpc"
-
-	"github.com/ojo-network/cw-relayer/tools"
 )
 
 type (
@@ -57,6 +55,16 @@ type (
 		buf  *bytes.Buffer
 	}
 )
+
+type SmartQuery struct {
+	QueryType int
+	QueryMsg  wasmtypes.QuerySmartContractStateRequest
+}
+
+type QueryResponse struct {
+	QueryType     int
+	QueryResponse wasmtypes.QuerySmartContractStateResponse
+}
 
 func NewRelayerClient(
 	ctx context.Context,
@@ -218,12 +226,13 @@ func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight int64, msgs .
 	return errors.New("broadcasting tx timed out")
 }
 
-func (oc RelayerClient) BroadcastContractQuery(ctx context.Context, timeout time.Duration, queries ...wasmtypes.QuerySmartContractStateRequest) ([]wasmtypes.QuerySmartContractStateResponse, error) {
+func (oc RelayerClient) BroadcastContractQuery(ctx context.Context, timeout time.Duration, queries ...SmartQuery) ([]QueryResponse, error) {
 	grpcConn, err := grpc.Dial(
 		oc.QueryRpc,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithContextDialer(tools.DialerFunc),
 	)
+
+	defer grpcConn.Close()
 
 	if err != nil {
 		return nil, err
@@ -235,22 +244,23 @@ func (oc RelayerClient) BroadcastContractQuery(ctx context.Context, timeout time
 
 	queryClient := wasmtypes.NewQueryClient(grpcConn)
 
-	var responses []wasmtypes.QuerySmartContractStateResponse
+	var responses []QueryResponse
 	var mut sync.Mutex
 	for _, query := range queries {
-		g.Go(func() error {
-			queryResponse, err := queryClient.SmartContractState(ctx, &query)
-			fmt.Println("this is the error", err)
-			if err != nil {
-				return err
-			}
+		func(queryMap SmartQuery) {
+			g.Go(func() error {
+				queryResponse, err := queryClient.SmartContractState(ctx, &queryMap.QueryMsg)
+				if err != nil {
+					return err
+				}
 
-			mut.Lock()
-			responses = append(responses, *queryResponse)
-			mut.Unlock()
+				mut.Lock()
+				responses = append(responses, QueryResponse{QueryType: queryMap.QueryType, QueryResponse: *queryResponse})
+				mut.Unlock()
 
-			return nil
-		})
+				return nil
+			})
+		}(query)
 	}
 
 	err = g.Wait()
