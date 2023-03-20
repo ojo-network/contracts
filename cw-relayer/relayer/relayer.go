@@ -60,6 +60,7 @@ type Relayer struct {
 type AutoRestartConfig struct {
 	AutoRestart bool
 	Denom       string
+	SkipError   bool
 }
 
 // New returns an instance of the relayer.
@@ -70,31 +71,33 @@ func New(
 	timeoutHeight int64,
 	missedThreshold int64,
 	maxQueryRetries int64,
-	event chan struct{},
 	medianDuration int64,
 	resolveDuration time.Duration,
 	queryTimeout time.Duration,
 	requestID uint64,
 	medianRequestID uint64,
+	deviationRequestID uint64,
 	config AutoRestartConfig,
+	event chan struct{},
 	queryRPCS []string,
 ) *Relayer {
 	return &Relayer{
-		queryRPCS:       queryRPCS,
-		logger:          logger.With().Str("module", "relayer").Logger(),
-		relayerClient:   oc,
-		contractAddress: contractAddress,
-		missedThreshold: missedThreshold,
-		timeoutHeight:   timeoutHeight,
-		queryTimeout:    queryTimeout,
-		medianDuration:  medianDuration,
-		resolveDuration: resolveDuration,
-		requestID:       requestID,
-		medianRequestID: medianRequestID,
-		maxQueryRetries: maxQueryRetries,
-		closer:          sync.NewCloser(),
-		event:           event,
-		config:          config,
+		queryRPCS:          queryRPCS,
+		logger:             logger.With().Str("module", "relayer").Logger(),
+		relayerClient:      oc,
+		contractAddress:    contractAddress,
+		missedThreshold:    missedThreshold,
+		timeoutHeight:      timeoutHeight,
+		queryTimeout:       queryTimeout,
+		medianDuration:     medianDuration,
+		resolveDuration:    resolveDuration,
+		requestID:          requestID,
+		medianRequestID:    medianRequestID,
+		deviationRequestID: deviationRequestID,
+		maxQueryRetries:    maxQueryRetries,
+		closer:             sync.NewCloser(),
+		event:              event,
+		config:             config,
 	}
 }
 
@@ -104,6 +107,11 @@ func (r *Relayer) Start(ctx context.Context) error {
 		err := r.restart(ctx)
 		if err != nil {
 			r.logger.Error().Err(err).Msg("error auto restarting relayer")
+
+			// return error if skip error is false
+			if !r.config.SkipError {
+				return err
+			}
 		}
 
 		r.logger.Info().
@@ -172,12 +180,15 @@ func (r *Relayer) restart(ctx context.Context) error {
 	return nil
 }
 
+// incrementIndex increases index to switch to different query rpc
 func (r *Relayer) increment() {
+	r.queryRetries += 1
 	r.index = (r.index + 1) % len(r.queryRPCS)
+	r.logger.Info().Int("rpc index", r.index).Msg("switching query rpc")
 }
 
 func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
-	if r.queryRetries > r.maxRetries {
+	if r.queryRetries > r.maxQueryRetries {
 		r.queryRetries = 0
 		return fmt.Errorf("retry threshold exceeded")
 	}
@@ -206,8 +217,10 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 	defer cancel()
 
 	queryResponse, err := queryClient.ExchangeRates(ctx, &oracletypes.QueryExchangeRates{})
+
+	// assuming an issue with rpc if exchange rates are empty
 	if err != nil || queryResponse.ExchangeRates.Empty() {
-		r.logger.Debug().Msg("rates empty")
+		r.logger.Debug().Msg("error querying exchange rates")
 		r.increment()
 		return r.setDenomPrices(ctx, postMedian)
 	}
@@ -312,7 +325,8 @@ func (r *Relayer) tick(ctx context.Context) error {
 		Str("relayer address", r.relayerClient.RelayerAddrString).
 		Str("block timestamp", blockTimestamp.String()).
 		Bool("median posted", postMedian).
-		Uint64("request id", r.requestID)
+		Uint64("request id", r.requestID).
+		Uint64("deviation request id", r.deviationRequestID)
 
 	if postMedian {
 		logs.Uint64("median request id", r.medianRequestID)
@@ -369,6 +383,7 @@ func genRateMsgData(forceRelay bool, msgType MsgType, requestID uint64, resolveT
 		} else {
 			msgData, err = json.Marshal(MsgRelay{Relay: msg})
 		}
+
 	case RelayHistoricalMedian:
 		// collect denom's medians
 		medianRates := map[string][]string{}
@@ -385,6 +400,7 @@ func genRateMsgData(forceRelay bool, msgType MsgType, requestID uint64, resolveT
 		} else {
 			msgData, err = json.Marshal(MsgRelayHistoricalMedian{Relay: msg})
 		}
+
 	case RelayHistoricalDeviation:
 		if forceRelay {
 			msgData, err = json.Marshal(MsgForceRelayHistoricalDeviation{Relay: msg})

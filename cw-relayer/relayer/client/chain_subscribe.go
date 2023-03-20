@@ -16,20 +16,21 @@ const (
 )
 
 type EventSubscribe struct {
-	logger     zerolog.Logger
-	duration   time.Duration
-	rpcAddress []string
-	index      int
-	rpcClient  *rpchttp.HTTP
-	timeout    time.Duration
-	eventChan  <-chan tmctypes.ResultEvent
-	Tick       chan struct{}
+	logger         zerolog.Logger
+	maxTickTimeout time.Duration
+	rpcAddress     []string
+	index          int
+	rpcClient      *rpchttp.HTTP
+	timeout        time.Duration
+	eventChan      <-chan tmctypes.ResultEvent
+	Tick           chan struct{}
 }
 
 func NewBlockHeightSubscription(
 	ctx context.Context,
 	rpcAddress []string,
 	timeout time.Duration,
+	maxTickTimeout time.Duration,
 	tickEventType string,
 	logger zerolog.Logger,
 ) (*EventSubscribe, error) {
@@ -38,7 +39,8 @@ func NewBlockHeightSubscription(
 		logger: logger.With().Str("event", tickEventType).Logger(),
 	}
 	newEvent.Tick = make(chan struct{})
-	newEvent.duration = timeout
+	newEvent.timeout = timeout
+	newEvent.maxTickTimeout = maxTickTimeout
 	newEvent.rpcAddress = rpcAddress
 
 	err := newEvent.setNewEventChan(ctx)
@@ -56,6 +58,8 @@ func (event *EventSubscribe) setNewEventChan(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	httpClient.Timeout = event.timeout
 
 	rpcClient, err := rpchttp.NewWithClient(event.rpcAddress[event.index], wsEndpoint, httpClient)
 	if err != nil {
@@ -129,25 +133,31 @@ func (event *EventSubscribe) subscribe(
 			}
 		default:
 			lapsed := time.Since(current)
-			if lapsed.Seconds() > event.duration.Seconds() {
+			if lapsed.Seconds() > event.maxTickTimeout.Seconds() {
 				// reconnect to different rpc
-				event.logger.Info().Msgf("no tick since %s seconds", lapsed)
+				event.logger.Info().Msgf("no tick since %v seconds", lapsed.Seconds())
 
-				err := event.rpcClient.UnsubscribeAll(ctx, "")
-				if err != nil {
-					continue
-				}
+				// is rpc client is running, unsubscribe and stop
+				if event.rpcClient.IsRunning() {
+					err := event.rpcClient.UnsubscribeAll(ctx, "")
+					if err != nil {
+						event.logger.Err(err).Msg("error unsubscribing events")
+						continue
+					}
 
-				err = event.rpcClient.Stop()
-				if err != nil {
-					continue
+					err = event.rpcClient.Stop()
+					if err != nil {
+						event.logger.Err(err).Msg("error stopping previous rpc client")
+						continue
+					}
 				}
 
 				// switching to alternative
 				event.index = (event.index + 1) % len(event.rpcAddress)
 				event.logger.Info().Str("new rpc", event.rpcAddress[event.index]).Msg("switching to alternative rpc")
-				err = event.setNewEventChan(ctx)
+				err := event.setNewEventChan(ctx)
 				if err != nil {
+					event.logger.Err(err).Msg("error switching to new rpc")
 					continue
 				}
 

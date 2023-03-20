@@ -107,6 +107,11 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to parse Event timeout: %w", err)
 	}
 
+	maxTickTimeout, err := time.ParseDuration(cfg.MaxTickTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to parse Event timeout: %w", err)
+	}
+
 	queryTimeout, err := time.ParseDuration(cfg.QueryTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to parse Query timeout: %w", err)
@@ -144,7 +149,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 	}
 
 	// subscribe to new block heights
-	tick, err := relayerclient.NewBlockHeightSubscription(ctx, cfg.EventRPCS, eventTimeout, cfg.TickEventType, logger)
+	tick, err := relayerclient.NewBlockHeightSubscription(ctx, cfg.EventRPCS, eventTimeout, maxTickTimeout, cfg.TickEventType, logger)
 	if err != nil {
 		return err
 	}
@@ -156,13 +161,14 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		cfg.TimeoutHeight,
 		cfg.MissedThreshold,
 		cfg.MaxQueryRetries,
-		tick.Tick,
 		cfg.MedianDuration,
 		resolveDuration,
 		queryTimeout,
 		cfg.RequestID,
 		cfg.MedianRequestID,
-		relayer.AutoRestartConfig{AutoRestart: cfg.Restart.AutoID, Denom: cfg.Restart.Denom},
+		cfg.DeviationRequestID,
+		relayer.AutoRestartConfig{AutoRestart: cfg.Restart.AutoID, Denom: cfg.Restart.Denom, SkipError: cfg.Restart.SkipError},
+		tick.Tick,
 		cfg.QueryRPCS,
 	)
 

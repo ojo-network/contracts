@@ -15,7 +15,7 @@ const (
 	defaultTimeoutHeight   = 5
 	defaultTimeout         = 1 * time.Minute
 	defaultResolveDuration = 2 * time.Second
-	defaultQueryRetries    = 5
+	defaultQueryRetries    = 1
 	defaultTickEventType   = "ojo.oracle.v1.EventSetFxRate"
 )
 
@@ -36,13 +36,15 @@ type (
 
 		ProviderTimeout string `mapstructure:"provider_timeout"`
 		ContractAddress string `mapstructure:"contract_address"`
-		TimeoutHeight   int64  `mapsturture:"timeout_height"`
-		EventTimeout    string `mapstrucutre:"event_timeout"`
-		QueryTimeout    string `mapstrucutre:"query_timeout"`
-		MaxQueryRetries int64  `mapstrucutre:"max_query_retries"`
+		TimeoutHeight   int64  `mapstructure:"timeout_height"`
+		EventTimeout    string `mapstructure:"event_timeout"`
+		MaxTickTimeout  string `mapstructure:"max_tick_timeout"`
+		QueryTimeout    string `mapstructure:"query_timeout"`
+		MaxQueryRetries int64  `mapstructure:"max_query_retries"`
 
-		MedianRequestID uint64 `mapstructure:"median_request_id"`
-		RequestID       uint64 `mapstructure:"request_id"`
+		MedianRequestID    uint64 `mapstructure:"median_request_id"`
+		RequestID          uint64 `mapstructure:"request_id"`
+		DeviationRequestID uint64 `mapstructure:"deviation_request_id"`
 
 		// force relay prices and reset epoch time in contracts if err in broadcasting tx
 		MissedThreshold int64  `mapstructure:"missed_threshold"`
@@ -53,8 +55,8 @@ type (
 		GasPrices     string  `mapstructure:"gas_prices" validate:"required"`
 
 		// query rpc for ojo node
-		QueryRPCS     []string `mapstructure:"query_rpcs"`
-		EventRPCS     []string `mapstructure:"event_rpcs"`
+		QueryRPCS     []string `mapstructure:"query_rpcs" validate:"required"`
+		EventRPCS     []string `mapstructure:"event_rpcs" validate:"required"`
 		TickEventType string   `mapstructure:"event_type"`
 	}
 
@@ -73,8 +75,9 @@ type (
 	}
 
 	RestartConfig struct {
-		AutoID bool   `mapstructure:"auto_id"`
-		Denom  string `mapstrcture:"denom"`
+		AutoID    bool   `mapstructure:"auto_id"`
+		Denom     string `mapstructure:"denom"`
+		SkipError bool   `mapstructure:"skip_error"`
 	}
 
 	// RPC defines RPC configuration of both the wasmd chain and Tendermint nodes.
@@ -128,6 +131,10 @@ func ParseConfig(configPath string) (Config, error) {
 
 	if len(cfg.EventTimeout) == 0 {
 		cfg.EventTimeout = defaultTimeout.String()
+	}
+
+	if len(cfg.MaxTickTimeout) == 0 {
+		cfg.MaxTickTimeout = defaultTimeout.String()
 	}
 
 	if len(cfg.QueryTimeout) == 0 {
