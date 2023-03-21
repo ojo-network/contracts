@@ -1,17 +1,16 @@
 ### gas adjustment - multiplier for the expected amount of gas
 contract_address = "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0phg4d"
 # query rpcs for prices
-query_rpcs = ["api.devnet-n1.ojo-devnet.node.ojo.network:9090","api.devnet-n0.ojo-devnet.node.ojo.network:9090"]
+query_rpcs = ["api.devnet-n0.ojo-devnet.node.ojo.network:9090","api.devnet-n1.ojo-devnet.node.ojo.network:9090","api.devnet-n2.ojo-devnet.node.ojo.network:9090"]
 # event rpc to subscribe for new block and set fx rate event
-event_rpcs = ["https://rpc.devnet-n2.ojo-devnet.node.ojo.network:443","https://rpc.devnet-n2.ojo-devnet.node.ojo.network:443"]
+event_rpcs = ["http://localhost:26657","https://rpc.devnet-n1.ojo-devnet.node.ojo.network:443","https://rpc.devnet-n2.ojo-devnet.node.ojo.network:443"]
 # event type string to check when new blocks are produced
 event_type = "ojo.oracle.v1.EventSetFxRate"
 
-event_timeout = "500ms"
-max_tick_timeout = "1m"
-query_timeout = "100ms"
-
-max_query_retries = 0
+event_timeout = "1000ms"
+max_tick_timeout = "100s"
+query_timeout = "1000ms"
+max_retries = 1
 
 gas_adjustment = 1.5
 timeout_height = 10
@@ -27,7 +26,7 @@ request_id = 0
 
 [restart]
 auto_id = true
-denom = "ATOM"
+denom = "stake"
 skip_error = true
 
 ### account & chain-id for the wasmd relayer account
@@ -43,5 +42,5 @@ dir = "./"
 ### rpc endpoint for the wasm Chain
 [rpc]
 rpc_timeout = "2000ms"
-query_endpoint = "api.devnet-cw.ojo-devnet.node.ojo.network:9090"
+query_endpoint = "localhost:9090"
 tmrpc_endpoint = "http://localhost:26657"

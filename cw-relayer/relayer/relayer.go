@@ -194,9 +194,7 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
-	grpcConn := &grpc.ClientConn{}
-	var err error
-	grpcConn, err = grpc.Dial(
+	grpcConn, err := grpc.Dial(
 		r.queryRPCS[r.index],
 		// the Cosmos SDK doesn't support any transport security mechanism
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -205,7 +203,7 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 
 	defer grpcConn.Close()
 
-	// switch rpc
+	// retry or switch rpc
 	if err != nil {
 		r.increment()
 		return r.setDenomPrices(ctx, postMedian)

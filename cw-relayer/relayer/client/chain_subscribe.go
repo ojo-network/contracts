@@ -33,6 +33,8 @@ func NewBlockHeightSubscription(
 	maxTickTimeout time.Duration,
 	tickEventType string,
 	logger zerolog.Logger,
+	skipError bool,
+	maxRetries int64,
 ) (*EventSubscribe, error) {
 
 	newEvent := &EventSubscribe{
@@ -45,7 +47,24 @@ func NewBlockHeightSubscription(
 
 	err := newEvent.setNewEventChan(ctx)
 	if err != nil {
-		return nil, err
+		if !skipError {
+			return nil, err
+		}
+
+		// loop through all rpc's to connect until retry threshold
+		counter := int64(0)
+		for {
+			if counter >= maxRetries {
+				return nil, err
+			}
+
+			err = newEvent.switchRpc(ctx)
+			if err == nil {
+				break
+			}
+
+			counter += 1
+		}
 	}
 
 	go newEvent.subscribe(ctx, tickEventType)
@@ -131,6 +150,7 @@ func (event *EventSubscribe) subscribe(
 					event.Tick <- struct{}{}
 				}
 			}
+
 		default:
 			lapsed := time.Since(current)
 			if lapsed.Seconds() > event.maxTickTimeout.Seconds() {
@@ -153,16 +173,20 @@ func (event *EventSubscribe) subscribe(
 				}
 
 				// switching to alternative
-				event.index = (event.index + 1) % len(event.rpcAddress)
-				event.logger.Info().Str("new rpc", event.rpcAddress[event.index]).Msg("switching to alternative rpc")
-				err := event.setNewEventChan(ctx)
+				err := event.switchRpc(ctx)
 				if err != nil {
 					event.logger.Err(err).Msg("error switching to new rpc")
 					continue
 				}
-
-				current = time.Now()
 			}
 		}
 	}
+}
+
+func (event *EventSubscribe) switchRpc(ctx context.Context) error {
+	event.index = (event.index + 1) % len(event.rpcAddress)
+	event.logger.Info().Str("new rpc", event.rpcAddress[event.index]).Msg("switching to alternative rpc")
+	err := event.setNewEventChan(ctx)
+
+	return err
 }

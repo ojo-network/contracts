@@ -149,7 +149,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 	}
 
 	// subscribe to new block heights
-	tick, err := relayerclient.NewBlockHeightSubscription(ctx, cfg.EventRPCS, eventTimeout, maxTickTimeout, cfg.TickEventType, logger)
+	tick, err := relayerclient.NewBlockHeightSubscription(ctx, cfg.EventRPCS, eventTimeout, maxTickTimeout, cfg.TickEventType, logger, cfg.Restart.SkipError, cfg.MaxRetries)
 	if err != nil {
 		return err
 	}
@@ -160,7 +160,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		cfg.ContractAddress,
 		cfg.TimeoutHeight,
 		cfg.MissedThreshold,
-		cfg.MaxQueryRetries,
+		cfg.MaxRetries,
 		cfg.MedianDuration,
 		resolveDuration,
 		queryTimeout,
