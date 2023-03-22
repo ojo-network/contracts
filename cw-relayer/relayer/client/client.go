@@ -232,15 +232,16 @@ func (oc RelayerClient) BroadcastContractQuery(ctx context.Context, timeout time
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 
-	defer grpcConn.Close()
-
 	if err != nil {
 		return nil, err
 	}
 
-	g, ctx := errgroup.WithContext(ctx)
+	defer grpcConn.Close()
+
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
+
+	g, _ := errgroup.WithContext(ctx)
 
 	queryClient := wasmtypes.NewQueryClient(grpcConn)
 

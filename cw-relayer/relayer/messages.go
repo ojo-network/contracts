@@ -72,18 +72,21 @@ type (
 	}
 )
 
-func restartQuery(contractAddress, Denom string) []client.SmartQuery {
+func restartQuery(contractAddress, Denom string) ([]client.SmartQuery, error) {
 	rateData, err := json.Marshal(rateMsg{Ref: symbol{Symbol: Denom}})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	medianData, err := json.Marshal(medianRateMsg{Ref: symbol{Denom}})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	deviationData, err := json.Marshal(deviationRateMsg{Ref: symbol{Denom}})
+	if err != nil {
+		return nil, err
+	}
 
 	return []client.SmartQuery{
 		{
@@ -107,5 +110,5 @@ func restartQuery(contractAddress, Denom string) []client.SmartQuery {
 				QueryData: deviationData,
 			},
 		},
-	}
+	}, nil
 }

@@ -1,17 +1,21 @@
-### gas adjustment - multiplier for the expected amount of gas
 contract_address = "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0phg4d"
 # query rpcs for prices
 query_rpcs = ["api.devnet-n0.ojo-devnet.node.ojo.network:9090","api.devnet-n1.ojo-devnet.node.ojo.network:9090","api.devnet-n2.ojo-devnet.node.ojo.network:9090"]
 # event rpc to subscribe for new block and set fx rate event
-event_rpcs = ["http://localhost:26657","https://rpc.devnet-n1.ojo-devnet.node.ojo.network:443","https://rpc.devnet-n2.ojo-devnet.node.ojo.network:443"]
+event_rpcs = ["https://rpc.devnet-n1.ojo-devnet.node.ojo.network:443","https://rpc.devnet-n2.ojo-devnet.node.ojo.network:443"]
 # event type string to check when new blocks are produced
 event_type = "ojo.oracle.v1.EventSetFxRate"
 
 event_timeout = "1000ms"
+
+# max duration between ticks (to trigger a event rpc change)
 max_tick_timeout = "100s"
 query_timeout = "1000ms"
+
+# max query retries to fetch exchange rates
 max_retries = 1
 
+# gas adjustment - multiplier for the expected amount of gas
 gas_adjustment = 1.5
 timeout_height = 10
 gas_prices = "0.2stake"
@@ -20,13 +24,18 @@ median_duration = 1
 # resolve duration is the estimated delay between price updates on the contract
 resolve_duration = "1000ms"
 missed_threshold = 2
-#default median data and ref request id at start/restart
+
+# default median data and ref request id at start/restart
 median_request_id = 0
 request_id = 0
+deviation_request_id = 0
 
+# restart config
 [restart]
+# fetches request, median and deviation id for denom and set it as default in case of a restart
 auto_id = true
-denom = "stake"
+denom = "ATOM"
+# sets request, median and deviation id to id's mentioned in config, shuts down the relayer otherwise
 skip_error = true
 
 ### account & chain-id for the wasmd relayer account

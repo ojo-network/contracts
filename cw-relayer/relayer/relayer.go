@@ -146,7 +146,11 @@ func (r *Relayer) Stop() {
 }
 
 func (r *Relayer) restart(ctx context.Context) error {
-	queryMsgs := restartQuery(r.contractAddress, r.config.Denom)
+	queryMsgs, err := restartQuery(r.contractAddress, r.config.Denom)
+	if err != nil {
+		return err
+	}
+
 	responses, err := r.relayerClient.BroadcastContractQuery(ctx, r.queryTimeout, queryMsgs...)
 	if err != nil {
 		return err
@@ -193,7 +197,6 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 		return fmt.Errorf("retry threshold exceeded")
 	}
 
-	g, ctx := errgroup.WithContext(ctx)
 	grpcConn, err := grpc.Dial(
 		r.queryRPCS[r.index],
 		// the Cosmos SDK doesn't support any transport security mechanism
@@ -201,13 +204,13 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 		grpc.WithContextDialer(tools.DialerFunc),
 	)
 
-	defer grpcConn.Close()
-
 	// retry or switch rpc
 	if err != nil {
 		r.increment()
 		return r.setDenomPrices(ctx, postMedian)
 	}
+
+	defer grpcConn.Close()
 
 	queryClient := oracletypes.NewQueryClient(grpcConn)
 
@@ -224,6 +227,8 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 	}
 
 	r.exchangeRates = queryResponse.ExchangeRates
+
+	g, _ := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
 		deviationsQueryResponse, err := queryClient.MedianDeviations(ctx, &oracletypes.QueryMedianDeviations{})
