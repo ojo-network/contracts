@@ -178,6 +178,8 @@ func (event *EventSubscribe) subscribe(
 					event.logger.Err(err).Msg("error switching to new rpc")
 					continue
 				}
+
+				current = time.Now()
 			}
 		}
 	}
