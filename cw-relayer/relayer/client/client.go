@@ -58,10 +58,12 @@ type (
 )
 
 type SmartQuery struct {
-	QueryMsg scrttypes.QuerySecretContractRequest
+	QueryType int
+	QueryMsg  scrttypes.QuerySecretContractRequest
 }
 
 type QueryResponse struct {
+	QueryType     int
 	QueryResponse scrttypes.QuerySecretContractResponse
 }
 
@@ -77,7 +79,6 @@ func NewRelayerClient(
 	rpcTimeout time.Duration,
 	RelayerAddrString string,
 	accPrefix string,
-	gasAdjustment float64,
 	GasPrices string,
 	gasLimit uint64,
 ) (RelayerClient, error) {

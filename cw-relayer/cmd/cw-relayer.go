@@ -141,7 +141,6 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		rpcTimeout,
 		cfg.Account.Address,
 		cfg.Account.AccPrefix,
-		cfg.GasAdjustment,
 		cfg.GasPrices,
 		cfg.GasLimit,
 	)
@@ -155,7 +154,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	newRelayer := relayer.New(logger, client, cfg.ContractAddress, cfg.TimeoutHeight, cfg.MissedThreshold, cfg.QueryRPC, cfg.CodeHash, resolveDuration, cfg.RequestID, blockEvent.Tick)
+	newRelayer := relayer.New(logger, client, cfg.ContractAddress, cfg.TimeoutHeight, cfg.MissedThreshold, cfg.MaxRetries, cfg.QueryRPCS, cfg.CodeHash, resolveDuration, queryTimeout, cfg.RequestID, tick.Tick)
 	g.Go(func() error {
 		// start the process that queries the prices on Ojo & submits them on Wasmd
 		return startPriceRelayer(ctx, logger, newRelayer)
