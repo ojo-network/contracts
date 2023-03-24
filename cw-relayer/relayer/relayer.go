@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/cosmos/cosmos-sdk/telemetry"
@@ -32,21 +33,33 @@ type Relayer struct {
 
 	relayerClient   client.RelayerClient
 	exchangeRates   types.DecCoins
-	queryRPC        string
+	queryRPCS       []string
 	contractAddress string
+	requestID       uint64
 	contractAddr    types.AccAddress
 	codeHash        string
-	requestID       uint64
-	timeoutHeight   int64
+
 	resolveDuration time.Duration
+	queryTimeout    time.Duration
 
 	// if missedCounter >= missedThreshold, force relay prices (bypasses timing restrictions)
 	missedCounter   int64
 	missedThreshold int64
+	timeoutHeight   int64
+	maxQueryRetries int64
+	queryRetries    int64
+	index           int
 
 	iopubkey []byte
 
-	event chan struct{}
+	event  chan struct{}
+	config AutoRestartConfig
+}
+
+type AutoRestartConfig struct {
+	AutoRestart bool
+	Denom       string
+	SkipError   bool
 }
 
 // New returns an instance of the relayer.
@@ -56,9 +69,11 @@ func New(
 	contractAddress string,
 	timeoutHeight int64,
 	missedThreshold int64,
-	queryRPC string,
+	maxQueryRetries int64,
+	queryRPCS []string,
 	codeHash string,
 	resolveDuration time.Duration,
+	queryTimeout time.Duration,
 	requestID uint64,
 	event chan struct{},
 ) *Relayer {
@@ -69,7 +84,7 @@ func New(
 	}
 
 	return &Relayer{
-		queryRPC:        queryRPC,
+		queryRPCS:       queryRPCS,
 		logger:          logger.With().Str("module", "relayer").Logger(),
 		relayerClient:   oc,
 		contractAddress: contractAddress,
@@ -80,6 +95,8 @@ func New(
 		codeHash:        codeHash,
 		resolveDuration: resolveDuration,
 		requestID:       requestID,
+		maxQueryRetries: maxQueryRetries,
+		queryTimeout:    queryTimeout,
 		event:           event,
 	}
 }
@@ -105,7 +122,7 @@ func (r *Relayer) Start(ctx context.Context) error {
 			r.closer.Close()
 
 		case <-r.event:
-			r.logger.Debug().Msg("starting relayer")
+			r.logger.Debug().Msg("relayer tick")
 			startTime := time.Now()
 			if err := r.tick(ctx); err != nil {
 				telemetry.IncrCounter(1, "failure", "tick")
@@ -124,31 +141,85 @@ func (r *Relayer) Stop() {
 	<-r.closer.Done()
 }
 
-func (r *Relayer) setActiveDenomPrices(ctx context.Context) error {
+func (r *Relayer) restart(ctx context.Context) error {
+	queryMsgs, err := restartQuery(r.contractAddress, r.config.Denom)
+	if err != nil {
+		return err
+	}
+
+	responses, err := r.relayerClient.BroadcastContractQuery(ctx, r.queryTimeout, queryMsgs)
+	if err != nil {
+		return err
+	}
+
+	for _, response := range responses {
+		if len(response.QueryResponse.Data) != 0 {
+			var resp map[string]interface{}
+			err := json.Unmarshal(response.QueryResponse.Data, &resp)
+			if err != nil {
+				return nil
+			}
+
+			id, err := strconv.ParseInt(resp["request_id"].(string), 10, 64)
+			if err != nil {
+				return err
+			}
+
+			requestID := uint64(id)
+			switch response.QueryType {
+			case int(QueryRateMsg):
+				r.requestID = requestID
+			case int(QueryMedianRateMsg):
+				r.medianRequestID = requestID
+			case int(QueryDeviationRateMsg):
+				r.deviationRequestID = requestID
+			}
+		}
+	}
+
+	return nil
+}
+
+// incrementIndex increases index to switch to different query rpc
+func (r *Relayer) increment() {
+	r.queryRetries += 1
+	r.index = (r.index + 1) % len(r.queryRPCS)
+	r.logger.Info().Int("rpc index", r.index).Msg("switching query rpc")
+}
+
+func (r *Relayer) setDenomPrices(ctx context.Context) error {
+	if r.queryRetries > r.maxQueryRetries {
+		r.queryRetries = 0
+		return fmt.Errorf("retry threshold exceeded")
+	}
+
 	grpcConn, err := grpc.Dial(
-		r.queryRPC,
+		r.queryRPCS[r.index],
 		// the Cosmos SDK doesn't support any transport security mechanism
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(dialerFunc),
 	)
+
+	// retry or switch rpc
 	if err != nil {
-		return err
+		r.increment()
+		return r.setDenomPrices(ctx)
 	}
 
 	defer grpcConn.Close()
 
 	queryClient := oracletypes.NewQueryClient(grpcConn)
 
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, r.queryTimeout)
 	defer cancel()
 
 	queryResponse, err := queryClient.ExchangeRates(ctx, &oracletypes.QueryExchangeRates{})
-	if err != nil {
-		return err
-	}
 
-	if queryResponse.ExchangeRates.Empty() {
-		return fmt.Errorf("exchange rates empty")
+	// assuming an issue with rpc if exchange rates are empty
+	if err != nil || queryResponse.ExchangeRates.Empty() {
+		r.logger.Debug().Msg("error querying exchange rates")
+		r.increment()
+		return r.setDenomPrices(ctx)
 	}
 
 	r.exchangeRates = queryResponse.ExchangeRates
@@ -176,7 +247,7 @@ func (r *Relayer) tick(ctx context.Context) error {
 		return fmt.Errorf("expected positive blocktimestamp")
 	}
 
-	if err := r.setActiveDenomPrices(ctx); err != nil {
+	if err := r.setDenomPrices(ctx); err != nil {
 		return err
 	}
 	nextBlockHeight := blockHeight + 1

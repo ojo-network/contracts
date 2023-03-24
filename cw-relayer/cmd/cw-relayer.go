@@ -107,6 +107,16 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to parse Event timeout: %w", err)
 	}
 
+	maxTickTimeout, err := time.ParseDuration(cfg.MaxTickTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to parse Event timeout: %w", err)
+	}
+
+	queryTimeout, err := time.ParseDuration(cfg.QueryTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to parse Query timeout: %w", err)
+	}
+
 	resolveDuration, err := time.ParseDuration(cfg.ResolveDuration)
 	if err != nil {
 		return fmt.Errorf("failed to parse Resolve Duration: %w", err)
@@ -127,9 +137,11 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		cfg.Keyring.Dir,
 		keyringPass,
 		cfg.RPC.TMRPCEndpoint,
+		cfg.RPC.QueryEndpoint,
 		rpcTimeout,
 		cfg.Account.Address,
 		cfg.Account.AccPrefix,
+		cfg.GasAdjustment,
 		cfg.GasPrices,
 		cfg.GasLimit,
 	)
@@ -138,7 +150,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 	}
 
 	// subscribe to new block heights
-	blockEvent, err := relayerclient.NewBlockHeightSubscription(ctx, cfg.EventRPC, eventTimeout, cfg.TickEventType, logger)
+	tick, err := relayerclient.NewBlockHeightSubscription(ctx, cfg.EventRPCS, eventTimeout, maxTickTimeout, cfg.TickEventType, logger, cfg.Restart.SkipError, cfg.MaxRetries)
 	if err != nil {
 		return err
 	}

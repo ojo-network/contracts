@@ -1,13 +1,22 @@
 ### gas adjustment - multiplier for the expected amount of gas
 contract_address = "secret1mzw4d7sq7k55jatg2mzc9vrn8eelkva5wmwqk3"
-query_rpc = "api.devnet-n0.ojo-devnet.node.ojo.network:9090"
-event_rpc = "https://rpc.devnet-n0.ojo-devnet.node.ojo.network:443"
+query_rpcs = ["api.devnet-n0.ojo-devnet.node.ojo.network:9090","api.devnet-n1.ojo-devnet.node.ojo.network:9090","api.devnet-n2.ojo-devnet.node.ojo.network:9090"]
+# event rpc to subscribe for new block and set fx rate event
+event_rpcs = ["https://rpc.devnet-n1.ojo-devnet.node.ojo.network:443","https://rpc.devnet-n2.ojo-devnet.node.ojo.network:443"]
+# event type string to check when new blocks are produced
 event_type = "ojo.oracle.v1.EventSetFxRate"
 event_timeout = "1000ms"
 timeout_height = 10
 resolve_duration = "1000ms"
 missed_threshold = 5
 request_id = 1
+
+# max duration between ticks (to trigger a event rpc change)
+max_tick_timeout = "100s"
+query_timeout = "1000ms"
+
+# max query retries to fetch exchange rates
+max_retries = 1
 
 gas_prices = "0.015uscrt"
 code_hash = "85a123f01c278a714d4bdabb60600434ddd9db83354e3a9d86f51b263cd4e376"

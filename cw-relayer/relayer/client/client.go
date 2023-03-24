@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/cosmos/cosmos-sdk/client"
@@ -22,6 +23,11 @@ import (
 	"github.com/rs/zerolog"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	tmjsonclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
+	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
+	scrttypes "github.com/ojo-network/cw-relayer/relayer/dep/utils/types"
 )
 
 type (
@@ -33,6 +39,7 @@ type (
 		KeyringDir        string
 		KeyringPass       string
 		TMRPC             string
+		QueryRpc          string
 		RPCTimeout        time.Duration
 		RelayerAddr       sdk.AccAddress
 		RelayerAddrString string
@@ -50,6 +57,14 @@ type (
 	}
 )
 
+type SmartQuery struct {
+	QueryMsg scrttypes.QuerySecretContractRequest
+}
+
+type QueryResponse struct {
+	QueryResponse scrttypes.QuerySecretContractResponse
+}
+
 func NewRelayerClient(
 	ctx context.Context,
 	logger zerolog.Logger,
@@ -58,9 +73,11 @@ func NewRelayerClient(
 	keyringDir string,
 	keyringPass string,
 	tmRPC string,
+	queryEndpoint string,
 	rpcTimeout time.Duration,
 	RelayerAddrString string,
 	accPrefix string,
+	gasAdjustment float64,
 	GasPrices string,
 	gasLimit uint64,
 ) (RelayerClient, error) {
@@ -84,6 +101,7 @@ func NewRelayerClient(
 		RelayerAddr:       RelayerAddr,
 		RelayerAddrString: RelayerAddrString,
 		Encoding:          MakeEncodingConfig(),
+		QueryRpc:          queryEndpoint,
 		GasPrices:         GasPrices,
 		gasLimit:          gasLimit,
 	}
@@ -201,6 +219,48 @@ func (oc RelayerClient) BroadcastTx(clientCtx client.Context, nextBlockHeight, t
 
 	telemetry.IncrCounter(1, "failure", "tx", "timeout")
 	return errors.New("broadcasting tx timed out")
+}
+
+func (oc RelayerClient) BroadcastContractQuery(ctx context.Context, timeout time.Duration, queries ...SmartQuery) ([]QueryResponse, error) {
+	grpcConn, err := grpc.Dial(
+		oc.QueryRpc,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer grpcConn.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	g, _ := errgroup.WithContext(ctx)
+
+	queryClient := scrttypes.NewQueryClient(grpcConn)
+
+	var responses []QueryResponse
+	var mut sync.Mutex
+	for _, query := range queries {
+		func(queryMap SmartQuery) {
+			g.Go(func() error {
+				queryResponse, err := queryClient.QuerySecretContract(ctx, &queryMap.QueryMsg)
+				if err != nil {
+					return err
+				}
+
+				mut.Lock()
+				responses = append(responses, QueryResponse{QueryResponse: *queryResponse})
+				mut.Unlock()
+
+				return nil
+			})
+		}(query)
+	}
+
+	err = g.Wait()
+	return responses, err
 }
 
 // CreateClientContext creates an SDK client Context instance used for transaction

@@ -2,11 +2,9 @@ package client
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/rs/zerolog"
-	tmrpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	tmctypes "github.com/tendermint/tendermint/rpc/core/types"
 	tmjsonclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
@@ -18,74 +16,121 @@ const (
 )
 
 type EventSubscribe struct {
-	Logger zerolog.Logger
-	Tick   chan struct{}
+	logger         zerolog.Logger
+	maxTickTimeout time.Duration
+	rpcAddress     []string
+	index          int
+	rpcClient      *rpchttp.HTTP
+	timeout        time.Duration
+	eventChan      <-chan tmctypes.ResultEvent
+	Tick           chan struct{}
 }
 
 func NewBlockHeightSubscription(
 	ctx context.Context,
-	rpcAddress string,
+	rpcAddress []string,
 	timeout time.Duration,
+	maxTickTimeout time.Duration,
 	tickEventType string,
 	logger zerolog.Logger,
+	skipError bool,
+	maxRetries int64,
 ) (*EventSubscribe, error) {
-	httpClient, err := tmjsonclient.DefaultHTTPClient(rpcAddress)
+
+	newEvent := &EventSubscribe{
+		logger: logger.With().Str("event", tickEventType).Logger(),
+	}
+	newEvent.Tick = make(chan struct{})
+	newEvent.timeout = timeout
+	newEvent.maxTickTimeout = maxTickTimeout
+	newEvent.rpcAddress = rpcAddress
+
+	err := newEvent.setNewEventChan(ctx)
 	if err != nil {
-		return nil, err
+		if !skipError {
+			return nil, err
+		}
+
+		// loop through all rpc's to connect until retry threshold
+		counter := int64(0)
+		for {
+			if counter >= maxRetries {
+				return nil, err
+			}
+
+			err = newEvent.switchRpc(ctx)
+			if err == nil {
+				break
+			}
+
+			counter += 1
+		}
 	}
 
-	httpClient.Timeout = timeout
-	rpcClient, err := rpchttp.NewWithClient(rpcAddress, wsEndpoint, httpClient)
+	go newEvent.subscribe(ctx, tickEventType)
+
+	return newEvent, nil
+}
+
+func (event *EventSubscribe) setNewEventChan(ctx context.Context) error {
+	httpClient, err := tmjsonclient.DefaultHTTPClient(event.rpcAddress[event.index])
 	if err != nil {
-		return nil, err
+		return err
+	}
+
+	httpClient.Timeout = event.timeout
+
+	rpcClient, err := rpchttp.NewWithClient(event.rpcAddress[event.index], wsEndpoint, httpClient)
+	if err != nil {
+		return err
 	}
 
 	if !rpcClient.IsRunning() {
 		if err := rpcClient.Start(); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
+	event.rpcClient = rpcClient
+
 	eventType := tmtypes.EventNewBlockHeader
 	queryType := tmtypes.QueryForEvent(eventType).String()
-	newSubscription, err := rpcClient.Subscribe(ctx, eventType, queryType)
+
+	// tendermint overrides subscriber param
+	newSubscription, err := rpcClient.Subscribe(ctx, "", queryType)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	newEvent := &EventSubscribe{
-		Logger: logger.With().Str("relayer_client", eventType).Logger(),
-	}
+	event.eventChan = newSubscription
 
-	go newEvent.subscribe(ctx, rpcClient, queryType, tickEventType, newSubscription)
-	newEvent.Tick = make(chan struct{})
-
-	return newEvent, nil
+	return nil
 }
 
 // subscribe listens to new blocks being made
 // and updates the chain height.
 func (event *EventSubscribe) subscribe(
 	ctx context.Context,
-	eventsClient tmrpcclient.EventsClient,
-	queryType string,
 	tickEventType string,
-	newBlockHeader <-chan tmctypes.ResultEvent,
 ) {
+	current := time.Now()
 	for {
 		select {
 		case <-ctx.Done():
-			err := eventsClient.Unsubscribe(ctx, queryType, queryEventNewBlockHeader.String())
+			err := event.rpcClient.Unsubscribe(ctx, "", queryEventNewBlockHeader.String())
 			if err != nil {
-				event.Logger.Err(err)
+				event.logger.Err(err).Msg("unsubscribing error")
 			}
-			event.Logger.Info().Msg("closing the event subscription")
+
+			event.logger.Info().Msg("closing the event subscription")
+			close(event.Tick)
+
 			return
 
-		case resultEvent := <-newBlockHeader:
+		case resultEvent := <-event.eventChan:
 			data, ok := resultEvent.Data.(tmtypes.EventDataNewBlockHeader)
 			if !ok {
-				event.Logger.Err(errors.New("no new block"))
+				event.logger.Error().Msg("no new block header")
 				continue
 			}
 
@@ -100,9 +145,50 @@ func (event *EventSubscribe) subscribe(
 				}
 
 				if tick {
+					current = time.Now()
+					event.logger.Info().Msg("price update event")
 					event.Tick <- struct{}{}
 				}
 			}
+
+		default:
+			lapsed := time.Since(current)
+			if lapsed.Seconds() > event.maxTickTimeout.Seconds() {
+				// reconnect to different rpc
+				event.logger.Info().Msgf("no tick since %v seconds", lapsed.Seconds())
+
+				// is rpc client is running, unsubscribe and stop
+				if event.rpcClient.IsRunning() {
+					err := event.rpcClient.UnsubscribeAll(ctx, "")
+					if err != nil {
+						event.logger.Err(err).Msg("error unsubscribing events")
+						continue
+					}
+
+					err = event.rpcClient.Stop()
+					if err != nil {
+						event.logger.Err(err).Msg("error stopping previous rpc client")
+						continue
+					}
+				}
+
+				// switching to alternative
+				err := event.switchRpc(ctx)
+				if err != nil {
+					event.logger.Err(err).Msg("error switching to new rpc")
+					continue
+				}
+
+				current = time.Now()
+			}
 		}
 	}
+}
+
+func (event *EventSubscribe) switchRpc(ctx context.Context) error {
+	event.index = (event.index + 1) % len(event.rpcAddress)
+	event.logger.Info().Str("new rpc", event.rpcAddress[event.index]).Msg("switching to alternative rpc")
+	err := event.setNewEventChan(ctx)
+
+	return err
 }
