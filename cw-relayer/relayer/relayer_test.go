@@ -27,7 +27,7 @@ func (rts *RelayerTestSuite) Test_generateContractMsg() {
 	}
 
 	rts.Run("Relay msg", func() {
-		msg, err := generateContractRelayMsg(false, 1, 1, exchangeRates)
+		msg, err := generateContractRelayMsg(false, 1, 1, 1, exchangeRates)
 		rts.Require().NoError(err)
 
 		// price * 10**9 (USD factor in contract)
@@ -38,7 +38,7 @@ func (rts *RelayerTestSuite) Test_generateContractMsg() {
 	})
 
 	rts.Run("Force Relay msg", func() {
-		msg, err := generateContractRelayMsg(true, 1, 1, exchangeRates)
+		msg, err := generateContractRelayMsg(true, 1, 1, 1, exchangeRates)
 		rts.Require().NoError(err)
 
 		expectedRes := "{\"force_relay\":{\"symbol_rates\":[[\"atom\",\"1234567890\"],[\"umee\",\"1234567890\"],[\"juno\",\"1234567890\"]],\"resolve_time\":\"1\",\"request_id\":\"1\"}}"

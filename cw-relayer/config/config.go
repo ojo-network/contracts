@@ -11,7 +11,6 @@ import (
 
 const (
 	defaultProviderTimeout = 100 * time.Millisecond
-	defaultQueryRPC        = "0.0.0.0:9091"
 	defaultTimeoutHeight   = 5
 	defaultTimeout         = 1 * time.Minute
 	defaultResolveDuration = 2 * time.Second
@@ -53,8 +52,8 @@ type (
 		GasLimit  uint64 `mapstructure:"gas_limit" validate:"required"`
 
 		// query rpc for ojo node
-		QueryRPCS     []string `mapstructure:"query_rpcs" validate:"required"`
-		EventRPCS     []string `mapstructure:"event_rpcs" validate:"required"`
+		QueryRPCS     []string `mapstructure:"query_rpcs" validate:"required,gt=0"`
+		EventRPCS     []string `mapstructure:"event_rpcs" validate:"required,gt=0"`
 		TickEventType string   `mapstructure:"event_type"`
 	}
 
@@ -113,10 +112,6 @@ func ParseConfig(configPath string) (Config, error) {
 
 	if len(cfg.ProviderTimeout) == 0 {
 		cfg.ProviderTimeout = defaultProviderTimeout.String()
-	}
-
-	if len(cfg.QueryRPCS) == 0 {
-		cfg.QueryRPCS = []string{defaultQueryRPC}
 	}
 
 	if len(cfg.ContractAddress) == 0 {
