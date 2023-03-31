@@ -145,6 +145,7 @@ func (r *Relayer) Stop() {
 	<-r.closer.Done()
 }
 
+// restart queries wasmd chain to fetch latest request, median request and deviation request id
 func (r *Relayer) restart(ctx context.Context) error {
 	queryMsgs, err := restartQuery(r.contractAddress, r.config.Denom)
 	if err != nil {

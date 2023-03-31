@@ -38,12 +38,12 @@ func NewBlockHeightSubscription(
 ) (*EventSubscribe, error) {
 
 	newEvent := &EventSubscribe{
-		logger: logger.With().Str("event", tickEventType).Logger(),
+		logger:         logger.With().Str("event", tickEventType).Logger(),
+		Tick:           make(chan struct{}),
+		timeout:        timeout,
+		maxTickTimeout: maxTickTimeout,
+		rpcAddress:     rpcAddress,
 	}
-	newEvent.Tick = make(chan struct{})
-	newEvent.timeout = timeout
-	newEvent.maxTickTimeout = maxTickTimeout
-	newEvent.rpcAddress = rpcAddress
 
 	err := newEvent.setNewEventChan(ctx)
 	if err != nil {
@@ -51,19 +51,12 @@ func NewBlockHeightSubscription(
 			return nil, err
 		}
 
-		// loop through all rpc's to connect until retry threshold
-		counter := int64(0)
-		for {
-			if counter >= maxRetries {
-				return nil, err
-			}
-
+		// loop through all rpcs to connect until max retry threshold
+		for c := int64(0); c < maxRetries; c++ {
 			err = newEvent.switchRpc(ctx)
 			if err == nil {
 				break
 			}
-
-			counter += 1
 		}
 	}
 
@@ -72,6 +65,7 @@ func NewBlockHeightSubscription(
 	return newEvent, nil
 }
 
+// setNewEventChan subscribes to tendermint rpc for a specific event
 func (event *EventSubscribe) setNewEventChan(ctx context.Context) error {
 	httpClient, err := tmjsonclient.DefaultHTTPClient(event.rpcAddress[event.index])
 	if err != nil {
@@ -80,7 +74,11 @@ func (event *EventSubscribe) setNewEventChan(ctx context.Context) error {
 
 	httpClient.Timeout = event.timeout
 
-	rpcClient, err := rpchttp.NewWithClient(event.rpcAddress[event.index], wsEndpoint, httpClient)
+	rpcClient, err := rpchttp.NewWithClient(
+		event.rpcAddress[event.index],
+		wsEndpoint,
+		httpClient,
+	)
 	if err != nil {
 		return err
 	}
