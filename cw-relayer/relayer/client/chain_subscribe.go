@@ -36,7 +36,6 @@ func NewBlockHeightSubscription(
 	skipError bool,
 	maxRetries int64,
 ) (*EventSubscribe, error) {
-
 	newEvent := &EventSubscribe{
 		logger:         logger.With().Str("event", tickEventType).Logger(),
 		Tick:           make(chan struct{}),
@@ -52,7 +51,12 @@ func NewBlockHeightSubscription(
 		}
 
 		// loop through all rpcs to connect until max retry threshold
-		for c := int64(0); c < maxRetries; c++ {
+		for i := int64(0); ; i++ {
+			if i >= maxRetries {
+				newEvent.logger.Err(err).Msg("error connecting to rpc")
+				return nil, err
+			}
+
 			err = newEvent.switchRpc(ctx)
 			if err == nil {
 				break
@@ -67,6 +71,7 @@ func NewBlockHeightSubscription(
 
 // setNewEventChan subscribes to tendermint rpc for a specific event
 func (event *EventSubscribe) setNewEventChan(ctx context.Context) error {
+	event.logger.Info().Str("new rpc", event.rpcAddress[event.index]).Msg("connecting to rpc")
 	httpClient, err := tmjsonclient.DefaultHTTPClient(event.rpcAddress[event.index])
 	if err != nil {
 		return err
@@ -90,7 +95,6 @@ func (event *EventSubscribe) setNewEventChan(ctx context.Context) error {
 	}
 
 	event.rpcClient = rpcClient
-
 	eventType := tmtypes.EventNewBlockHeader
 	queryType := tmtypes.QueryForEvent(eventType).String()
 
@@ -99,7 +103,6 @@ func (event *EventSubscribe) setNewEventChan(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
 	event.eventChan = newSubscription
 
 	return nil
@@ -185,7 +188,6 @@ func (event *EventSubscribe) subscribe(
 
 func (event *EventSubscribe) switchRpc(ctx context.Context) error {
 	event.index = (event.index + 1) % len(event.rpcAddress)
-	event.logger.Info().Str("new rpc", event.rpcAddress[event.index]).Msg("switching to alternative rpc")
 	err := event.setNewEventChan(ctx)
 
 	return err
