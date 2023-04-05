@@ -1,4 +1,6 @@
 contract_address = "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0phg4d"
+
+# relayer changes rpcs (event and query) in the order specified in config
 # query rpcs for prices
 query_rpcs = ["api.devnet-n0.ojo-devnet.node.ojo.network:9090","api.devnet-n1.ojo-devnet.node.ojo.network:9090","api.devnet-n2.ojo-devnet.node.ojo.network:9090"]
 # event rpc to subscribe for new block and set fx rate event
@@ -12,7 +14,7 @@ event_timeout = "1000ms"
 max_tick_timeout = "100s"
 query_timeout = "3000ms"
 
-# max query retries to fetch exchange rates
+# max query retries to fetch exchange rates or connect to event rpc at startup
 max_retries = 1
 
 # gas adjustment - multiplier for the expected amount of gas

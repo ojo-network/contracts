@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
@@ -16,7 +17,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/ojo-network/cw-relayer/pkg/sync"
+	psync "github.com/ojo-network/cw-relayer/pkg/sync"
 	"github.com/ojo-network/cw-relayer/relayer/client"
 	"github.com/ojo-network/cw-relayer/tools"
 )
@@ -29,7 +30,7 @@ var (
 // Relayer defines a structure that queries prices from ojo and publishes prices to wasm contract.
 type Relayer struct {
 	logger zerolog.Logger
-	closer *sync.Closer
+	closer *psync.Closer
 
 	relayerClient      client.RelayerClient
 	queryRPCS          []string
@@ -95,7 +96,7 @@ func New(
 		medianRequestID:    medianRequestID,
 		deviationRequestID: deviationRequestID,
 		maxQueryRetries:    maxQueryRetries,
-		closer:             sync.NewCloser(),
+		closer:             psync.NewCloser(),
 		event:              event,
 		config:             config,
 	}
@@ -229,8 +230,9 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 
 	r.exchangeRates = queryResponse.ExchangeRates
 
+	var mu sync.Mutex
 	g, _ := errgroup.WithContext(ctx)
-
+	
 	g.Go(func() error {
 		deviationsQueryResponse, err := queryClient.MedianDeviations(ctx, &oracletypes.QueryMedianDeviations{})
 		if err != nil {
@@ -241,7 +243,10 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 			return fmt.Errorf("median deviations empty")
 		}
 
+		mu.Lock()
 		r.historicalDeviations = deviationsQueryResponse.MedianDeviations
+		mu.Unlock()
+
 		return nil
 	})
 
@@ -256,7 +261,10 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 				return fmt.Errorf("median rates empty")
 			}
 
+			mu.Lock()
 			r.historicalMedians = medianQueryResponse.Medians
+			mu.Unlock()
+
 			return nil
 		})
 	}
