@@ -1,7 +1,7 @@
 ### gas adjustment - multiplier for the expected amount of gas
 contract_address = "$CONTRACT_ADDRESS"
 query_rpcs = ["host.docker.internal:9090"]
-event_rpcs= ["https://rpc.devnet-n0.ojo-devnet.node.ojo.network:443","https://rpc.devnet-n2.ojo-devnet.node.ojo.network:443"]
+event_rpcs= ["https://rpc-1.ojo.nodes.guru:443"]
 
 event_timeout = "2000ms"
 max_tick_timeout = "1m"

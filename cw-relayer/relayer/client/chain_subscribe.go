@@ -98,6 +98,9 @@ func (event *EventSubscribe) setNewEventChan(ctx context.Context) error {
 	eventType := tmtypes.EventNewBlockHeader
 	queryType := tmtypes.QueryForEvent(eventType).String()
 
+	ctx, cancel := context.WithTimeout(ctx, event.timeout)
+	defer cancel()
+
 	// tendermint overrides subscriber param
 	newSubscription, err := rpcClient.Subscribe(ctx, "", queryType)
 	if err != nil {
