@@ -1,0 +1,57 @@
+contract_address = "secret1vghu442e4n90836xr40fccdgrypqt4spd8tdzw"
+
+# relayer changes rpcs (event and query) in the order specified in config
+# query rpcs for prices
+query_rpcs = ["rpc-1.ojo.nodes.guru:17490","api.devnet-n1.ojo-devnet.node.ojo.network:9090","api.devnet-n2.ojo-devnet.node.ojo.network:9090"]
+# event rpc to subscribe for new block and set fx rate event
+event_rpcs = ["https://rpc-1.ojo.nodes.guru:443","https://rpc.devnet-n2.ojo-devnet.node.ojo.network:443"]
+# event type string to check when new blocks are produced
+event_type = "ojo.oracle.v1.EventSetFxRate"
+
+event_timeout = "1000ms"
+
+# max duration between ticks (to trigger a event rpc change)
+max_tick_timeout = "500s"
+query_timeout = "3000ms"
+
+# max query retries to fetch exchange rates or connect to event rpc at startup
+max_retries = 1
+
+timeout_height = 10
+resolve_duration = "1000ms"
+missed_threshold = 5
+# default median data and ref request id at start/restart
+median_request_id = 1
+request_id = 1
+deviation_request_id = 1
+median_duration = 1
+
+
+gas_prices = "0.15uscrt"
+code_hash = "125c44ec8884a412d596dbf40c59c14b010f6803eee0d3113f1e60a308cda126"
+gas_limit = "102850"
+
+# restart config
+[restart]
+# fetches request, median and deviation id for denom and set it as default in case of a restart
+auto_id = true
+denom = "ATOM"
+# sets request, median and deviation id to id's mentioned in config, shuts down the relayer otherwise
+skip_error = false
+
+### account & chain-id for the wasmd relayer account
+[account]
+address = "secret19uywplnd25gzxgc3t8pyqsl2tcse8heag2s6av"
+chain_id = "pulsar-2"
+acc_prefix = "secret"
+
+### keyring for the relayer account on the wasmd chain
+[keyring]
+backend = "test"
+dir = "./"
+
+### rpc endpoint for the wasm Chain
+[rpc]
+rpc_timeout = "5000ms"
+query_endpoint = "grpcbin.pulsar.scrttestnet.com:9099"
+tmrpc_endpoint = "https://rpc.pulsar.scrttestnet.com:443"

@@ -34,19 +34,22 @@ type (
 		RPC     RPC           `mapstructure:"rpc" validate:"required,gt=0,dive,required"`
 		Restart RestartConfig `mapstructure:"restart" validate:"required"`
 
-		ProviderTimeout string `mapstructure:"provider_timeout"`
-		ContractAddress string `mapstructure:"contract_address"`
-		TimeoutHeight   int64  `mapsturture:"timeout_height"`
-		EventTimeout    string `mapstructure:"event_timeout"`
-		MaxTickTimeout  string `mapstructure:"max_tick_timeout"`
-		QueryTimeout    string `mapstructure:"query_timeout"`
-		MaxRetries      int64  `mapstructure:"max_retries"`
-		CodeHash        string `mapstructure:"code_hash"`
-		RequestID       uint64 `mapstructure:"request_id"`
+		ProviderTimeout    string `mapstructure:"provider_timeout"`
+		ContractAddress    string `mapstructure:"contract_address"`
+		TimeoutHeight      int64  `mapsturture:"timeout_height"`
+		EventTimeout       string `mapstructure:"event_timeout"`
+		MaxTickTimeout     string `mapstructure:"max_tick_timeout"`
+		QueryTimeout       string `mapstructure:"query_timeout"`
+		MaxRetries         int64  `mapstructure:"max_retries"`
+		CodeHash           string `mapstructure:"code_hash"`
+		RequestID          uint64 `mapstructure:"request_id"`
+		MedianRequestID    uint64 `mapstructure:"median_request_id"`
+		DeviationRequestID uint64 `mapstructure:"deviation_request_id"`
 
 		// force relay prices and reset epoch time in contracts if err in broadcasting tx
 		MissedThreshold int64  `mapstructure:"missed_threshold"`
 		ResolveDuration string `mapstructure:"resolve_duration"`
+		MedianDuration  int64  `mapstructure:"median_duration"`
 
 		GasPrices string `mapstructure:"gas_prices" validate:"required"`
 		GasLimit  uint64 `mapstructure:"gas_limit" validate:"required"`

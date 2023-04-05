@@ -36,14 +36,13 @@ func NewBlockHeightSubscription(
 	skipError bool,
 	maxRetries int64,
 ) (*EventSubscribe, error) {
-
 	newEvent := &EventSubscribe{
-		logger: logger.With().Str("event", tickEventType).Logger(),
+		logger:         logger.With().Str("event", tickEventType).Logger(),
+		Tick:           make(chan struct{}),
+		timeout:        timeout,
+		maxTickTimeout: maxTickTimeout,
+		rpcAddress:     rpcAddress,
 	}
-	newEvent.Tick = make(chan struct{})
-	newEvent.timeout = timeout
-	newEvent.maxTickTimeout = maxTickTimeout
-	newEvent.rpcAddress = rpcAddress
 
 	err := newEvent.setNewEventChan(ctx)
 	if err != nil {
@@ -51,10 +50,10 @@ func NewBlockHeightSubscription(
 			return nil, err
 		}
 
-		// loop through all rpc's to connect until retry threshold
-		counter := int64(0)
-		for {
-			if counter >= maxRetries {
+		// loop through all rpcs to connect until max retry threshold
+		for i := int64(0); ; i++ {
+			if i >= maxRetries {
+				newEvent.logger.Err(err).Msg("error connecting to rpc")
 				return nil, err
 			}
 
@@ -62,8 +61,6 @@ func NewBlockHeightSubscription(
 			if err == nil {
 				break
 			}
-
-			counter += 1
 		}
 	}
 
@@ -72,7 +69,9 @@ func NewBlockHeightSubscription(
 	return newEvent, nil
 }
 
+// setNewEventChan subscribes to tendermint rpc for a specific event
 func (event *EventSubscribe) setNewEventChan(ctx context.Context) error {
+	event.logger.Info().Str("new rpc", event.rpcAddress[event.index]).Msg("connecting to rpc")
 	httpClient, err := tmjsonclient.DefaultHTTPClient(event.rpcAddress[event.index])
 	if err != nil {
 		return err
@@ -80,7 +79,11 @@ func (event *EventSubscribe) setNewEventChan(ctx context.Context) error {
 
 	httpClient.Timeout = event.timeout
 
-	rpcClient, err := rpchttp.NewWithClient(event.rpcAddress[event.index], wsEndpoint, httpClient)
+	rpcClient, err := rpchttp.NewWithClient(
+		event.rpcAddress[event.index],
+		wsEndpoint,
+		httpClient,
+	)
 	if err != nil {
 		return err
 	}
@@ -92,16 +95,17 @@ func (event *EventSubscribe) setNewEventChan(ctx context.Context) error {
 	}
 
 	event.rpcClient = rpcClient
-
 	eventType := tmtypes.EventNewBlockHeader
 	queryType := tmtypes.QueryForEvent(eventType).String()
+
+	ctx, cancel := context.WithTimeout(ctx, event.timeout)
+	defer cancel()
 
 	// tendermint overrides subscriber param
 	newSubscription, err := rpcClient.Subscribe(ctx, "", queryType)
 	if err != nil {
 		return err
 	}
-
 	event.eventChan = newSubscription
 
 	return nil
@@ -187,7 +191,6 @@ func (event *EventSubscribe) subscribe(
 
 func (event *EventSubscribe) switchRpc(ctx context.Context) error {
 	event.index = (event.index + 1) % len(event.rpcAddress)
-	event.logger.Info().Str("new rpc", event.rpcAddress[event.index]).Msg("switching to alternative rpc")
 	err := event.setNewEventChan(ctx)
 
 	return err

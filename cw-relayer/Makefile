@@ -43,7 +43,7 @@ install: go.sum
 
 start:
 	@make build
-	echo -ne '\n' | build/cw-relayer relayer-config.toml
+	echo -ne '\n' | build/cw-relayer config.toml
 
 docker-build-relayer-e2e:
 	@DOCKER_BUILDKIT=1 docker build -t cw-relayer -f tests/e2e/docker/relayer.Dockerfile .

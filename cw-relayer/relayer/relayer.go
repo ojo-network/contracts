@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/cosmos/cosmos-sdk/telemetry"
@@ -16,7 +17,7 @@ import (
 
 	oracletypes "github.com/ojo-network/ojo/x/oracle/types"
 
-	"github.com/ojo-network/cw-relayer/pkg/sync"
+	psync "github.com/ojo-network/cw-relayer/pkg/sync"
 	"github.com/ojo-network/cw-relayer/relayer/client"
 	scrttypes "github.com/ojo-network/cw-relayer/relayer/dep"
 	scrtutils "github.com/ojo-network/cw-relayer/relayer/dep/utils"
@@ -30,7 +31,7 @@ var (
 // Relayer defines a structure that queries prices from ojo and publishes prices to wasm contract.
 type Relayer struct {
 	logger zerolog.Logger
-	closer *sync.Closer
+	closer *psync.Closer
 
 	relayerClient   client.RelayerClient
 	queryRPCS       []string
@@ -83,6 +84,8 @@ func New(
 	resolveDuration time.Duration,
 	queryTimeout time.Duration,
 	requestID uint64,
+	medianDuration int64,
+	config AutoRestartConfig,
 	event chan struct{},
 ) *Relayer {
 
@@ -99,12 +102,14 @@ func New(
 		contractAddr:    contractAddr,
 		missedThreshold: missedThreshold,
 		timeoutHeight:   timeoutHeight,
-		closer:          sync.NewCloser(),
+		closer:          psync.NewCloser(),
 		codeHash:        codeHash,
+		medianDuration:  medianDuration,
 		resolveDuration: resolveDuration,
 		requestID:       requestID,
 		maxQueryRetries: maxQueryRetries,
 		queryTimeout:    queryTimeout,
+		config:          config,
 		event:           event,
 	}
 }
@@ -123,6 +128,24 @@ func (r *Relayer) Start(ctx context.Context) error {
 	}
 
 	r.iopubkey = iopubkey
+
+	// auto restart
+	if r.config.AutoRestart {
+		err := r.restart(ctx)
+		if err != nil {
+			r.logger.Error().Err(err).Msg("error auto restarting relayer")
+
+			// return error if skip error is false
+			if !r.config.SkipError {
+				return err
+			}
+		}
+
+		r.logger.Info().
+			Uint64("request id", r.requestID).
+			Uint64("median request id", r.medianRequestID).
+			Uint64("deviation request id", r.deviationRequestID).Msg("relayer state startup successful")
+	}
 
 	for {
 		select {
@@ -149,13 +172,21 @@ func (r *Relayer) Stop() {
 	<-r.closer.Done()
 }
 
+// incrementIndex increases index to switch to different query rpc
+func (r *Relayer) increment() {
+	r.queryRetries += 1
+	r.index = (r.index + 1) % len(r.queryRPCS)
+	r.logger.Info().Int("rpc index", r.index).Msg("switching query rpc")
+}
+
+// restart queries wasmd chain to fetch latest request, median request and deviation request id
 func (r *Relayer) restart(ctx context.Context) error {
-	queryMsgs, err := restartQuery(r.contractAddress, r.config.Denom)
+	queryMsgs, err := genRestartQueries(r.contractAddress, r.config.Denom)
 	if err != nil {
 		return err
 	}
 
-	responses, err := r.relayerClient.BroadcastContractQuery(ctx, r.queryTimeout, queryMsgs...)
+	responses, err := r.relayerClient.BroadcastContractQuery(ctx, r.iopubkey, r.codeHash, r.contractAddress, r.queryTimeout, queryMsgs...)
 	if err != nil {
 		return err
 	}
@@ -165,7 +196,7 @@ func (r *Relayer) restart(ctx context.Context) error {
 			var resp map[string]interface{}
 			err := json.Unmarshal(response.QueryResponse.Data, &resp)
 			if err != nil {
-				return nil
+				return err
 			}
 
 			id, err := strconv.ParseInt(resp["request_id"].(string), 10, 64)
@@ -186,13 +217,6 @@ func (r *Relayer) restart(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-// incrementIndex increases index to switch to different query rpc
-func (r *Relayer) increment() {
-	r.queryRetries += 1
-	r.index = (r.index + 1) % len(r.queryRPCS)
-	r.logger.Info().Int("rpc index", r.index).Msg("switching query rpc")
 }
 
 func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
@@ -232,6 +256,7 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 
 	r.exchangeRates = queryResponse.ExchangeRates
 
+	var mu sync.Mutex
 	g, _ := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
@@ -244,7 +269,10 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 			return fmt.Errorf("median deviations empty")
 		}
 
+		mu.Lock()
 		r.historicalDeviations = deviationsQueryResponse.MedianDeviations
+		mu.Unlock()
+
 		return nil
 	})
 
@@ -259,7 +287,10 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 				return fmt.Errorf("median rates empty")
 			}
 
+			mu.Lock()
 			r.historicalMedians = medianQueryResponse.Medians
+			mu.Unlock()
+
 			return nil
 		})
 	}
@@ -325,28 +356,26 @@ func (r *Relayer) tick(ctx context.Context) error {
 		dataMsgs = append(dataMsgs, medianMsg)
 	}
 
-	clientCtx, err := r.relayerClient.CreateClientContext()
+	clientCtx, wasmCtx, err := r.relayerClient.CreateClientAndScrtWasmCtx()
 	if err != nil {
 		return err
 	}
 
-	wasmCtx := scrtutils.WASMContext{CLIContext: clientCtx}
-
 	executeMsgs := make([]types.Msg, len(dataMsgs))
-	for _, msg := range dataMsgs {
+	for i, msg := range dataMsgs {
 		execMsg := scrttypes.NewSecretMsg([]byte(r.codeHash), msg)
 		encryptedMsg, err := wasmCtx.Encrypt(r.iopubkey, execMsg.Serialize())
 		if err != nil {
 			return err
 		}
 
-		executeMsg := &scrttypes.MsgExecuteContract{
+		executeMsg := scrttypes.MsgExecuteContract{
 			Sender:   r.relayerClient.RelayerAddr,
 			Contract: r.contractAddr,
 			Msg:      encryptedMsg,
 		}
 
-		executeMsgs = append(executeMsgs, executeMsg)
+		executeMsgs[i] = &executeMsg
 	}
 
 	logs := r.logger.Info()
@@ -363,7 +392,7 @@ func (r *Relayer) tick(ctx context.Context) error {
 
 	logs.Msg("broadcasting execute to contract")
 
-	if err := r.relayerClient.BroadcastTx(clientCtx, nextBlockHeight, r.timeoutHeight, executeMsgs...); err != nil {
+	if err := r.relayerClient.BroadcastTx(*clientCtx, nextBlockHeight, r.timeoutHeight, executeMsgs...); err != nil {
 		r.missedCounter += 1
 		return err
 	}
@@ -381,53 +410,4 @@ func (r *Relayer) tick(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-func generateContractRelayMsg(forceRelay bool, msgType MsgType, requestID uint64, resolveTime int64, rates types.DecCoins) (msgData []byte, err error) {
-	msg := Msg{
-		SymbolRates: nil,
-		ResolveTime: resolveTime,
-		RequestID:   requestID,
-	}
-
-	if msgType != RelayHistoricalMedian {
-		for _, rate := range rates {
-			msg.SymbolRates = append(msg.SymbolRates, [2]interface{}{rate.Denom, rate.Amount.Mul(RateFactor).TruncateInt().String()})
-		}
-	}
-
-	switch msgType {
-	case RelayRate:
-		if forceRelay {
-			msgData, err = json.Marshal(MsgForceRelay{Relay: msg})
-		} else {
-			msgData, err = json.Marshal(MsgRelay{Relay: msg})
-		}
-
-	case RelayHistoricalMedian:
-		// collect denom's medians
-		medianRates := map[string][]string{}
-		for _, rate := range rates {
-			medianRates[rate.Denom] = append(medianRates[rate.Denom], rate.Amount.Mul(RateFactor).TruncateInt().String())
-		}
-
-		for denom, medians := range medianRates {
-			msg.SymbolRates = append(msg.SymbolRates, [2]interface{}{denom, medians})
-		}
-
-		if forceRelay {
-			msgData, err = json.Marshal(MsgForceRelayHistoricalMedian{Relay: msg})
-		} else {
-			msgData, err = json.Marshal(MsgRelayHistoricalMedian{Relay: msg})
-		}
-
-	case RelayHistoricalDeviation:
-		if forceRelay {
-			msgData, err = json.Marshal(MsgForceRelayHistoricalDeviation{Relay: msg})
-		} else {
-			msgData, err = json.Marshal(MsgRelayHistoricalDeviation{Relay: msg})
-		}
-	}
-
-	return
 }
