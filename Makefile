@@ -35,6 +35,9 @@ test-unit-contract:
 compile-contract:
 	cosmwasm/scripts/build_artifacts.sh
 
+start-relayer:
+	cd cw-relayer && ${MAKE} start
+
 test-e2e:
 	@echo "Running e2e tests"
 	${MAKE} compile-contract
