@@ -57,7 +57,7 @@ RUN apk add bash \
     jq
 
 COPY --from=builder /cw-relayer/build/cw-relayer /usr/bin/cw-relayer
-COPY --from=cosmwasm/wasmd:latest /usr/bin/wasmd /usr/bin/wasmd
+COPY --from=cosmwasm/wasmd:v0.30.0 /usr/bin/wasmd /usr/bin/wasmd
 
 ENV HOME /
 WORKDIR $HOME

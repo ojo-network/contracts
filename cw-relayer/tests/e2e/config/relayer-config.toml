@@ -1,13 +1,24 @@
 ### gas adjustment - multiplier for the expected amount of gas
 contract_address = "$CONTRACT_ADDRESS"
-query_rpc = "host.docker.internal:9090"
-event_rpc= "https://rpc.devnet-n0.ojo-devnet.node.ojo.network:443"
+query_rpcs = ["host.docker.internal:9090"]
+event_rpcs= ["https://rpc-1.ojo.nodes.guru:443"]
+
+event_timeout = "2000ms"
+max_tick_timeout = "1m"
+query_timeout = "5000ms"
+max_retries = 1
+
 gas_adjustment = 1.5
 timeout_height = 10
 gas_prices = "0.2stake"
 median_duration = 1
 missed_threshold = 2
 event_type = "ojo.oracle.v1.EventSetFxRate"
+
+[restart]
+auto_id = true
+denom = "TEST-0"
+skip_error = true
 
 ### account & chain-id for the wasmd relayer account
 [account]
@@ -23,4 +34,5 @@ dir = "/data/$CHAIN_ID"
 ### rpc endpoint for the wasm Chain
 [rpc]
 rpc_timeout = "500ms"
+query_endpoint = "localhost:9090"
 tmrpc_endpoint = "http://localhost:26657"

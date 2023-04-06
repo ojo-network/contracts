@@ -107,6 +107,16 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to parse Event timeout: %w", err)
 	}
 
+	maxTickTimeout, err := time.ParseDuration(cfg.MaxTickTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to parse Event timeout: %w", err)
+	}
+
+	queryTimeout, err := time.ParseDuration(cfg.QueryTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to parse Query timeout: %w", err)
+	}
+
 	resolveDuration, err := time.ParseDuration(cfg.ResolveDuration)
 	if err != nil {
 		return fmt.Errorf("failed to parse Resolve Duration: %w", err)
@@ -127,6 +137,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		cfg.Keyring.Dir,
 		keyringPass,
 		cfg.RPC.TMRPCEndpoint,
+		cfg.RPC.QueryEndpoint,
 		rpcTimeout,
 		cfg.Account.Address,
 		cfg.Account.AccPrefix,
@@ -138,12 +149,38 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 	}
 
 	// subscribe to new block heights
-	blockEvent, err := relayerclient.NewBlockHeightSubscription(ctx, cfg.EventRPC, eventTimeout, cfg.TickEventType, logger)
+	tick, err := relayerclient.NewBlockHeightSubscription(
+		ctx,
+		cfg.EventRPCS,
+		eventTimeout,
+		maxTickTimeout,
+		cfg.TickEventType,
+		logger,
+		cfg.Restart.SkipError,
+		cfg.MaxRetries,
+	)
 	if err != nil {
 		return err
 	}
 
-	newRelayer := relayer.New(logger, client, cfg.ContractAddress, cfg.TimeoutHeight, cfg.MissedThreshold, cfg.QueryRPC, blockEvent.Tick, cfg.MedianDuration, resolveDuration, cfg.RequestID, cfg.MedianRequestID)
+	newRelayer := relayer.New(
+		logger,
+		client,
+		cfg.ContractAddress,
+		cfg.TimeoutHeight,
+		cfg.MissedThreshold,
+		cfg.MaxRetries,
+		cfg.MedianDuration,
+		resolveDuration,
+		queryTimeout,
+		cfg.RequestID,
+		cfg.MedianRequestID,
+		cfg.DeviationRequestID,
+		relayer.AutoRestartConfig{AutoRestart: cfg.Restart.AutoID, Denom: cfg.Restart.Denom, SkipError: cfg.Restart.SkipError},
+		tick.Tick,
+		cfg.QueryRPCS,
+	)
+
 	g.Go(func() error {
 		// start the process that queries the prices on Ojo & submits them on Wasmd
 		return startPriceRelayer(ctx, logger, newRelayer)

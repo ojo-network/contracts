@@ -13,8 +13,9 @@ const (
 	defaultProviderTimeout = 100 * time.Millisecond
 	defaultQueryRPC        = "0.0.0.0:9091"
 	defaultTimeoutHeight   = 5
-	defaultEventTimeout    = 1 * time.Minute
+	defaultTimeout         = 1 * time.Minute
 	defaultResolveDuration = 2 * time.Second
+	defaultRetries         = 1
 	defaultTickEventType   = "ojo.oracle.v1.EventSetFxRate"
 )
 
@@ -28,17 +29,22 @@ var (
 type (
 	// Config defines all necessary cw-relayer configuration parameters.
 	Config struct {
-		Account Account `mapstructure:"account" validate:"required,gt=0,dive,required"`
-		Keyring Keyring `mapstructure:"keyring" validate:"required,gt=0,dive,required"`
-		RPC     RPC     `mapstructure:"rpc" validate:"required,gt=0,dive,required"`
+		Account Account       `mapstructure:"account" validate:"required,gt=0,dive,required"`
+		Keyring Keyring       `mapstructure:"keyring" validate:"required,gt=0,dive,required"`
+		RPC     RPC           `mapstructure:"rpc" validate:"required,gt=0,dive,required"`
+		Restart RestartConfig `mapstructure:"restart" validate:"required"`
 
 		ProviderTimeout string `mapstructure:"provider_timeout"`
 		ContractAddress string `mapstructure:"contract_address"`
-		TimeoutHeight   int64  `mapsturture:"timeout_height"`
-		EventTimeout    string `mapstrucutre:"event_timeout"`
+		TimeoutHeight   int64  `mapstructure:"timeout_height"`
+		EventTimeout    string `mapstructure:"event_timeout"`
+		MaxTickTimeout  string `mapstructure:"max_tick_timeout"`
+		QueryTimeout    string `mapstructure:"query_timeout"`
+		MaxRetries      int64  `mapstructure:"max_retries"`
 
-		MedianRequestID uint64 `mapstructure:"median_request_id"`
-		RequestID       uint64 `mapstructure:"request_id"`
+		MedianRequestID    uint64 `mapstructure:"median_request_id"`
+		RequestID          uint64 `mapstructure:"request_id"`
+		DeviationRequestID uint64 `mapstructure:"deviation_request_id"`
 
 		// force relay prices and reset epoch time in contracts if err in broadcasting tx
 		MissedThreshold int64  `mapstructure:"missed_threshold"`
@@ -49,9 +55,9 @@ type (
 		GasPrices     string  `mapstructure:"gas_prices" validate:"required"`
 
 		// query rpc for ojo node
-		QueryRPC      string `mapstructure:"query_rpc"`
-		EventRPC      string `mapstructure:"event_rpc"`
-		TickEventType string `mapstructure:"event_type"`
+		QueryRPCS     []string `mapstructure:"query_rpcs" validate:"required"`
+		EventRPCS     []string `mapstructure:"event_rpcs" validate:"required"`
+		TickEventType string   `mapstructure:"event_type"`
 	}
 
 	// Account defines account related configuration that is related to the Client
@@ -68,10 +74,17 @@ type (
 		Dir     string `mapstructure:"dir" validate:"required"`
 	}
 
+	RestartConfig struct {
+		AutoID    bool   `mapstructure:"auto_id"`
+		Denom     string `mapstructure:"denom"`
+		SkipError bool   `mapstructure:"skip_error"`
+	}
+
 	// RPC defines RPC configuration of both the wasmd chain and Tendermint nodes.
 	RPC struct {
 		TMRPCEndpoint string `mapstructure:"tmrpc_endpoint" validate:"required"`
 		RPCTimeout    string `mapstructure:"rpc_timeout" validate:"required"`
+		QueryEndpoint string `mapstructure:"query_endpoint" validate:"required"`
 	}
 )
 
@@ -104,8 +117,8 @@ func ParseConfig(configPath string) (Config, error) {
 		cfg.ProviderTimeout = defaultProviderTimeout.String()
 	}
 
-	if len(cfg.QueryRPC) == 0 {
-		cfg.QueryRPC = defaultQueryRPC
+	if len(cfg.QueryRPCS) == 0 {
+		cfg.QueryRPCS = []string{defaultQueryRPC}
 	}
 
 	if len(cfg.ContractAddress) == 0 {
@@ -117,7 +130,15 @@ func ParseConfig(configPath string) (Config, error) {
 	}
 
 	if len(cfg.EventTimeout) == 0 {
-		cfg.EventTimeout = defaultEventTimeout.String()
+		cfg.EventTimeout = defaultTimeout.String()
+	}
+
+	if len(cfg.MaxTickTimeout) == 0 {
+		cfg.MaxTickTimeout = defaultTimeout.String()
+	}
+
+	if len(cfg.QueryTimeout) == 0 {
+		cfg.QueryTimeout = defaultTimeout.String()
 	}
 
 	if len(cfg.ResolveDuration) == 0 {
@@ -126,6 +147,10 @@ func ParseConfig(configPath string) (Config, error) {
 
 	if len(cfg.TickEventType) == 0 {
 		cfg.TickEventType = defaultTickEventType
+	}
+
+	if cfg.MaxRetries == 0 {
+		cfg.MaxRetries = defaultRetries
 	}
 
 	return cfg, cfg.Validate()
