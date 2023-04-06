@@ -31,8 +31,8 @@ repo root: `/scripts/build_schemas.sh` or run `cargo schema` in the smart contra
 
 ## Usage
 
-To query the prices from Band Protocol's StdReference contracts, the contract looking to use the price values should
-query Band Protocol's `std_reference` contract.
+To query the prices from Ojo Network, the contract looking to use the price values should
+query Ojo Network's `std_reference` contract.
 
 ### QueryMsg
 
@@ -48,7 +48,7 @@ pub enum QueryMsg {
     },
     GetReferenceDataBulk {
         // Vector of Symbol pair to query
-        // e.g. <BTC/USD ETH/USD, BAND/BTC> ≡ <("BTC", "USD"), ("ETH", "USD"), ("BAND", "BTC")>
+        // e.g. <BTC/USD ETH/USD, OJO/BTC> ≡ <("BTC", "USD"), ("ETH", "USD"), ("OJO", "BTC")>
         symbol_pairs: Vec<(String, String)>,
     },
 }

@@ -175,3 +175,26 @@ func encryptData(aesEncryptionKey []byte, txSenderPubKey []byte, plaintext []byt
 
 	return ciphertext, nil
 }
+
+func (ctx WASMContext) Decrypt(ciphertext, nonce, iopubkey []byte) ([]byte, error) {
+	if len(ciphertext) == 0 {
+		return []byte{}, nil
+	}
+
+	txSenderPrivKey, _, err := ctx.GetTxSenderKeyPair()
+	if err != nil {
+		return nil, err
+	}
+
+	txEncryptionKey, err := ctx.getTxEncryptionKey(txSenderPrivKey, nonce, iopubkey)
+	if err != nil {
+		return nil, err
+	}
+
+	cipher, err := miscreant.NewAESCMACSIV(txEncryptionKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return cipher.Open(nil, ciphertext, []byte{})
+}

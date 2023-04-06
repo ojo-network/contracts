@@ -3,10 +3,12 @@ package client
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/cosmos/cosmos-sdk/client"
@@ -22,6 +24,11 @@ import (
 	"github.com/rs/zerolog"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	tmjsonclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
+	"golang.org/x/sync/errgroup"
+
+	types "github.com/ojo-network/cw-relayer/relayer/dep"
+	scrtutils "github.com/ojo-network/cw-relayer/relayer/dep/utils"
+	scrttypes "github.com/ojo-network/cw-relayer/relayer/dep/utils/types"
 )
 
 type (
@@ -33,6 +40,7 @@ type (
 		KeyringDir        string
 		KeyringPass       string
 		TMRPC             string
+		QueryRpc          string
 		RPCTimeout        time.Duration
 		RelayerAddr       sdk.AccAddress
 		RelayerAddrString string
@@ -50,6 +58,16 @@ type (
 	}
 )
 
+type SmartQuery struct {
+	QueryType int
+	QueryMsg  scrttypes.QuerySecretContractRequest
+}
+
+type QueryResponse struct {
+	QueryType     int
+	QueryResponse scrttypes.QuerySecretContractResponse
+}
+
 func NewRelayerClient(
 	ctx context.Context,
 	logger zerolog.Logger,
@@ -58,6 +76,7 @@ func NewRelayerClient(
 	keyringDir string,
 	keyringPass string,
 	tmRPC string,
+	queryEndpoint string,
 	rpcTimeout time.Duration,
 	RelayerAddrString string,
 	accPrefix string,
@@ -84,6 +103,7 @@ func NewRelayerClient(
 		RelayerAddr:       RelayerAddr,
 		RelayerAddrString: RelayerAddrString,
 		Encoding:          MakeEncodingConfig(),
+		QueryRpc:          queryEndpoint,
 		GasPrices:         GasPrices,
 		gasLimit:          gasLimit,
 	}
@@ -203,6 +223,69 @@ func (oc RelayerClient) BroadcastTx(clientCtx client.Context, nextBlockHeight, t
 	return errors.New("broadcasting tx timed out")
 }
 
+func (oc RelayerClient) BroadcastContractQuery(
+	ctx context.Context,
+	iopubkey []byte,
+	codeHash string,
+	contractAddress string,
+	timeout time.Duration,
+	queries ...SmartQuery,
+) ([]QueryResponse, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	g, _ := errgroup.WithContext(ctx)
+
+	var responses []QueryResponse
+	var mut sync.Mutex
+
+	clientCtx, wasmCtx, err := oc.CreateClientAndScrtWasmCtx()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, query := range queries {
+		func(queryMap SmartQuery) {
+			g.Go(func() error {
+				queryMsg := types.NewSecretMsg([]byte(codeHash), queryMap.QueryMsg.Query)
+				queryData, err := wasmCtx.Encrypt(iopubkey, queryMsg.Serialize())
+				if err != nil {
+					return err
+				}
+
+				route := fmt.Sprintf("custom/%s/%s/%s", "compute", "contract-state", contractAddress)
+				nonce, _, _, _ := parseEncryptedBlob(queryData)
+				res, _, err := clientCtx.QueryWithData(route, queryData)
+				if err != nil {
+					return err
+				}
+
+				var resDecrypted []byte
+				if len(res) > 0 {
+					resDecrypted, err = wasmCtx.Decrypt(res, nonce, iopubkey)
+					if err != nil {
+						return err
+					}
+				}
+
+				decodedResp, err := base64.StdEncoding.DecodeString(string(resDecrypted))
+				if err != nil {
+					return err
+				}
+
+				mut.Lock()
+				responses = append(responses, QueryResponse{QueryType: queryMap.QueryType, QueryResponse: scrttypes.QuerySecretContractResponse{Data: decodedResp}})
+				mut.Unlock()
+
+				return nil
+			})
+		}(query)
+	}
+
+	err = g.Wait()
+	return responses, err
+}
+
 // CreateClientContext creates an SDK client Context instance used for transaction
 // generation, signing and broadcasting.
 func (oc RelayerClient) CreateClientContext() (client.Context, error) {
@@ -283,6 +366,16 @@ func (oc RelayerClient) CreateTxFactory() (tx.Factory, error) {
 	return txFactory, nil
 }
 
+func (oc RelayerClient) CreateClientAndScrtWasmCtx() (*client.Context, *scrtutils.WASMContext, error) {
+	clientCtx, err := oc.CreateClientContext()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	wasmCtx := scrtutils.WASMContext{CLIContext: clientCtx}
+	return &clientCtx, &wasmCtx, nil
+}
+
 func GetChainTimestamp(clientCtx client.Context) (time.Time, error) {
 	node, err := clientCtx.GetNode()
 	if err != nil {
@@ -296,4 +389,16 @@ func GetChainTimestamp(clientCtx client.Context) (time.Time, error) {
 
 	blockTime := status.SyncInfo.LatestBlockTime
 	return blockTime, nil
+}
+
+func parseEncryptedBlob(blob []byte) ([]byte, []byte, []byte, error) {
+	if len(blob) < 64 {
+		return nil, nil, nil, fmt.Errorf("input must be > 64 bytes. Got %d", len(blob))
+	}
+
+	nonce := blob[0:32]
+	originalTxSenderPubkey := blob[32:64]
+	ciphertextInput := blob[64:]
+
+	return nonce, originalTxSenderPubkey, ciphertextInput, nil
 }

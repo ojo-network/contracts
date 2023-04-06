@@ -12,4 +12,7 @@ pub enum ContractError {
 
     #[error("Unauthorized: {msg}")]
     Unauthorized { msg: String },
+
+    #[error("Median is disabled")]
+    MedianDisabled {},
 }
