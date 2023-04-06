@@ -204,7 +204,8 @@ func (r *Relayer) restart(ctx context.Context) error {
 				return err
 			}
 
-			requestID := uint64(id)
+			// increment request id for relay
+			requestID := uint64(id) + 1
 			switch response.QueryType {
 			case int(QueryRateMsg):
 				r.requestID = requestID
