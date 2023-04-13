@@ -121,7 +121,7 @@ func (event *EventSubscribe) subscribe(
 	for {
 		select {
 		case <-ctx.Done():
-			err := event.rpcClient.Unsubscribe(ctx, "", queryEventNewBlockHeader.String())
+			err := event.rpcClient.Unsubscribe(ctx, "", tmtypes.EventNewBlockHeader)
 			if err != nil {
 				event.logger.Err(err).Msg("unsubscribing error")
 			}
@@ -132,28 +132,30 @@ func (event *EventSubscribe) subscribe(
 			return
 
 		case resultEvent := <-event.eventChan:
-			data, ok := resultEvent.Data.(tmtypes.EventDataNewBlockHeader)
+			_, ok := resultEvent.Data.(tmtypes.EventDataNewBlockHeader)
 			if !ok {
 				event.logger.Error().Msg("no new block header")
 				continue
 			}
 
-			events := data.ResultEndBlock.GetEvents()
-			if len(events) > 0 {
-				tick := false
-				for _, event := range events {
-					if event.Type == tickEventType {
-						tick = true
-						break
-					}
-				}
-
-				if tick {
-					current = time.Now()
-					event.logger.Info().Msg("price update event")
-					event.Tick <- struct{}{}
-				}
-			}
+			event.Tick <- struct{}{}
+			//
+			//events := data.ResultEndBlock.GetEvents()
+			//if len(events) > 0 {
+			//	tick := false
+			//	for _, event := range events {
+			//		if event.Type == tickEventType {
+			//			tick = true
+			//			break
+			//		}
+			//	}
+			//
+			//	if tick {
+			//		current = time.Now()
+			//		event.logger.Info().Msg("price update event")
+			//		event.Tick <- struct{}{}
+			//	}
+			//}
 
 		default:
 			lapsed := time.Since(current)

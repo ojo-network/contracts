@@ -97,10 +97,10 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 	// listen for and trap any OS signal to gracefully shutdown and exit
 	trapSignal(cancel, logger)
 
-	rpcTimeout, err := time.ParseDuration(cfg.RPC.RPCTimeout)
-	if err != nil {
-		return fmt.Errorf("failed to parse RPC timeout: %w", err)
-	}
+	//rpcTimeout, err := time.ParseDuration(cfg.RPC.)
+	//if err != nil {
+	//	return fmt.Errorf("failed to parse RPC timeout: %w", err)
+	//}
 
 	eventTimeout, err := time.ParseDuration(cfg.EventTimeout)
 	if err != nil {
@@ -123,26 +123,21 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 	}
 
 	// Gather pass via env variable || std input
-	keyringPass, err := getKeyringPassword()
-	if err != nil {
-		return err
-	}
+	//keyringPass, err := getKeyringPassword()
+	//if err != nil {
+	//	return err
+	//}
 
 	// client for interacting with the ojo & wasmd chain
 	client, err := relayerclient.NewRelayerClient(
 		ctx,
 		logger,
 		cfg.Account.ChainID,
-		cfg.Keyring.Backend,
-		cfg.Keyring.Dir,
-		keyringPass,
-		cfg.RPC.TMRPCEndpoint,
-		cfg.RPC.QueryEndpoint,
-		rpcTimeout,
+		cfg.RPC.RPCEndpoint,
+		cfg.ContractAddress,
 		cfg.Account.Address,
-		cfg.Account.AccPrefix,
-		cfg.GasAdjustment,
 		cfg.GasPrices,
+		cfg.Keyring.PrivKey,
 	)
 	if err != nil {
 		return err

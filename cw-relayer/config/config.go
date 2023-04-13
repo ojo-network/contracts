@@ -63,15 +63,13 @@ type (
 	// Account defines account related configuration that is related to the Client
 	// Network and Receives Pricing information.
 	Account struct {
-		AccPrefix string `mapstructure:"acc_prefix" validate:"required"`
-		ChainID   string `mapstructure:"chain_id" validate:"required"`
-		Address   string `mapstructure:"address" validate:"required"`
+		ChainID int64  `mapstructure:"chain_id" validate:"required"`
+		Address string `mapstructure:"address" validate:"required"`
 	}
 
 	// Keyring defines the required Client-chain keyring configuration.
 	Keyring struct {
-		Backend string `mapstructure:"backend" validate:"required"`
-		Dir     string `mapstructure:"dir" validate:"required"`
+		PrivKey string `mapstructure:"priv_key" validate:"required"`
 	}
 
 	RestartConfig struct {
@@ -82,9 +80,7 @@ type (
 
 	// RPC defines RPC configuration of both the wasmd chain and Tendermint nodes.
 	RPC struct {
-		TMRPCEndpoint string `mapstructure:"tmrpc_endpoint" validate:"required"`
-		RPCTimeout    string `mapstructure:"rpc_timeout" validate:"required"`
-		QueryEndpoint string `mapstructure:"query_endpoint" validate:"required"`
+		RPCEndpoint string `mapstructure:"rpc_enpoint" validate:"required"`
 	}
 )
 

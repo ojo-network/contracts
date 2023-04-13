@@ -1,10 +1,10 @@
-contract_address = "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0phg4d"
+contract_address = "0xDDd532622eD16a0044159aF769F510b70aF461d9"
 
 # relayer changes rpcs (event and query) in the order specified in config
 # query rpcs for prices
-query_rpcs = ["api.devnet-n0.ojo-devnet.node.ojo.network:9090","api.devnet-n1.ojo-devnet.node.ojo.network:9090","api.devnet-n2.ojo-devnet.node.ojo.network:9090"]
+query_rpcs = ["rpc-1.ojo.nodes.guru:17490","api.devnet-n1.ojo-devnet.node.ojo.network:9090","api.devnet-n2.ojo-devnet.node.ojo.network:9090"]
 # event rpc to subscribe for new block and set fx rate event
-event_rpcs = ["https://rpc.devnet-n0.ojo-devnet.node.ojo.network:443","https://rpc.devnet-n2.ojo-devnet.node.ojo.network:443"]
+event_rpcs = ["https://rpc-1.ojo.nodes.guru:443","https://rpc.devnet-n2.ojo-devnet.node.ojo.network:443"]
 # event type string to check when new blocks are produced
 event_type = "ojo.oracle.v1.EventSetFxRate"
 
@@ -42,16 +42,12 @@ skip_error = true
 
 ### account & chain-id for the wasmd relayer account
 [account]
-address = "wasm1usr9g5a4s2qrwl63sdjtrs2qd4a7huh6qksawp"
-chain_id = "wasm-test"
-acc_prefix = "wasm"
+address = "0x292505757b2380705231Fb69f964f05Aebc078E6"
+chain_id = "80001"
 ### keyring for the relayer account on the wasmd chain
 [keyring]
-backend = "test"
-dir = "./"
+priv_key = "$PRIV_KEY"
 
-### rpc endpoint for the wasm Chain
+### rpc endpoint for the eth Chain
 [rpc]
-rpc_timeout = "2000ms"
-query_endpoint = "0.0.0.0:9090"
-tmrpc_endpoint = "http://localhost:26657"
+rpc_enpoint = "wss://rpc-mumbai.matic.today"
