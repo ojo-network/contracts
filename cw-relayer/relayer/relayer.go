@@ -100,23 +100,23 @@ func New(
 }
 
 func (r *Relayer) Start(ctx context.Context) error {
-	// auto restart
-	//if r.config.AutoRestart {
-	//	//err := r.restart(ctx)
-	//	if err != nil {
-	//		r.logger.Error().Err(err).Msg("error auto restarting relayer")
-	//
-	//		// return error if skip error is false
-	//		if !r.config.SkipError {
-	//			return err
-	//		}
-	//	}
-	//
-	//	r.logger.Info().
-	//		Uint64("request id", r.requestID).
-	//		Uint64("median request id", r.medianRequestID).
-	//		Uint64("deviation request id", r.deviationRequestID).Msg("relayer state startup successful")
-	//}
+	//auto restart
+	if r.config.AutoRestart {
+		err := r.restart(ctx)
+		if err != nil {
+			r.logger.Error().Err(err).Msg("error auto restarting relayer")
+
+			// return error if skip error is false
+			if !r.config.SkipError {
+				return err
+			}
+		}
+
+		r.logger.Info().
+			Uint64("request id", r.requestID).
+			Uint64("median request id", r.medianRequestID).
+			Uint64("deviation request id", r.deviationRequestID).Msg("relayer state startup successful")
+	}
 
 	for {
 		select {
@@ -151,46 +151,19 @@ func (r *Relayer) increment() {
 	r.logger.Info().Int("rpc index", r.index).Msg("switching query rpc")
 }
 
-//// restart queries wasmd chain to fetch latest request, median request and deviation request id
-//func (r *Relayer) restart(ctx context.Context) error {
-//	queryMsgs, err := genRestartQueries(r.contractAddress, r.config.Denom)
-//	if err != nil {
-//		return err
-//	}
-//
-//	responses, err := r.relayerClient.BroadcastContractQuery(ctx, r.queryTimeout, queryMsgs...)
-//	if err != nil {
-//		return err
-//	}
-//
-//	for _, response := range responses {
-//		if len(response.QueryResponse.Data) != 0 {
-//			var resp map[string]interface{}
-//			err := json.Unmarshal(response.QueryResponse.Data, &resp)
-//			if err != nil {
-//				return nil
-//			}
-//
-//			id, err := strconv.ParseInt(resp["request_id"].(string), 10, 64)
-//			if err != nil {
-//				return err
-//			}
-//
-//			// increment request id for relay
-//			requestID := uint64(id) + 1
-//			switch response.QueryType {
-//			case int(QueryRateMsg):
-//				r.requestID = requestID
-//			case int(QueryMedianRateMsg):
-//				r.medianRequestID = requestID
-//			case int(QueryDeviationRateMsg):
-//				r.deviationRequestID = requestID
-//			}
-//		}
-//	}
-//
-//	return nil
-//}
+// restart queries wasmd chain to fetch latest request, median request and deviation request id
+func (r *Relayer) restart(ctx context.Context) error {
+	response, err := r.relayerClient.BroadcastContractQuery(ctx, r.config.Denom)
+	if err != nil {
+		return err
+	}
+
+	r.requestID = response.PriceID
+	r.deviationRequestID = response.DeviationID
+	r.medianRequestID = response.MedianID
+
+	return nil
+}
 
 func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 	if r.queryRetries > r.maxQueryRetries {
@@ -319,8 +292,8 @@ func (r *Relayer) tick(ctx context.Context) error {
 
 	var medianMsg []client.PriceFeedMedianData
 	if postMedian {
-		//resolveTime := time.Duration(r.resolveDuration.Nanoseconds() * r.medianDuration)
-		nextMedianBlockTime := blockTimestamp
+		resolveTime := time.Duration(r.resolveDuration.Nanoseconds() * r.medianDuration)
+		nextMedianBlockTime := blockTimestamp + uint64(resolveTime.Seconds())
 		medianMsg = r.genMedianMsg(r.medianRequestID, nextMedianBlockTime)
 		if err != nil {
 			return err

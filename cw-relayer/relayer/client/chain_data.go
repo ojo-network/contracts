@@ -55,7 +55,7 @@ func NewChainHeight(
 		lastBlockTime:   initialBlockTime,
 	}
 
-	go chainHeight.subscribe(ctx, ethClient, headerSubscription)
+	go chainHeight.subscribe(ctx, headerSubscription)
 
 	return chainHeight, nil
 }
@@ -74,7 +74,6 @@ func (chainHeight *ChainHeight) updateBlockHeight(blockHeight uint64, blockTime 
 // and updates the block height.
 func (chainHeight *ChainHeight) subscribe(
 	ctx context.Context,
-	ethClient *ethclient.Client,
 	headerSubscription <-chan *types.Header,
 ) {
 	for {
@@ -86,7 +85,7 @@ func (chainHeight *ChainHeight) subscribe(
 		case header := <-headerSubscription:
 			blockNumber := header.Number.Uint64()
 			blockTime := header.Time
-			chainHeight.Logger.Info().Uint64("block number", blockNumber).Uint64("block time", blockTime).Msg("new header")
+			chainHeight.Logger.Debug().Uint64("block number", blockNumber).Uint64("block time", blockTime).Msg("new header")
 
 			chainHeight.updateBlockHeight(blockNumber, blockTime, nil)
 		}

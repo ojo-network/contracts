@@ -132,30 +132,28 @@ func (event *EventSubscribe) subscribe(
 			return
 
 		case resultEvent := <-event.eventChan:
-			_, ok := resultEvent.Data.(tmtypes.EventDataNewBlockHeader)
+			data, ok := resultEvent.Data.(tmtypes.EventDataNewBlockHeader)
 			if !ok {
 				event.logger.Error().Msg("no new block header")
 				continue
 			}
 
-			event.Tick <- struct{}{}
-			//
-			//events := data.ResultEndBlock.GetEvents()
-			//if len(events) > 0 {
-			//	tick := false
-			//	for _, event := range events {
-			//		if event.Type == tickEventType {
-			//			tick = true
-			//			break
-			//		}
-			//	}
-			//
-			//	if tick {
-			//		current = time.Now()
-			//		event.logger.Info().Msg("price update event")
-			//		event.Tick <- struct{}{}
-			//	}
-			//}
+			events := data.ResultEndBlock.GetEvents()
+			if len(events) > 0 {
+				tick := false
+				for _, event := range events {
+					if event.Type == tickEventType {
+						tick = true
+						break
+					}
+				}
+
+				if tick {
+					current = time.Now()
+					event.logger.Info().Msg("price update event")
+					event.Tick <- struct{}{}
+				}
+			}
 
 		default:
 			lapsed := time.Since(current)

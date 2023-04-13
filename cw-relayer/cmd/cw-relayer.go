@@ -96,12 +96,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 
 	// listen for and trap any OS signal to gracefully shutdown and exit
 	trapSignal(cancel, logger)
-
-	//rpcTimeout, err := time.ParseDuration(cfg.RPC.)
-	//if err != nil {
-	//	return fmt.Errorf("failed to parse RPC timeout: %w", err)
-	//}
-
+	
 	eventTimeout, err := time.ParseDuration(cfg.EventTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to parse Event timeout: %w", err)
@@ -121,12 +116,6 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to parse Resolve Duration: %w", err)
 	}
-
-	// Gather pass via env variable || std input
-	//keyringPass, err := getKeyringPassword()
-	//if err != nil {
-	//	return err
-	//}
 
 	// client for interacting with the ojo & wasmd chain
 	client, err := relayerclient.NewRelayerClient(

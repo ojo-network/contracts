@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -98,8 +99,9 @@ func ParseConfig(configPath string) (Config, error) {
 		return cfg, ErrEmptyConfigPath
 	}
 
-	viper.AutomaticEnv()
 	viper.SetConfigFile(configPath)
+	key := os.Getenv("PRIV_KEY")
+	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {
 		return cfg, fmt.Errorf("failed to read config: %w", err)
@@ -131,6 +133,10 @@ func ParseConfig(configPath string) (Config, error) {
 
 	if len(cfg.MaxTickTimeout) == 0 {
 		cfg.MaxTickTimeout = defaultTimeout.String()
+	}
+
+	if cfg.Keyring.PrivKey == "$PRIV_KEY" {
+		cfg.Keyring.PrivKey = key
 	}
 
 	if len(cfg.QueryTimeout) == 0 {

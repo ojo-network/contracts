@@ -1,22 +1,23 @@
 package client
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"fmt"
-	"io"
 	"math/big"
+	"sync"
 	"time"
 
-	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	"github.com/cosmos/cosmos-sdk/telemetry"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/rs/zerolog"
+	"golang.org/x/sync/errgroup"
+
+	"github.com/ojo-network/cw-relayer/tools"
 )
 
 type (
@@ -32,21 +33,12 @@ type (
 		contractAddress ethtypes.Address
 		ChainHeight     *ChainHeight
 	}
-
-	passReader struct {
-		pass string
-		buf  *bytes.Buffer
-	}
 )
 
-type SmartQuery struct {
-	QueryType int
-	QueryMsg  wasmtypes.QuerySmartContractStateRequest
-}
-
 type QueryResponse struct {
-	QueryType     int
-	QueryResponse wasmtypes.QuerySmartContractStateResponse
+	PriceID     uint64
+	DeviationID uint64
+	MedianID    uint64
 }
 
 func NewRelayerClient(
@@ -73,8 +65,8 @@ func NewRelayerClient(
 	if err != nil {
 		return RelayerClient{}, err
 	}
+
 	blockHeight, err := ethClient.BlockNumber(ctx)
-	fmt.Println("block height", blockHeight)
 	if err != nil {
 		return RelayerClient{}, err
 	}
@@ -102,22 +94,61 @@ func NewRelayerClient(
 	return relayerClient, nil
 }
 
-func newPassReader(pass string) io.Reader {
-	return &passReader{
-		pass: pass,
-		buf:  new(bytes.Buffer),
-	}
-}
-
-func (r *passReader) Read(p []byte) (n int, err error) {
-	n, err = r.buf.Read(p)
-	if err == io.EOF || n == 0 {
-		r.buf.WriteString(r.pass + "\n")
-
-		n, err = r.buf.Read(p)
+func (oc RelayerClient) BroadcastContractQuery(ctx context.Context, assetName string) (QueryResponse, error) {
+	oracle, err := NewOracle(oc.contractAddress, oc.client)
+	if err != nil {
+		return QueryResponse{}, err
 	}
 
-	return n, err
+	callOpts := bind.CallOpts{
+		Pending: false,
+	}
+
+	g, _ := errgroup.WithContext(ctx)
+
+	var mut sync.Mutex
+	var response QueryResponse
+	asset := tools.StringToByte32(assetName)
+	g.Go(func() error {
+		data, err := oracle.GetPrice(&callOpts, asset)
+		if err != nil {
+			return err
+		}
+
+		mut.Lock()
+		response.PriceID = data.Id.Uint64()
+		mut.Unlock()
+
+		return nil
+	})
+
+	g.Go(func() error {
+		data, err := oracle.GetDeviations(&callOpts, asset)
+		if err != nil {
+			return err
+		}
+
+		mut.Lock()
+		response.DeviationID = data.Id.Uint64()
+		mut.Unlock()
+
+		return nil
+	})
+
+	g.Go(func() error {
+		data, err := oracle.GetMedians(&callOpts, asset)
+		if err != nil {
+			return err
+		}
+		mut.Lock()
+		response.MedianID = data.Id.Uint64()
+		mut.Unlock()
+
+		return nil
+	})
+
+	err = g.Wait()
+	return response, err
 }
 
 // BroadcastTx attempts to broadcast a signed transaction. If it fails, a few re-attempts
@@ -150,6 +181,11 @@ func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight uint64, rate 
 			return err
 		}
 
+		pending, err := oc.client.PendingNonceAt(context.Background(), oc.relayerAddress)
+		if err != nil {
+			return err
+		}
+
 		session := &OracleSession{
 			Contract: oracle,
 			CallOpts: bind.CallOpts{
@@ -158,43 +194,59 @@ func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight uint64, rate 
 			TransactOpts: bind.TransactOpts{
 				From:   auth.From,
 				Signer: auth.Signer,
-				//GasPrice: big.NewInt(160000000000),
-				//Nonce:    big.NewInt(4),
+				Nonce:  big.NewInt(int64(pending)),
 			},
 		}
 
-		resp, err := session.PostPrices(rate)
-		resp, err = session.PostDeviations(deviation)
-		resp, err = session.PostMedians(medians)
-
-		if resp != nil && resp.Hash().String() == "" {
-			telemetry.IncrCounter(1, "failure", "tx", "code")
-			oc.logger.Error().Msg(resp.Hash().String())
+		respRate, err := session.PostPrices(rate)
+		if err != nil {
+			return err
 		}
 
+		session.incrementNonce()
+		respDeviation, err := session.PostDeviations(deviation)
 		if err != nil {
-			var (
-				hash string
-			)
-			if resp != nil {
-				hash = resp.Hash().String()
+			return err
+		}
+
+		session.incrementNonce()
+		respMedian, err := session.PostMedians(medians)
+		if err != nil {
+			return err
+		}
+
+		txResps := []*types.Transaction{respRate, respDeviation, respMedian}
+
+		for _, resp := range txResps {
+			if resp != nil && resp.Hash().String() == "" {
+				telemetry.IncrCounter(1, "failure", "tx", "code")
+				oc.logger.Error().Msg(resp.Hash().String())
 			}
 
-			oc.logger.Debug().
-				Err(err).
-				Int64("max_height", int64(maxBlockHeight)).
-				Int64("last_check_height", int64(lastCheckHeight)).
-				Str("tx_hash", hash).
-				Msg("failed to broadcast tx; retrying...")
+			if err != nil {
+				var (
+					hash string
+				)
+				if resp != nil {
+					hash = resp.Hash().String()
+				}
 
-			time.Sleep(time.Second * 1)
-			continue
+				oc.logger.Debug().
+					Err(err).
+					Int64("max_height", int64(maxBlockHeight)).
+					Int64("last_check_height", int64(lastCheckHeight)).
+					Str("tx_hash", hash).
+					Msg("failed to broadcast tx; retrying...")
+
+				time.Sleep(time.Second * 1)
+				continue
+			}
+
+			oc.logger.Info().
+				Str("tx_hash", resp.Hash().String()).
+				Uint64("nonce", resp.Nonce()).
+				Msg("successfully broadcasted tx")
 		}
-
-		oc.logger.Info().
-			Str("tx_hash", resp.Hash().String()).
-			Uint64("nonce", resp.Nonce()).
-			Msg("successfully broadcasted tx")
 
 		return nil
 	}
@@ -203,10 +255,13 @@ func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight uint64, rate 
 	return errors.New("broadcasting tx timed out")
 }
 
-// CreateTransactor creates an SDK client Context instance used for transaction
-// generation, signing and broadcasting.
+// CreateTransactor creates a auth signer for geth
 func (oc RelayerClient) CreateTransactor() (*bind.TransactOpts, error) {
 	sk := crypto.ToECDSAUnsafe(common.FromHex(oc.PrivKey))
-	a, err := bind.NewKeyedTransactorWithChainID(sk, big.NewInt(oc.ChainID))
-	return a, err
+	return bind.NewKeyedTransactorWithChainID(sk, big.NewInt(oc.ChainID))
+}
+
+func (s *OracleSession) incrementNonce() {
+	nonce := s.TransactOpts.Nonce.Int64()
+	s.TransactOpts.Nonce.Set(big.NewInt(nonce + 1))
 }
