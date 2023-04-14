@@ -29,7 +29,7 @@ type (
 		PrivKey         string
 		GasPrices       string
 		client          *ethclient.Client
-		relayerAddress  ethtypes.Address
+		RelayerAddress  ethtypes.Address
 		contractAddress ethtypes.Address
 		ChainHeight     *ChainHeight
 	}
@@ -56,7 +56,7 @@ func NewRelayerClient(
 		ChainID:         chainID,
 		RPC:             RPC,
 		GasPrices:       GasPrices,
-		relayerAddress:  common.HexToAddress(relayerAddr),
+		RelayerAddress:  common.HexToAddress(relayerAddr),
 		contractAddress: common.HexToAddress(contractAddr),
 		PrivKey:         privKey,
 	}
@@ -110,7 +110,7 @@ func (oc RelayerClient) BroadcastContractQuery(ctx context.Context, assetName st
 	var response QueryResponse
 	asset := tools.StringToByte32(assetName)
 	g.Go(func() error {
-		data, err := oracle.GetPrice(&callOpts, asset)
+		data, err := oracle.GetPriceData(&callOpts, asset)
 		if err != nil {
 			return err
 		}
@@ -123,7 +123,7 @@ func (oc RelayerClient) BroadcastContractQuery(ctx context.Context, assetName st
 	})
 
 	g.Go(func() error {
-		data, err := oracle.GetDeviations(&callOpts, asset)
+		data, err := oracle.GetDeviationData(&callOpts, asset)
 		if err != nil {
 			return err
 		}
@@ -136,7 +136,7 @@ func (oc RelayerClient) BroadcastContractQuery(ctx context.Context, assetName st
 	})
 
 	g.Go(func() error {
-		data, err := oracle.GetMedians(&callOpts, asset)
+		data, err := oracle.GetMedianData(&callOpts, asset)
 		if err != nil {
 			return err
 		}
@@ -181,7 +181,7 @@ func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight uint64, rate 
 			return err
 		}
 
-		pending, err := oc.client.PendingNonceAt(context.Background(), oc.relayerAddress)
+		pending, err := oc.client.PendingNonceAt(context.Background(), oc.RelayerAddress)
 		if err != nil {
 			return err
 		}

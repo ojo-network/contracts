@@ -3,7 +3,8 @@ import "@nomicfoundation/hardhat-toolbox";
 import "hardhat-abi-exporter";
 import * as dotenv from 'dotenv';
 
-dotenv.config()
+dotenv.config();
+let priv_key: string = process.env.PRIVATE_KEY as string;
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -20,7 +21,7 @@ const config: HardhatUserConfig = {
     hardhat:{
       accounts: [
         {
-          privateKey: "$PRIV_KEY",
+          privateKey: priv_key,
           balance: "1000000000000000000000" // 1000 ETH
         },
       ]
@@ -28,14 +29,12 @@ const config: HardhatUserConfig = {
 
     nat:{
       url:"https://triton.api.nautchain.xyz",
-      accounts:["$PRIV_KEY"]
+      accounts: [priv_key]
     },
 
     polygon:{
       url:"https://polygon-mainnet.g.alchemy.com/v2/TrWHBdV8QcsNLsXTY4qGhcZ_h5dfoPDP",
-      accounts:["$PRIV_KEY"],
-      gasPrice: 166000000000, // 166 gwei in wei
-      gas: 100
+      accounts: [priv_key],
     }
   }
 };

@@ -85,7 +85,6 @@ func (chainHeight *ChainHeight) subscribe(
 		case header := <-headerSubscription:
 			blockNumber := header.Number.Uint64()
 			blockTime := header.Time
-			chainHeight.Logger.Debug().Uint64("block number", blockNumber).Uint64("block time", blockTime).Msg("new header")
 
 			chainHeight.updateBlockHeight(blockNumber, blockTime, nil)
 		}

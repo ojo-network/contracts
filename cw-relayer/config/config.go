@@ -81,7 +81,7 @@ type (
 
 	// RPC defines RPC configuration of both the wasmd chain and Tendermint nodes.
 	RPC struct {
-		RPCEndpoint string `mapstructure:"rpc_enpoint" validate:"required"`
+		WssEndpoint string `mapstructure:"wss_enpoint" validate:"required"`
 	}
 )
 

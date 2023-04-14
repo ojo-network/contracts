@@ -100,7 +100,7 @@ func New(
 }
 
 func (r *Relayer) Start(ctx context.Context) error {
-	//auto restart
+	// auto restart
 	if r.config.AutoRestart {
 		err := r.restart(ctx)
 		if err != nil {
@@ -126,7 +126,6 @@ func (r *Relayer) Start(ctx context.Context) error {
 		case <-r.event:
 			r.logger.Debug().Msg("relayer tick")
 			startTime := time.Now()
-			r.logger.Info().Msg("relayer tick")
 			if err := r.tick(ctx); err != nil {
 				telemetry.IncrCounter(1, "failure", "tick")
 				r.logger.Err(err).Msg("relayer tick failed")
@@ -279,7 +278,7 @@ func (r *Relayer) tick(ctx context.Context) error {
 	forceRelay := r.missedCounter >= r.missedThreshold
 
 	// set the next resolve time for price feeds on wasm contract
-	nextBlockTime := blockTimestamp
+	nextBlockTime := blockTimestamp + uint64(r.resolveDuration.Seconds())
 	exchangeMsg := r.genRateMsgs(r.requestID, nextBlockTime)
 	if err != nil {
 		return err
@@ -302,7 +301,7 @@ func (r *Relayer) tick(ctx context.Context) error {
 
 	logs := r.logger.Info()
 	logs.Str("contract address", r.contractAddress).
-		//Str("relayer address", r.relayerClient.).
+		Str("relayer address", r.relayerClient.RelayerAddress.String()).
 		Uint64("block timestamp", blockTimestamp).
 		Bool("median posted", postMedian).
 		Uint64("request id", r.requestID).

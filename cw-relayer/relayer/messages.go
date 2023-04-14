@@ -7,8 +7,6 @@ import (
 	"github.com/ojo-network/cw-relayer/tools"
 )
 
-type MsgType int
-
 func (r *Relayer) genRateMsgs(requestID uint64, resolveTime uint64) (msg []client.PriceFeedData) {
 	for _, rate := range r.exchangeRates {
 		var byteArray [32]byte
@@ -47,7 +45,7 @@ func (r *Relayer) genMedianMsg(requestID uint64, resolveTime uint64) (msg []clie
 	for symbol, rates := range medianRates {
 		msg = append(msg, client.PriceFeedMedianData{
 			Name:        symbol,
-			Value:       rates,
+			Values:      rates,
 			ResolveTime: big.NewInt(int64(requestID)),
 			Id:          big.NewInt(int64(resolveTime)),
 		})
