@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -7,20 +7,21 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 contract PriceFeed is Ownable, AccessControl {
     error UnAuthorized();
     error MedianDisabled();
+    address private _tempOwner;
 
     bytes32 public constant RELAYER_ROLE = keccak256("RELAYER_ROLE");
     bytes32 public constant USD = bytes32("USD");
     uint256 constant USD_PRICE= 10**9;
 
     struct Data {
-        bytes32 name;
+        bytes32 assetName;
         uint256 value;
         uint256 resolveTime;
         uint256 id;
     }
 
     struct MedianData{
-        bytes32 name;
+        bytes32 assetName;
         uint256[] values;
         uint256 resolveTime;
         uint256 id;
@@ -48,8 +49,8 @@ contract PriceFeed is Ownable, AccessControl {
     event RemovedFromWhitelist(address indexed user);
 
     constructor() {
-        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
-        _setupRole(RELAYER_ROLE, _msgSender());
+        _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
+        _grantRole(RELAYER_ROLE, _msgSender());
     }
 
     modifier whitelistCheck{
@@ -76,7 +77,7 @@ contract PriceFeed is Ownable, AccessControl {
 
     function postPrices(Data[] calldata _prices) external onlyRole(RELAYER_ROLE) {
         for(uint256 i=0;i<_prices.length;i++){ 
-            prices[_prices[i].name]= _prices[i];
+            prices[_prices[i].assetName]= _prices[i];
         }
 
         emit PricePosted(_msgSender(), block.timestamp);
@@ -84,7 +85,7 @@ contract PriceFeed is Ownable, AccessControl {
 
     function postDeviations(Data[] calldata _deviations) external onlyRole(RELAYER_ROLE) {
         for(uint256 i=0;i<_deviations.length;i++){
-            deviations[_deviations[i].name]= _deviations[i];
+            deviations[_deviations[i].assetName]= _deviations[i];
         }
 
         emit DeviationPosted(_msgSender(), block.timestamp);
@@ -93,7 +94,7 @@ contract PriceFeed is Ownable, AccessControl {
 
     function postMedians(MedianData[] calldata _medians) external onlyRole(RELAYER_ROLE) {
         for(uint256 i=0;i<_medians.length;i++){
-            medians[_medians[i].name]= _medians[i];
+            medians[_medians[i].assetName]= _medians[i];
         }
 
         emit MedianPosted(_msgSender(), block.timestamp);
@@ -103,13 +104,22 @@ contract PriceFeed is Ownable, AccessControl {
         return _getPriceData(_assetName);
     }
 
+    function getPriceDataBulk(bytes32[] calldata _assetNames) external view whitelistCheck returns (Data[] memory priceData) {
+        priceData = new Data[](_assetNames.length);
+        for (uint256 i = 0; i < _assetNames.length; i++) {
+            priceData[i] = _getPriceData(_assetNames[i]);
+        }
+
+        return priceData;
+    }
+
 
     function _getPriceData(bytes32 _assetName) internal view returns (Data memory){
         if (_assetName==USD){
             return  Data({
-                name:USD, 
+                assetName:USD, 
                 value: USD_PRICE,
-                resolveTime: 2**256-1,
+                resolveTime: type(uint256).max,
                 id:0
         });
         }
@@ -117,32 +127,62 @@ contract PriceFeed is Ownable, AccessControl {
         return prices[_assetName];
     }
 
-    function getDeviationData(bytes32 _assetName) public view whitelistCheck returns (Data memory) {
-        if (_assetName==USD){
-            return Data ({
-                name:USD, 
-                value:0,
-                resolveTime: 2**256-1,
-                id:0
-        });
-        }
-        
-        return deviations[_assetName];
-    }
 
-    function getMedianData(bytes32 _assetName) external view whitelistCheck medianCheck returns (MedianData memory) {
+    function _getDeviationData(bytes32 _assetName) internal view returns (Data memory){
         if (_assetName==USD){
-            uint256[] memory medianValues = new uint256[](1);
-            medianValues[0]=USD_PRICE;
-            return MedianData ({
-                name:USD, 
-                values: medianValues,
-                resolveTime: 2**256-1,
+            return  Data({
+                assetName:USD, 
+                value: 0,
+                resolveTime: type(uint256).max,
                 id:0
             });
         }
 
+        return deviations[_assetName];
+    }
+
+    function getDeviationData(bytes32 _assetName) external view whitelistCheck returns (Data memory) {
+        return _getDeviationData(_assetName);
+    }
+
+
+    function getDeviationDataBulk(bytes32[] calldata _assetNames) external view whitelistCheck returns (Data[] memory deviationData) {
+        deviationData = new Data[](_assetNames.length);
+        for (uint256 i = 0; i < _assetNames.length; i++) {
+            deviationData[i] = _getDeviationData(_assetNames[i]);
+        }
+
+        return deviationData;
+    }
+
+    function _getMedianData(bytes32 _assetName) internal view returns (MedianData memory){
+        if (_assetName == USD) {
+            uint256[] memory medianValues = new uint256[](1);
+            medianValues[0] = USD_PRICE;
+
+            return MedianData({
+                assetName: USD,
+                values: medianValues,
+                resolveTime: type(uint256).max,
+                id: 0
+            });
+        }
+
         return medians[_assetName];
+    }
+
+    function getMedianData(bytes32 _assetName) external view whitelistCheck medianCheck returns (MedianData memory) {
+        return _getMedianData(_assetName);
+    }
+
+
+    function getMedianDataBulk(bytes32[] calldata _assetNames) external view whitelistCheck returns (MedianData[] memory medianData) {
+        medianData = new MedianData[](_assetNames.length);
+        for (uint256 i = 0; i < _assetNames.length; i++) {
+            medianData[i] = _getMedianData(_assetNames[i]);
+        }
+        
+        return medianData;
     }
 
     function getPrice(bytes32 _base, bytes32 _qoute) public view whitelistCheck returns (Price memory){
@@ -158,6 +198,7 @@ contract PriceFeed is Ownable, AccessControl {
         });
     }
 
+    // owner functions
     function whitelistAddress(address _user) external onlyOwner{
         whitelist[_user]= true;
         emit Whitelisted(_user);
@@ -175,4 +216,25 @@ contract PriceFeed is Ownable, AccessControl {
     function revokeRelayerRole(address relayer) public onlyOwner {
         revokeRole(RELAYER_ROLE, relayer);
     }
+
+
+    function transferOwnership(address _newOwner) override public onlyOwner{
+        _tempOwner=_newOwner;
+    }
+
+    function claimOwnership() external{
+        if(_msgSender()!=_tempOwner){
+            revert UnAuthorized();
+        }
+
+        // remove previous owner roles
+        _revokeRole(DEFAULT_ADMIN_ROLE, owner());
+        _revokeRole(RELAYER_ROLE, owner());
+
+        _grantRole(DEFAULT_ADMIN_ROLE, _tempOwner);
+        _grantRole(RELAYER_ROLE, _tempOwner);
+
+        _transferOwnership(_tempOwner);
+    }
+    
 }

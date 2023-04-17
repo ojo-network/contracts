@@ -18,14 +18,7 @@ const config: HardhatUserConfig = {
   },
 
   networks:{
-    hardhat:{
-      accounts: [
-        {
-          privateKey: priv_key,
-          balance: "1000000000000000000000" // 1000 ETH
-        },
-      ]
-    },
+    hardhat:{},
 
     nat:{
       url:"https://triton.api.nautchain.xyz",
