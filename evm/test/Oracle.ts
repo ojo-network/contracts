@@ -1,5 +1,4 @@
 import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
@@ -8,24 +7,23 @@ interface Data{
     assetName: string,
     value: number,
     deviation: number,
-    resolveTime:number,
-    medians: number[],
+    resolveTime:any,
+    values: number[],
 }
 
 
-const generateData=function(n:number, id:number): Data[]{
+const generateData=function(n:number, id:number, resolveTime:any): Data[]{
     const dataArr: Data[] = [];
     for(let i=0;i<n;i++){
         const name = ethers.utils.formatBytes32String(`asset${i}`)
-        const  value = Math.floor(Math.random()*10**9)
+        const value = Math.floor(Math.random()*10**9)
         const deviation = Math.floor(Math.random()*10**9)
-        const resolveTime = Math.floor(Date.now()/1000)
         const medians: number[] = new Array(10).fill(0);
 
         for (let j=0;j<10;j++){
-            medians[j]=(Math.random()*10**9)
+            medians[j]=Math.floor((Math.random()*10**9))
         }
-        let data={id:id,assetName:name,value:value,deviation:deviation,medians:medians,resolveTime:resolveTime}
+        let data={id:id,assetName:name,value:value,deviation:deviation,values:medians,resolveTime:resolveTime}
         dataArr.push(data);
     }
     return dataArr;
@@ -105,20 +103,44 @@ describe("Deploy", function () {
         // grant role with admin
         await oracle.grantRole(relayerRole, relayer.address)
 
-        let data= generateData(10,1)
+        let block=await ethers.provider.getBlock("latest")
+        let resolveTime = (block.timestamp+1000).toString()
+        let data= generateData(10,1,resolveTime)
         
+        // post and check price data
         await oracle.connect(relayer).postPrices(data)
-
-        let priceValue=await oracle.getPriceData(data[0].assetName)
-
-        let allData= await oracle.getPriceDataBulk(data.map(d=>d.assetName))
-        expect(allData.length).eq(data.length)
+        let allPrices= await oracle.getPriceDataBulk(data.map(d=>d.assetName))
+        expect(allPrices.length).eq(data.length)
         
         for (let i=0;i<data.length;i++){
-            expect(allData[i].value).eq(data[i].value)
-            expect(allData[i].id).eq(data[i].id)
-            expect(allData[i].resolveTime).eq(data[i].resolveTime)
-            expect(allData[i].assetName).eq(data[i].assetName)
+            expect(allPrices[i].value).eq(data[i].value)
+            expect(allPrices[i].id).eq(data[i].id)
+            expect(allPrices[i].resolveTime.toString()).eq(data[i].resolveTime)
+            expect(allPrices[i].assetName).eq(data[i].assetName)
+        }
+
+        // post and check deviation data
+        await oracle.connect(relayer).postDeviations(data)
+        let allDeviations=await oracle.getDeviationDataBulk(data.map(d=>d.assetName))
+        expect(allDeviations.length).eq(data.length)
+
+        for (let i=0;i<allDeviations.length;i++){
+            expect(allDeviations[i].value).eq(data[i].value)
+            expect(allDeviations[i].id).eq(data[i].id)
+            expect(allDeviations[i].resolveTime.toString()).eq(data[i].resolveTime)
+            expect(allDeviations[i].assetName).eq(data[i].assetName)
+        }
+
+        // post and check median data
+        await oracle.connect(relayer).postMedians(data)
+        let allMedians=await oracle.getMedianDataBulk(data.map(d=>d.assetName))
+        expect(allMedians.length).eq(data.length)        
+
+        for (let i=0;i<allMedians.length;i++){        
+            expect(allMedians[i][3]).deep.eq(data[i].values)
+            expect(allMedians[i].id).eq(data[i].id)
+            expect(allMedians[i].resolveTime.toString()).eq(data[i].resolveTime)
+            expect(allMedians[i].assetName).eq(data[i].assetName)
         }
     })
 })

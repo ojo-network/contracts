@@ -216,7 +216,6 @@ func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight uint64, rate 
 		}
 
 		txResps := []*types.Transaction{respRate, respDeviation, respMedian}
-
 		for _, resp := range txResps {
 			if resp != nil && resp.Hash().String() == "" {
 				telemetry.IncrCounter(1, "failure", "tx", "code")

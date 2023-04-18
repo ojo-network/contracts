@@ -96,7 +96,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 
 	// listen for and trap any OS signal to gracefully shutdown and exit
 	trapSignal(cancel, logger)
-	
+
 	eventTimeout, err := time.ParseDuration(cfg.EventTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to parse Event timeout: %w", err)
@@ -122,7 +122,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		ctx,
 		logger,
 		cfg.Account.ChainID,
-		cfg.RPC.RPCEndpoint,
+		cfg.RPC.WssEndpoint,
 		cfg.ContractAddress,
 		cfg.Account.Address,
 		cfg.GasPrices,

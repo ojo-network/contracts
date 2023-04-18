@@ -30,7 +30,7 @@ var (
 
 // PriceFeedData is an auto generated low-level Go binding around an user-defined struct.
 type PriceFeedData struct {
-	Name        [32]byte
+	AssetName   [32]byte
 	Value       *big.Int
 	ResolveTime *big.Int
 	Id          *big.Int
@@ -38,10 +38,10 @@ type PriceFeedData struct {
 
 // PriceFeedMedianData is an auto generated low-level Go binding around an user-defined struct.
 type PriceFeedMedianData struct {
-	Name        [32]byte
-	Values      []*big.Int
+	AssetName   [32]byte
 	ResolveTime *big.Int
 	Id          *big.Int
+	Values      []*big.Int
 }
 
 // PriceFeedPrice is an auto generated low-level Go binding around an user-defined struct.
@@ -53,7 +53,7 @@ type PriceFeedPrice struct {
 
 // OracleMetaData contains all meta data concerning the Oracle contract.
 var OracleMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"MedianDisabled\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"UnAuthorized\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"relayer\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"timestamp\",\"type\":\"uint256\"}],\"name\":\"DeviationPosted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bool\",\"name\":\"status\",\"type\":\"bool\"}],\"name\":\"EnableWhitelist\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"relayer\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"timestamp\",\"type\":\"uint256\"}],\"name\":\"MedianPosted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"relayer\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"timestamp\",\"type\":\"uint256\"}],\"name\":\"PricePosted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"user\",\"type\":\"address\"}],\"name\":\"RemovedFromWhitelist\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"previousAdminRole\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"newAdminRole\",\"type\":\"bytes32\"}],\"name\":\"RoleAdminChanged\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RoleGranted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RoleRevoked\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"user\",\"type\":\"address\"}],\"name\":\"Whitelisted\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"DEFAULT_ADMIN_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"RELAYER_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"USD\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"relayer\",\"type\":\"address\"}],\"name\":\"assignRelayerRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_assetName\",\"type\":\"bytes32\"}],\"name\":\"getDeviationData\",\"outputs\":[{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"name\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"resolveTime\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"internalType\":\"structPriceFeed.Data\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_assetName\",\"type\":\"bytes32\"}],\"name\":\"getMedianData\",\"outputs\":[{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"name\",\"type\":\"bytes32\"},{\"internalType\":\"uint256[]\",\"name\":\"values\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256\",\"name\":\"resolveTime\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"internalType\":\"structPriceFeed.MedianData\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_base\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"_qoute\",\"type\":\"bytes32\"}],\"name\":\"getPrice\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"price\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"baseResolveTime\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"quoteResolveTime\",\"type\":\"uint256\"}],\"internalType\":\"structPriceFeed.Price\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_assetName\",\"type\":\"bytes32\"}],\"name\":\"getPriceData\",\"outputs\":[{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"name\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"resolveTime\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"internalType\":\"structPriceFeed.Data\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"}],\"name\":\"getRoleAdmin\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"grantRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"hasRole\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"name\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"resolveTime\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"internalType\":\"structPriceFeed.Data[]\",\"name\":\"_deviations\",\"type\":\"tuple[]\"}],\"name\":\"postDeviations\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"name\",\"type\":\"bytes32\"},{\"internalType\":\"uint256[]\",\"name\":\"values\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256\",\"name\":\"resolveTime\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"internalType\":\"structPriceFeed.MedianData[]\",\"name\":\"_medians\",\"type\":\"tuple[]\"}],\"name\":\"postMedians\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"name\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"resolveTime\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"internalType\":\"structPriceFeed.Data[]\",\"name\":\"_prices\",\"type\":\"tuple[]\"}],\"name\":\"postPrices\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_user\",\"type\":\"address\"}],\"name\":\"removeAddress\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"renounceRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"relayer\",\"type\":\"address\"}],\"name\":\"revokeRelayerRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"revokeRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bool\",\"name\":\"_status\",\"type\":\"bool\"}],\"name\":\"setWhitelistStatus\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes4\",\"name\":\"interfaceId\",\"type\":\"bytes4\"}],\"name\":\"supportsInterface\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_user\",\"type\":\"address\"}],\"name\":\"whitelistAddress\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	ABI: "[{\"inputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"MedianDisabled\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"UnAuthorized\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"relayer\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"timestamp\",\"type\":\"uint256\"}],\"name\":\"DeviationPosted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bool\",\"name\":\"status\",\"type\":\"bool\"}],\"name\":\"EnableWhitelist\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"relayer\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"timestamp\",\"type\":\"uint256\"}],\"name\":\"MedianPosted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"relayer\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"timestamp\",\"type\":\"uint256\"}],\"name\":\"PricePosted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"user\",\"type\":\"address\"}],\"name\":\"RemovedFromWhitelist\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"previousAdminRole\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"newAdminRole\",\"type\":\"bytes32\"}],\"name\":\"RoleAdminChanged\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RoleGranted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RoleRevoked\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"user\",\"type\":\"address\"}],\"name\":\"Whitelisted\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"DEFAULT_ADMIN_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"RELAYER_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"USD\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"relayer\",\"type\":\"address\"}],\"name\":\"assignRelayerRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"claimOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_assetName\",\"type\":\"bytes32\"}],\"name\":\"getDeviationData\",\"outputs\":[{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"assetName\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"resolveTime\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"internalType\":\"structPriceFeed.Data\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32[]\",\"name\":\"_assetNames\",\"type\":\"bytes32[]\"}],\"name\":\"getDeviationDataBulk\",\"outputs\":[{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"assetName\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"resolveTime\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"internalType\":\"structPriceFeed.Data[]\",\"name\":\"deviationData\",\"type\":\"tuple[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_assetName\",\"type\":\"bytes32\"}],\"name\":\"getMedianData\",\"outputs\":[{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"assetName\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"resolveTime\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"uint256[]\",\"name\":\"values\",\"type\":\"uint256[]\"}],\"internalType\":\"structPriceFeed.MedianData\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32[]\",\"name\":\"_assetNames\",\"type\":\"bytes32[]\"}],\"name\":\"getMedianDataBulk\",\"outputs\":[{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"assetName\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"resolveTime\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"uint256[]\",\"name\":\"values\",\"type\":\"uint256[]\"}],\"internalType\":\"structPriceFeed.MedianData[]\",\"name\":\"medianData\",\"type\":\"tuple[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_base\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"_qoute\",\"type\":\"bytes32\"}],\"name\":\"getPrice\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"price\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"baseResolveTime\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"quoteResolveTime\",\"type\":\"uint256\"}],\"internalType\":\"structPriceFeed.Price\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_assetName\",\"type\":\"bytes32\"}],\"name\":\"getPriceData\",\"outputs\":[{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"assetName\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"resolveTime\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"internalType\":\"structPriceFeed.Data\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32[]\",\"name\":\"_assetNames\",\"type\":\"bytes32[]\"}],\"name\":\"getPriceDataBulk\",\"outputs\":[{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"assetName\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"resolveTime\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"internalType\":\"structPriceFeed.Data[]\",\"name\":\"priceData\",\"type\":\"tuple[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"}],\"name\":\"getRoleAdmin\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"grantRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"hasRole\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"assetName\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"resolveTime\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"internalType\":\"structPriceFeed.Data[]\",\"name\":\"_deviations\",\"type\":\"tuple[]\"}],\"name\":\"postDeviations\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"assetName\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"resolveTime\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"uint256[]\",\"name\":\"values\",\"type\":\"uint256[]\"}],\"internalType\":\"structPriceFeed.MedianData[]\",\"name\":\"_medians\",\"type\":\"tuple[]\"}],\"name\":\"postMedians\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"assetName\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"resolveTime\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"internalType\":\"structPriceFeed.Data[]\",\"name\":\"_prices\",\"type\":\"tuple[]\"}],\"name\":\"postPrices\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_user\",\"type\":\"address\"}],\"name\":\"removeAddress\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"renounceRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"relayer\",\"type\":\"address\"}],\"name\":\"revokeRelayerRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"revokeRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bool\",\"name\":\"_status\",\"type\":\"bool\"}],\"name\":\"setWhitelistStatus\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes4\",\"name\":\"interfaceId\",\"type\":\"bytes4\"}],\"name\":\"supportsInterface\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_user\",\"type\":\"address\"}],\"name\":\"whitelistAddress\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
 }
 
 // OracleABI is the input ABI used to generate the binding from.
@@ -326,9 +326,40 @@ func (_Oracle *OracleCallerSession) GetDeviationData(_assetName [32]byte) (Price
 	return _Oracle.Contract.GetDeviationData(&_Oracle.CallOpts, _assetName)
 }
 
+// GetDeviationDataBulk is a free data retrieval call binding the contract method 0x51d0eb63.
+//
+// Solidity: function getDeviationDataBulk(bytes32[] _assetNames) view returns((bytes32,uint256,uint256,uint256)[] deviationData)
+func (_Oracle *OracleCaller) GetDeviationDataBulk(opts *bind.CallOpts, _assetNames [][32]byte) ([]PriceFeedData, error) {
+	var out []interface{}
+	err := _Oracle.contract.Call(opts, &out, "getDeviationDataBulk", _assetNames)
+
+	if err != nil {
+		return *new([]PriceFeedData), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new([]PriceFeedData)).(*[]PriceFeedData)
+
+	return out0, err
+
+}
+
+// GetDeviationDataBulk is a free data retrieval call binding the contract method 0x51d0eb63.
+//
+// Solidity: function getDeviationDataBulk(bytes32[] _assetNames) view returns((bytes32,uint256,uint256,uint256)[] deviationData)
+func (_Oracle *OracleSession) GetDeviationDataBulk(_assetNames [][32]byte) ([]PriceFeedData, error) {
+	return _Oracle.Contract.GetDeviationDataBulk(&_Oracle.CallOpts, _assetNames)
+}
+
+// GetDeviationDataBulk is a free data retrieval call binding the contract method 0x51d0eb63.
+//
+// Solidity: function getDeviationDataBulk(bytes32[] _assetNames) view returns((bytes32,uint256,uint256,uint256)[] deviationData)
+func (_Oracle *OracleCallerSession) GetDeviationDataBulk(_assetNames [][32]byte) ([]PriceFeedData, error) {
+	return _Oracle.Contract.GetDeviationDataBulk(&_Oracle.CallOpts, _assetNames)
+}
+
 // GetMedianData is a free data retrieval call binding the contract method 0xb9fe8973.
 //
-// Solidity: function getMedianData(bytes32 _assetName) view returns((bytes32,uint256[],uint256,uint256))
+// Solidity: function getMedianData(bytes32 _assetName) view returns((bytes32,uint256,uint256,uint256[]))
 func (_Oracle *OracleCaller) GetMedianData(opts *bind.CallOpts, _assetName [32]byte) (PriceFeedMedianData, error) {
 	var out []interface{}
 	err := _Oracle.contract.Call(opts, &out, "getMedianData", _assetName)
@@ -345,16 +376,47 @@ func (_Oracle *OracleCaller) GetMedianData(opts *bind.CallOpts, _assetName [32]b
 
 // GetMedianData is a free data retrieval call binding the contract method 0xb9fe8973.
 //
-// Solidity: function getMedianData(bytes32 _assetName) view returns((bytes32,uint256[],uint256,uint256))
+// Solidity: function getMedianData(bytes32 _assetName) view returns((bytes32,uint256,uint256,uint256[]))
 func (_Oracle *OracleSession) GetMedianData(_assetName [32]byte) (PriceFeedMedianData, error) {
 	return _Oracle.Contract.GetMedianData(&_Oracle.CallOpts, _assetName)
 }
 
 // GetMedianData is a free data retrieval call binding the contract method 0xb9fe8973.
 //
-// Solidity: function getMedianData(bytes32 _assetName) view returns((bytes32,uint256[],uint256,uint256))
+// Solidity: function getMedianData(bytes32 _assetName) view returns((bytes32,uint256,uint256,uint256[]))
 func (_Oracle *OracleCallerSession) GetMedianData(_assetName [32]byte) (PriceFeedMedianData, error) {
 	return _Oracle.Contract.GetMedianData(&_Oracle.CallOpts, _assetName)
+}
+
+// GetMedianDataBulk is a free data retrieval call binding the contract method 0x0fa1ae45.
+//
+// Solidity: function getMedianDataBulk(bytes32[] _assetNames) view returns((bytes32,uint256,uint256,uint256[])[] medianData)
+func (_Oracle *OracleCaller) GetMedianDataBulk(opts *bind.CallOpts, _assetNames [][32]byte) ([]PriceFeedMedianData, error) {
+	var out []interface{}
+	err := _Oracle.contract.Call(opts, &out, "getMedianDataBulk", _assetNames)
+
+	if err != nil {
+		return *new([]PriceFeedMedianData), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new([]PriceFeedMedianData)).(*[]PriceFeedMedianData)
+
+	return out0, err
+
+}
+
+// GetMedianDataBulk is a free data retrieval call binding the contract method 0x0fa1ae45.
+//
+// Solidity: function getMedianDataBulk(bytes32[] _assetNames) view returns((bytes32,uint256,uint256,uint256[])[] medianData)
+func (_Oracle *OracleSession) GetMedianDataBulk(_assetNames [][32]byte) ([]PriceFeedMedianData, error) {
+	return _Oracle.Contract.GetMedianDataBulk(&_Oracle.CallOpts, _assetNames)
+}
+
+// GetMedianDataBulk is a free data retrieval call binding the contract method 0x0fa1ae45.
+//
+// Solidity: function getMedianDataBulk(bytes32[] _assetNames) view returns((bytes32,uint256,uint256,uint256[])[] medianData)
+func (_Oracle *OracleCallerSession) GetMedianDataBulk(_assetNames [][32]byte) ([]PriceFeedMedianData, error) {
+	return _Oracle.Contract.GetMedianDataBulk(&_Oracle.CallOpts, _assetNames)
 }
 
 // GetPrice is a free data retrieval call binding the contract method 0x0776f244.
@@ -417,6 +479,37 @@ func (_Oracle *OracleSession) GetPriceData(_assetName [32]byte) (PriceFeedData, 
 // Solidity: function getPriceData(bytes32 _assetName) view returns((bytes32,uint256,uint256,uint256))
 func (_Oracle *OracleCallerSession) GetPriceData(_assetName [32]byte) (PriceFeedData, error) {
 	return _Oracle.Contract.GetPriceData(&_Oracle.CallOpts, _assetName)
+}
+
+// GetPriceDataBulk is a free data retrieval call binding the contract method 0x9525eeda.
+//
+// Solidity: function getPriceDataBulk(bytes32[] _assetNames) view returns((bytes32,uint256,uint256,uint256)[] priceData)
+func (_Oracle *OracleCaller) GetPriceDataBulk(opts *bind.CallOpts, _assetNames [][32]byte) ([]PriceFeedData, error) {
+	var out []interface{}
+	err := _Oracle.contract.Call(opts, &out, "getPriceDataBulk", _assetNames)
+
+	if err != nil {
+		return *new([]PriceFeedData), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new([]PriceFeedData)).(*[]PriceFeedData)
+
+	return out0, err
+
+}
+
+// GetPriceDataBulk is a free data retrieval call binding the contract method 0x9525eeda.
+//
+// Solidity: function getPriceDataBulk(bytes32[] _assetNames) view returns((bytes32,uint256,uint256,uint256)[] priceData)
+func (_Oracle *OracleSession) GetPriceDataBulk(_assetNames [][32]byte) ([]PriceFeedData, error) {
+	return _Oracle.Contract.GetPriceDataBulk(&_Oracle.CallOpts, _assetNames)
+}
+
+// GetPriceDataBulk is a free data retrieval call binding the contract method 0x9525eeda.
+//
+// Solidity: function getPriceDataBulk(bytes32[] _assetNames) view returns((bytes32,uint256,uint256,uint256)[] priceData)
+func (_Oracle *OracleCallerSession) GetPriceDataBulk(_assetNames [][32]byte) ([]PriceFeedData, error) {
+	return _Oracle.Contract.GetPriceDataBulk(&_Oracle.CallOpts, _assetNames)
 }
 
 // GetRoleAdmin is a free data retrieval call binding the contract method 0x248a9ca3.
@@ -564,6 +657,27 @@ func (_Oracle *OracleTransactorSession) AssignRelayerRole(relayer common.Address
 	return _Oracle.Contract.AssignRelayerRole(&_Oracle.TransactOpts, relayer)
 }
 
+// ClaimOwnership is a paid mutator transaction binding the contract method 0x4e71e0c8.
+//
+// Solidity: function claimOwnership() returns()
+func (_Oracle *OracleTransactor) ClaimOwnership(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _Oracle.contract.Transact(opts, "claimOwnership")
+}
+
+// ClaimOwnership is a paid mutator transaction binding the contract method 0x4e71e0c8.
+//
+// Solidity: function claimOwnership() returns()
+func (_Oracle *OracleSession) ClaimOwnership() (*types.Transaction, error) {
+	return _Oracle.Contract.ClaimOwnership(&_Oracle.TransactOpts)
+}
+
+// ClaimOwnership is a paid mutator transaction binding the contract method 0x4e71e0c8.
+//
+// Solidity: function claimOwnership() returns()
+func (_Oracle *OracleTransactorSession) ClaimOwnership() (*types.Transaction, error) {
+	return _Oracle.Contract.ClaimOwnership(&_Oracle.TransactOpts)
+}
+
 // GrantRole is a paid mutator transaction binding the contract method 0x2f2ff15d.
 //
 // Solidity: function grantRole(bytes32 role, address account) returns()
@@ -606,23 +720,23 @@ func (_Oracle *OracleTransactorSession) PostDeviations(_deviations []PriceFeedDa
 	return _Oracle.Contract.PostDeviations(&_Oracle.TransactOpts, _deviations)
 }
 
-// PostMedians is a paid mutator transaction binding the contract method 0x18206341.
+// PostMedians is a paid mutator transaction binding the contract method 0xc788b63f.
 //
-// Solidity: function postMedians((bytes32,uint256[],uint256,uint256)[] _medians) returns()
+// Solidity: function postMedians((bytes32,uint256,uint256,uint256[])[] _medians) returns()
 func (_Oracle *OracleTransactor) PostMedians(opts *bind.TransactOpts, _medians []PriceFeedMedianData) (*types.Transaction, error) {
 	return _Oracle.contract.Transact(opts, "postMedians", _medians)
 }
 
-// PostMedians is a paid mutator transaction binding the contract method 0x18206341.
+// PostMedians is a paid mutator transaction binding the contract method 0xc788b63f.
 //
-// Solidity: function postMedians((bytes32,uint256[],uint256,uint256)[] _medians) returns()
+// Solidity: function postMedians((bytes32,uint256,uint256,uint256[])[] _medians) returns()
 func (_Oracle *OracleSession) PostMedians(_medians []PriceFeedMedianData) (*types.Transaction, error) {
 	return _Oracle.Contract.PostMedians(&_Oracle.TransactOpts, _medians)
 }
 
-// PostMedians is a paid mutator transaction binding the contract method 0x18206341.
+// PostMedians is a paid mutator transaction binding the contract method 0xc788b63f.
 //
-// Solidity: function postMedians((bytes32,uint256[],uint256,uint256)[] _medians) returns()
+// Solidity: function postMedians((bytes32,uint256,uint256,uint256[])[] _medians) returns()
 func (_Oracle *OracleTransactorSession) PostMedians(_medians []PriceFeedMedianData) (*types.Transaction, error) {
 	return _Oracle.Contract.PostMedians(&_Oracle.TransactOpts, _medians)
 }
@@ -776,23 +890,23 @@ func (_Oracle *OracleTransactorSession) SetWhitelistStatus(_status bool) (*types
 
 // TransferOwnership is a paid mutator transaction binding the contract method 0xf2fde38b.
 //
-// Solidity: function transferOwnership(address newOwner) returns()
-func (_Oracle *OracleTransactor) TransferOwnership(opts *bind.TransactOpts, newOwner common.Address) (*types.Transaction, error) {
-	return _Oracle.contract.Transact(opts, "transferOwnership", newOwner)
+// Solidity: function transferOwnership(address _newOwner) returns()
+func (_Oracle *OracleTransactor) TransferOwnership(opts *bind.TransactOpts, _newOwner common.Address) (*types.Transaction, error) {
+	return _Oracle.contract.Transact(opts, "transferOwnership", _newOwner)
 }
 
 // TransferOwnership is a paid mutator transaction binding the contract method 0xf2fde38b.
 //
-// Solidity: function transferOwnership(address newOwner) returns()
-func (_Oracle *OracleSession) TransferOwnership(newOwner common.Address) (*types.Transaction, error) {
-	return _Oracle.Contract.TransferOwnership(&_Oracle.TransactOpts, newOwner)
+// Solidity: function transferOwnership(address _newOwner) returns()
+func (_Oracle *OracleSession) TransferOwnership(_newOwner common.Address) (*types.Transaction, error) {
+	return _Oracle.Contract.TransferOwnership(&_Oracle.TransactOpts, _newOwner)
 }
 
 // TransferOwnership is a paid mutator transaction binding the contract method 0xf2fde38b.
 //
-// Solidity: function transferOwnership(address newOwner) returns()
-func (_Oracle *OracleTransactorSession) TransferOwnership(newOwner common.Address) (*types.Transaction, error) {
-	return _Oracle.Contract.TransferOwnership(&_Oracle.TransactOpts, newOwner)
+// Solidity: function transferOwnership(address _newOwner) returns()
+func (_Oracle *OracleTransactorSession) TransferOwnership(_newOwner common.Address) (*types.Transaction, error) {
+	return _Oracle.Contract.TransferOwnership(&_Oracle.TransactOpts, _newOwner)
 }
 
 // WhitelistAddress is a paid mutator transaction binding the contract method 0x41566585.

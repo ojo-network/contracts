@@ -12,7 +12,7 @@ func (r *Relayer) genRateMsgs(requestID uint64, resolveTime uint64) (msg []clien
 		var byteArray [32]byte
 		copy(byteArray[:], rate.Denom)
 		msg = append(msg, client.PriceFeedData{
-			Name:        byteArray,
+			AssetName:   byteArray,
 			Value:       rate.Amount.Mul(RateFactor).TruncateInt().BigInt(),
 			Id:          big.NewInt(int64(requestID)),
 			ResolveTime: big.NewInt(int64(resolveTime)),
@@ -25,7 +25,7 @@ func (r *Relayer) genDeviationsMsg(requestID uint64, resolveTime uint64) (msg []
 	for _, rate := range r.historicalDeviations {
 		byteArray := tools.StringToByte32(rate.Denom)
 		msg = append(msg, client.PriceFeedData{
-			Name:        byteArray,
+			AssetName:   byteArray,
 			Value:       rate.Amount.Mul(RateFactor).TruncateInt().BigInt(),
 			Id:          big.NewInt(int64(requestID)),
 			ResolveTime: big.NewInt(int64(resolveTime)),
@@ -44,7 +44,7 @@ func (r *Relayer) genMedianMsg(requestID uint64, resolveTime uint64) (msg []clie
 
 	for symbol, rates := range medianRates {
 		msg = append(msg, client.PriceFeedMedianData{
-			Name:        symbol,
+			AssetName:   symbol,
 			Values:      rates,
 			ResolveTime: big.NewInt(int64(requestID)),
 			Id:          big.NewInt(int64(resolveTime)),
