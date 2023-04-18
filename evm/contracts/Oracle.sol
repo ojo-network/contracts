@@ -45,10 +45,12 @@ contract PriceFeed is Ownable, AccessControl {
     event MedianPosted(address indexed relayer, uint256 indexed timestamp);
 
     event Whitelisted(address indexed user);
-    event EnableWhitelist(bool indexed status);
+    event WhitelistStatus(bool indexed status);
+    event MedianStatus(bool indexed status);
     event RemovedFromWhitelist(address indexed user);
 
     constructor() {
+        whitelist[_msgSender()]=true;
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _grantRole(RELAYER_ROLE, _msgSender());
     }
@@ -71,13 +73,18 @@ contract PriceFeed is Ownable, AccessControl {
 
     function setWhitelistStatus(bool _status) external onlyOwner{
         whitelistEnabled=_status;
-
-        emit EnableWhitelist(_status);
+        emit WhitelistStatus(_status);
     }
 
-    function postPrices(Data[] calldata _prices) external onlyRole(RELAYER_ROLE) {
+    function setMedianStatus(bool _status) external onlyOwner{
+        medianDisabled=_status;
+        emit MedianStatus(_status);
+    }
+
+    function postPrices(Data[] calldata _prices, bool _disableResolve) external onlyRole(RELAYER_ROLE) {
+        uint256 time= _disableResolve?0:block.timestamp;
         for(uint256 i=0;i<_prices.length;i++){ 
-            if (_prices[i].resolveTime>block.timestamp){
+            if (_prices[i].resolveTime>time){
                 prices[_prices[i].assetName]= _prices[i];
             }
         }
@@ -85,9 +92,10 @@ contract PriceFeed is Ownable, AccessControl {
         emit PricePosted(_msgSender(), block.timestamp);
     }
 
-    function postDeviations(Data[] calldata _deviations) external onlyRole(RELAYER_ROLE) {
+    function postDeviations(Data[] calldata _deviations,bool _disableResolve) external onlyRole(RELAYER_ROLE) {
+        uint256 time = _disableResolve?0:block.timestamp;
         for(uint256 i=0;i<_deviations.length;i++){
-            if (_deviations[i].resolveTime>block.timestamp){
+            if (_deviations[i].resolveTime>time){
                 deviations[_deviations[i].assetName]= _deviations[i];
             }
         }
@@ -95,9 +103,10 @@ contract PriceFeed is Ownable, AccessControl {
         emit DeviationPosted(_msgSender(), block.timestamp);
     }
 
-    function postMedians(MedianData[] calldata _medians) external onlyRole(RELAYER_ROLE) {
+    function postMedians(MedianData[] calldata _medians,bool _disableResolve) external onlyRole(RELAYER_ROLE) {
+        uint256 time = _disableResolve?0:block.timestamp;
         for(uint256 i=0;i<_medians.length;i++){
-            if(_medians[i].resolveTime>block.timestamp){
+            if(_medians[i].resolveTime>time){
                 medians[_medians[i].assetName]= _medians[i];
             }
         }
@@ -177,7 +186,7 @@ contract PriceFeed is Ownable, AccessControl {
         return _getMedianData(_assetName);
     }
 
-    function getMedianDataBulk(bytes32[] calldata _assetNames) external view whitelistCheck returns (MedianData[] memory medianData) {
+    function getMedianDataBulk(bytes32[] calldata _assetNames) external view whitelistCheck medianCheck returns (MedianData[] memory medianData) {
         medianData = new MedianData[](_assetNames.length);
         for (uint256 i = 0; i < _assetNames.length; i++) {
             medianData[i] = _getMedianData(_assetNames[i]);

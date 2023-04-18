@@ -198,19 +198,19 @@ func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight uint64, rate 
 			},
 		}
 
-		respRate, err := session.PostPrices(rate)
+		respRate, err := session.PostPrices(rate, false)
 		if err != nil {
 			return err
 		}
 
 		session.incrementNonce()
-		respDeviation, err := session.PostDeviations(deviation)
+		respDeviation, err := session.PostDeviations(deviation, false)
 		if err != nil {
 			return err
 		}
 
 		session.incrementNonce()
-		respMedian, err := session.PostMedians(medians)
+		respMedian, err := session.PostMedians(medians, false)
 		if err != nil {
 			return err
 		}

@@ -97,7 +97,6 @@ describe("Deploy", function () {
     })
 
     it("post price, deviation and median data",async () => {
-        
         const{oracle, otherAdmin,relayerRole,relayer} = await loadFixture(deployOracle);
 
         // grant role with admin
@@ -108,7 +107,7 @@ describe("Deploy", function () {
         let data= generateData(10,1,resolveTime)
         
         // post and check price data
-        await oracle.connect(relayer).postPrices(data)
+        await oracle.connect(relayer).postPrices(data,false)
         let allPrices= await oracle.getPriceDataBulk(data.map(d=>d.assetName))
         expect(allPrices.length).eq(data.length)
         
@@ -120,7 +119,7 @@ describe("Deploy", function () {
         }
 
         // post and check deviation data
-        await oracle.connect(relayer).postDeviations(data)
+        await oracle.connect(relayer).postDeviations(data,false)
         let allDeviations=await oracle.getDeviationDataBulk(data.map(d=>d.assetName))
         expect(allDeviations.length).eq(data.length)
 
@@ -132,7 +131,7 @@ describe("Deploy", function () {
         }
 
         // post and check median data
-        await oracle.connect(relayer).postMedians(data)
+        await oracle.connect(relayer).postMedians(data,false)
         let allMedians=await oracle.getMedianDataBulk(data.map(d=>d.assetName))
         expect(allMedians.length).eq(data.length)        
 
@@ -142,5 +141,52 @@ describe("Deploy", function () {
             expect(allMedians[i].resolveTime.toString()).eq(data[i].resolveTime)
             expect(allMedians[i].assetName).eq(data[i].assetName)
         }
+    })
+
+
+    it("whitelist list check",async () => {
+        const{oracle, otherAdmin,relayerRole,relayer, otherRelayer} = await loadFixture(deployOracle);
+
+        // grant role with admin
+        await oracle.grantRole(relayerRole, relayer.address)
+
+        let block=await ethers.provider.getBlock("latest")
+        let resolveTime = (block.timestamp+1000).toString()
+        let data= generateData(10,1,resolveTime)
+        
+        // post and check price data
+        await oracle.connect(relayer).postPrices(data,false)
+
+        // enable whitelist
+        await oracle.setWhitelistStatus(true);
+        await oracle.whitelistAddress(otherAdmin.address);
+
+        // query using non whitelisted account
+        expect(oracle.connect(otherRelayer).getPriceDataBulk(data.map(d=>d.assetName))).to.be.revertedWithCustomError
+
+        // query using whitelisted account 
+        let prices=await oracle.connect(otherAdmin.address).getPriceDataBulk(data.map(d=>d.assetName))
+        expect(prices.length).eq(data.length)
+    })
+
+    it("median status check",async()=>{
+        const{oracle, otherAdmin,relayerRole,relayer, otherRelayer} = await loadFixture(deployOracle);
+
+        // grant role with admin
+        await oracle.grantRole(relayerRole, relayer.address)
+
+        let block=await ethers.provider.getBlock("latest")
+        let resolveTime = (block.timestamp+1000).toString()
+        let data= generateData(10,1,resolveTime)
+        
+        // post median data
+        await oracle.connect(relayer).postMedians(data,false)
+
+        // disable median query
+        await oracle.setMedianStatus(true);
+        expect(oracle.getMedianDataBulk(data.map(d=>d.assetName))).to.be.revertedWithCustomError
+
+        await oracle.setMedianStatus(false)
+        await oracle.getMedianDataBulk(data.map(d=>d.assetName))
     })
 })
