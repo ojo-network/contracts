@@ -14,15 +14,13 @@ func TestValidate(t *testing.T) {
 		return config.Config{
 			Account: config.Account{
 				Address: "fromaddr",
-				ChainID: "chain-id",
+				ChainID: 1,
 			},
 			Keyring: config.Keyring{
-				Backend: "test",
-				Dir:     "/Users/username/.wasm",
+				PrivKey: "",
 			},
 			RPC: config.RPC{
-				TMRPCEndpoint: "http://localhost:26657",
-				RPCTimeout:    "100ms",
+				WssEndpoint: "http://localhost:26657",
 			},
 			GasAdjustment:   1.5,
 			ContractAddress: "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0phg4d",
@@ -55,24 +53,20 @@ func TestParseConfig_Valid(t *testing.T) {
 
 	content := []byte(`
 gas_adjustment = 1.5
-contract_address = "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0phg4d"
+contract_address = "0x"
 gas_prices = "0.00025stake"
 query_rpcs = ["http://localhost:26657"]
 event_rpcs = ["http://localhost:26657"]
 
 [account]
-address = "wasm15nejfgcaanqpw25ru4arvfd0fwy6j8clccvwx4"
-chain_id = "wasm-local-testnet"
-acc_prefix = "wasm"
+address = "0x"
+chain_id = "1"
 
 [keyring]
-backend = "test"
-dir = "/Users/username/.wasm"
+priv_key="privkey"
 
 [rpc]
-tmrpc_endpoint = "http://localhost:26657"
-query_endpoint = "localhost:9090"
-rpc_timeout = "100ms"
+wss_endpoint = "http://localhost:26657"
 `)
 	_, err = tmpFile.Write(content)
 	require.NoError(t, err)

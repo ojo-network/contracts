@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -11,7 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cosmos/cosmos-sdk/client/input"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
@@ -27,8 +25,6 @@ const (
 
 	flagLogLevel  = "log-level"
 	flagLogFormat = "log-format"
-
-	envVariablePass = "CW_RELAYER_PASS"
 )
 
 var rootCmd = &cobra.Command{
@@ -173,16 +169,6 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 	// Block main process until all spawned goroutines have gracefully exited and
 	// signal has been captured in the main process or if an error occurs.
 	return g.Wait()
-}
-
-func getKeyringPassword() (string, error) {
-	reader := bufio.NewReader(os.Stdin)
-
-	pass := os.Getenv(envVariablePass)
-	if pass == "" {
-		return input.GetString("Enter keyring password", reader)
-	}
-	return pass, nil
 }
 
 // trapSignal will listen for any OS signal and invoke Done on the main

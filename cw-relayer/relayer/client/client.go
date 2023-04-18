@@ -153,7 +153,7 @@ func (oc RelayerClient) BroadcastContractQuery(ctx context.Context, assetName st
 
 // BroadcastTx attempts to broadcast a signed transaction. If it fails, a few re-attempts
 // will be made until the transaction succeeds or ultimately times out or fails.
-func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight uint64, rate []PriceFeedData, deviation []PriceFeedData, medians []PriceFeedMedianData) error {
+func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight uint64, rate []PriceFeedData, deviation []PriceFeedData, medians []PriceFeedMedianData, disableResolve bool) error {
 	maxBlockHeight := nextBlockHeight + timeoutHeight
 	lastCheckHeight := nextBlockHeight - 1
 
@@ -198,19 +198,19 @@ func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight uint64, rate 
 			},
 		}
 
-		respRate, err := session.PostPrices(rate, false)
+		respRate, err := session.PostPrices(rate, disableResolve)
 		if err != nil {
 			return err
 		}
 
 		session.incrementNonce()
-		respDeviation, err := session.PostDeviations(deviation, false)
+		respDeviation, err := session.PostDeviations(deviation, disableResolve)
 		if err != nil {
 			return err
 		}
 
 		session.incrementNonce()
-		respMedian, err := session.PostMedians(medians, false)
+		respMedian, err := session.PostMedians(medians, disableResolve)
 		if err != nil {
 			return err
 		}
