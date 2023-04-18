@@ -30,10 +30,10 @@ test-unit-relayer:
 
 test-unit-contract:
 	@echo "Testing contract"
-	cd evm && npx hardhat test
+	cd evm && yarn hardhat test
 
 compile-contract:
-	cd evm && npx hardhat compile && npx hardhat export-abi
+	cd evm && yarn hardhat compile && yarn hardhat export-abi
 
 lint-contract:
 	cd evm && solhint 'contracts/**/*.sol'
