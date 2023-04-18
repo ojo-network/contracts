@@ -30,19 +30,19 @@ test-unit-relayer:
 
 test-unit-contract:
 	@echo "Testing contract"
-	cd cosmwasm && cargo test
+	cd evm && npx hardhat test
 
 compile-contract:
-	cosmwasm/scripts/build_artifacts.sh
+	cd evm && npx hardhat compile && npx hardhat export-abi
+
+lint-contract:
+	cd evm && solhint 'contracts/**/*.sol'
+
+update-abi:
+	cd evm && npx hardhat export-abi
+	cd cw-relayer && rm -r ./relayer/client/oracle.go && abigen --abi /Users/aniketdixit/GolandProjects/contracts/evm/abi/contracts/Oracle.sol/PriceFeed.json --pkg client --type Oracle --out ./relayer/client/oracle.go
 
 start-relayer:
 	cd cw-relayer && ${MAKE} start
-
-test-e2e:
-	@echo "Running e2e tests"
-	${MAKE} compile-contract
-	cp -f cosmwasm/artifacts/std_reference.wasm cw-relayer/tests/e2e/config/std_reference.wasm
-	cd cw-relayer && ${MAKE} test-e2e
-	rm cw-relayer/tests/e2e/config/std_reference.wasm
 
 .PHONY: test-e2e

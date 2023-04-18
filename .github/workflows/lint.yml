@@ -1,4 +1,4 @@
-name: Tests
+name: Lint
 on:
   pull_request:
   push:
@@ -7,7 +7,7 @@ on:
       - release/**
 
 jobs:
-  test-unit-relayer:
+  lint-relayer:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -26,12 +26,16 @@ jobs:
           cache: true
           cache-dependency-path: cw-relayer/go.sum
 
-      - name: Test Relayer
+      - name: golangci-lint main
+        uses: golangci/golangci-lint-action@v3
         if: env.GIT_DIFF
-        run: |
-          make test-unit-relayer
+        with:
+          version: latest
+          args: --timeout 8m
+          working-directory: cw-relayer
 
-  test-unit-contract:
+
+  solhint-contract:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -44,11 +48,17 @@ jobs:
             evm/*
 
       - name: Install packages
+        if: env.GIT_DIFF
         uses: actions/setup-node@v3
         with:
           node-version: '18.x'
 
-      - name: Test Contracts
+      - name: Install solhint
         if: env.GIT_DIFF
         run: |
-          make test-unit-contract
+          npm install solhint
+
+      - name: Run solhint
+        if: env.GIT_DIFF
+        run: |
+          make lint-contract

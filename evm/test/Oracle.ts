@@ -170,7 +170,7 @@ describe("Deploy", function () {
     })
 
     it("median status check",async()=>{
-        const{oracle, otherAdmin,relayerRole,relayer, otherRelayer} = await loadFixture(deployOracle);
+        const{oracle,relayerRole,relayer, otherRelayer} = await loadFixture(deployOracle);
 
         // grant role with admin
         await oracle.grantRole(relayerRole, relayer.address)

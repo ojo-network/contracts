@@ -117,7 +117,8 @@ contract PriceFeed is Ownable, AccessControl {
     function getPriceData(bytes32 _assetName) external view whitelistCheck returns (Data memory) {
         return _getPriceData(_assetName);
     }
-
+    
+    // solhint-disable-next-line max-line-length
     function getPriceDataBulk(bytes32[] calldata _assetNames) external view whitelistCheck returns (Data[] memory priceData) {
         priceData = new Data[](_assetNames.length);
         for (uint256 i = 0; i < _assetNames.length; i++) { 
@@ -157,6 +158,7 @@ contract PriceFeed is Ownable, AccessControl {
         return _getDeviationData(_assetName);
     }
 
+    // solhint-disable-next-line max-line-length
     function getDeviationDataBulk(bytes32[] calldata _assetNames) external view whitelistCheck returns (Data[] memory deviationData) {
         deviationData = new Data[](_assetNames.length);
         for (uint256 i = 0; i < _assetNames.length; i++) {
@@ -186,6 +188,7 @@ contract PriceFeed is Ownable, AccessControl {
         return _getMedianData(_assetName);
     }
 
+    // solhint-disable-next-line max-line-length
     function getMedianDataBulk(bytes32[] calldata _assetNames) external view whitelistCheck medianCheck returns (MedianData[] memory medianData) {
         medianData = new MedianData[](_assetNames.length);
         for (uint256 i = 0; i < _assetNames.length; i++) {
