@@ -189,4 +189,35 @@ describe("Deploy", function () {
         await oracle.setMedianStatus(false)
         await oracle.getMedianDataBulk(data.map(d=>d.assetName))
     })
+
+    it("price relay resolve time check",async()=>{
+        const{oracle,relayerRole,relayer, otherRelayer} = await loadFixture(deployOracle);
+
+        // grant role with admin
+        await oracle.grantRole(relayerRole, relayer.address)
+
+        let block=await ethers.provider.getBlock("latest")
+        let resolveTime = (block.timestamp).toString()
+        let data = generateData(10,1,resolveTime)
+
+
+        // increase the current block time
+        await time.increaseTo(block.timestamp+1000)
+
+        // relay should not change the prices
+        await oracle.connect(relayer).postPrices(data,false)
+        let prices=await oracle.getPriceDataBulk(data.map(d=>d.assetName))
+        expect(prices[0].assetName).not.eq(data[0].assetName)
+
+        // bypass resolve time
+        await oracle.connect(relayer).postPrices(data,true)
+        prices=await oracle.getPriceDataBulk(data.map(d=>d.assetName))
+        
+        for (let i=0;i<data.length;i++){
+            expect(prices[i].value).eq(data[i].value)
+            expect(prices[i].id).eq(data[i].id)
+            expect(prices[i].resolveTime.toString()).eq(data[i].resolveTime)
+            expect(prices[i].assetName).eq(data[i].assetName)
+        }
+    })
 })
