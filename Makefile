@@ -36,7 +36,7 @@ compile-contract:
 	cd evm && yarn hardhat compile && yarn hardhat export-abi
 
 lint-contract:
-	cd evm && solhint 'contracts/**/*.sol'
+	cd evm && yarn solhint 'contracts/**/*.sol'
 
 update-abi:
 	cd evm && npx hardhat export-abi

@@ -23,6 +23,7 @@
     "@openzeppelin/contracts": "^4.8.2",
     "dotenv": "^16.0.3",
     "hardhat-abi-exporter": "^2.10.1",
-    "solc": "^0.8.19"
+    "solc": "^0.8.19",
+    "solhint": "^3.4.1"
   }
 }

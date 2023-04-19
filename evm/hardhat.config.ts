@@ -4,7 +4,22 @@ import "hardhat-abi-exporter";
 import * as dotenv from 'dotenv';
 
 dotenv.config();
-let priv_key: string = process.env.PRIVATE_KEY as string;
+let priv_key: string = process.env.PRIVATE_KEY || "";
+
+function get_networks(){
+    let networks: any = {};
+    if(process.env.NETWORKS){
+        let network_list = process.env.NETWORKS.split(",");
+        network_list.forEach((network: string) => {
+            networks[network] = {
+                url: process.env[network + "_URL"] || "",
+                accounts: [priv_key]
+            }
+        })
+    }
+
+    return networks;
+}
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -12,24 +27,11 @@ const config: HardhatUserConfig = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 200
+        runs: 800
       }
     }
   },
-
-  networks:{
-    hardhat:{},
-
-    nat:{
-      url:"https://triton.api.nautchain.xyz",
-      accounts: [priv_key]
-    },
-
-    polygon:{
-      url:"https://polygon-mainnet.g.alchemy.com/v2/TrWHBdV8QcsNLsXTY4qGhcZ_h5dfoPDP",
-      accounts: [priv_key],
-    }
-  }
 };
+config.networks=get_networks();
 
 export default config;
