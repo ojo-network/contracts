@@ -43,10 +43,14 @@ jobs:
             evm/test/*
             evm/*
 
-      - name: Install packages
+      - name: Install Node
         uses: actions/setup-node@v3
         with:
           node-version: '18.x'
+
+      - name: Install packages
+        run: |
+          cd evm && yarn install
 
       - name: Test Contracts
         if: env.GIT_DIFF

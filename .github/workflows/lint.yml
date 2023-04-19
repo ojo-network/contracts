@@ -56,7 +56,7 @@ jobs:
       - name: Install solhint
         if: env.GIT_DIFF
         run: |
-          npm install solhint
+          cd evm && yarn install && yarn add solhint
 
       - name: Run solhint
         if: env.GIT_DIFF
