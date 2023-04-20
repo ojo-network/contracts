@@ -27,7 +27,8 @@ type (
 		ChainID         int64
 		RPC             string
 		PrivKey         string
-		GasPrices       string
+		GasPriceCap     *big.Int
+		GasTipCap       *big.Int
 		client          *ethclient.Client
 		RelayerAddress  ethtypes.Address
 		contractAddress ethtypes.Address
@@ -48,14 +49,16 @@ func NewRelayerClient(
 	RPC string,
 	contractAddr string,
 	relayerAddr string,
-	GasPrices string,
+	GasPriceCap int64,
+	GasTipCap int64,
 	privKey string,
 ) (RelayerClient, error) {
 	relayerClient := RelayerClient{
 		logger:          logger.With().Str("module", "relayer_client").Logger(),
 		ChainID:         chainID,
 		RPC:             RPC,
-		GasPrices:       GasPrices,
+		GasPriceCap:     big.NewInt(GasPriceCap),
+		GasTipCap:       big.NewInt(GasTipCap),
 		RelayerAddress:  common.HexToAddress(relayerAddr),
 		contractAddress: common.HexToAddress(contractAddr),
 		PrivKey:         privKey,
@@ -192,9 +195,11 @@ func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight uint64, rate 
 				Pending: false,
 			},
 			TransactOpts: bind.TransactOpts{
-				From:   auth.From,
-				Signer: auth.Signer,
-				Nonce:  big.NewInt(int64(pending)),
+				From:      auth.From,
+				Signer:    auth.Signer,
+				Nonce:     big.NewInt(int64(pending)),
+				GasFeeCap: oc.GasPriceCap,
+				GasTipCap: oc.GasTipCap,
 			},
 		}
 

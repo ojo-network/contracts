@@ -121,7 +121,8 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		cfg.RPC.WssEndpoint,
 		cfg.ContractAddress,
 		cfg.Account.Address,
-		cfg.GasPrices,
+		cfg.GasPriceCap,
+		cfg.GasTipCap,
 		cfg.Keyring.PrivKey,
 	)
 	if err != nil {

@@ -66,6 +66,7 @@ func (rts *RelayerTestSuite) Test_generateRelayMsgs() {
 
 	msgData := rts.relayer.genRateMsgs(0, 0)
 	rts.Require().IsType(msgData, []client.PriceFeedData{})
+	rts.Require().Len(msgData, rts.relayer.exchangeRates.Len())
 
 	// since similar exchange rates are used for deviations, the value should be the same
 	deviationData := rts.relayer.genDeviationsMsg(0, 0)
@@ -78,6 +79,9 @@ func (rts *RelayerTestSuite) Test_generateRelayMsgs() {
 	}
 
 	medianData := rts.relayer.genMedianMsg(0, 0)
+	rts.Require().IsType(medianData, []client.PriceFeedMedianData{})
+	rts.Require().Len(msgData, rts.relayer.historicalMedians.Len())
+
 	for i, msg := range medianData {
 		rts.Require().EqualValues(msg.ResolveTime.Int64(), 0)
 		rts.Require().EqualValues(msg.ResolveTime.Int64(), 0)

@@ -22,8 +22,9 @@ func TestValidate(t *testing.T) {
 			RPC: config.RPC{
 				WssEndpoint: "http://localhost:26657",
 			},
-			GasAdjustment:   1.5,
-			ContractAddress: "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0phg4d",
+			GasPriceCap:     1,
+			GasTipCap:       1,
+			ContractAddress: "0x",
 		}
 	}
 
@@ -52,9 +53,9 @@ func TestParseConfig_Valid(t *testing.T) {
 	defer os.Remove(tmpFile.Name())
 
 	content := []byte(`
-gas_adjustment = 1.5
+gas_price_cap = 1
+gas_tip_cap = 1
 contract_address = "0x"
-gas_prices = "0.00025stake"
 query_rpcs = ["http://localhost:26657"]
 event_rpcs = ["http://localhost:26657"]
 

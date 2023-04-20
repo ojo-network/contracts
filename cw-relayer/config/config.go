@@ -52,8 +52,8 @@ type (
 		MedianDuration  int64  `mapstructure:"median_duration"`
 		ResolveDuration string `mapstructure:"resolve_duration"`
 
-		GasAdjustment float64 `mapstructure:"gas_adjustment" validate:"required"`
-		GasPrices     string  `mapstructure:"gas_prices" validate:"required"`
+		GasPriceCap int64 `mapstructure:"gas_price_cap" validate:"required"`
+		GasTipCap   int64 `mapstructure:"gas_tip_cap" validate:"required"`
 
 		// query rpc for ojo node
 		QueryRPCS     []string `mapstructure:"query_rpcs" validate:"required"`
