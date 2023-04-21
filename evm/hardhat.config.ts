@@ -1,4 +1,4 @@
-import { HardhatUserConfig } from "hardhat/config";
+import { HardhatUserConfig, task } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "hardhat-abi-exporter";
 import * as dotenv from 'dotenv';
@@ -18,6 +18,14 @@ function get_networks(){
         })
     }
 
+    networks["hardhat"]={
+         chainId:1,
+      mining:{
+        auto: true,
+        interval:1000
+      }
+    }
+
     return networks;
 }
 
@@ -30,8 +38,9 @@ const config: HardhatUserConfig = {
         runs: 800
       }
     }
-  },
+  }
 };
+
 config.networks=get_networks();
 
 export default config;

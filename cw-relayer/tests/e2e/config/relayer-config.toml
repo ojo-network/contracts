@@ -1,0 +1,34 @@
+### gas adjustment - multiplier for the expected amount of gas
+contract_address = "0x5FbDB2315678afecb367f032d93F642f64180aa3"
+query_rpcs = ["host.docker.internal:9090"]
+event_rpcs= ["https://rpc-1.ojo.nodes.guru:443"]
+
+event_timeout = "2000ms"
+max_tick_timeout = "1m"
+query_timeout = "5000ms"
+max_retries = 1
+
+gas_price_cap =9278636
+gas_tip_cap=30
+timeout_height = 10
+median_duration = 1
+missed_threshold = 2
+event_type = "ojo.oracle.v1.EventSetFxRate"
+
+[restart]
+auto_id = true
+denom = "TEST-0"
+skip_error = true
+
+### account & chain-id for the wasmd relayer account
+[account]
+address = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+chain_id = "1"
+
+### keyring for the relayer account on the wasmd chain
+[keyring]
+priv_key = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+
+### rpc endpoint for the wasm Chain
+[rpc]
+wss_endpoint="ws://host.docker.internal:8545"

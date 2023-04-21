@@ -11,10 +11,8 @@ import (
 
 func (r *Relayer) genRateMsgs(requestID uint64, resolveTime uint64) (msg []client.PriceFeedData) {
 	for _, rate := range r.exchangeRates {
-		var byteArray [32]byte
-		copy(byteArray[:], rate.Denom)
 		msg = append(msg, client.PriceFeedData{
-			AssetName:   byteArray,
+			AssetName:   tools.StringToByte32(rate.Denom),
 			Value:       decTofactorBigInt(rate.Amount),
 			Id:          big.NewInt(int64(requestID)),
 			ResolveTime: big.NewInt(int64(resolveTime)),
@@ -25,9 +23,8 @@ func (r *Relayer) genRateMsgs(requestID uint64, resolveTime uint64) (msg []clien
 
 func (r *Relayer) genDeviationsMsg(requestID uint64, resolveTime uint64) (msg []client.PriceFeedData) {
 	for _, rate := range r.historicalDeviations {
-		byteArray := tools.StringToByte32(rate.Denom)
 		msg = append(msg, client.PriceFeedData{
-			AssetName:   byteArray,
+			AssetName:   tools.StringToByte32(rate.Denom),
 			Value:       decTofactorBigInt(rate.Amount),
 			Id:          big.NewInt(int64(requestID)),
 			ResolveTime: big.NewInt(int64(resolveTime)),

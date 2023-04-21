@@ -313,6 +313,8 @@ func (r *Relayer) tick(ctx context.Context) error {
 
 	logs.Msg("broadcasting execute to contract")
 
+	fmt.Println(exchangeMsg, deviationMsg, medianMsg)
+
 	if err := r.relayerClient.BroadcastTx(nextBlockHeight, 1000000, exchangeMsg, deviationMsg, medianMsg, forceRelay); err != nil {
 		r.missedCounter += 1
 		return err
