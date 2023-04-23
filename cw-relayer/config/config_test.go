@@ -20,7 +20,7 @@ func TestValidate(t *testing.T) {
 				PrivKey: "",
 			},
 			RPC: config.RPC{
-				WssEndpoint: "http://localhost:26657",
+				WSSEndpoint: "http://localhost:26657",
 			},
 			GasPriceCap:     1,
 			GasTipCap:       1,
