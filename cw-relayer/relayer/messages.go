@@ -18,6 +18,7 @@ func (r *Relayer) genRateMsgs(requestID uint64, resolveTime uint64) (msg []clien
 			ResolveTime: big.NewInt(int64(resolveTime)),
 		})
 	}
+	
 	return
 }
 

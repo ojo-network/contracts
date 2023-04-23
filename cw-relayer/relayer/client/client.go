@@ -112,6 +112,7 @@ func (oc RelayerClient) BroadcastContractQuery(ctx context.Context, assetName st
 	var mut sync.Mutex
 	var response QueryResponse
 	asset := tools.StringToByte32(assetName)
+
 	g.Go(func() error {
 		data, err := oracle.GetPriceData(&callOpts, asset)
 		if err != nil {

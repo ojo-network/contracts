@@ -277,8 +277,8 @@ func (r *Relayer) tick(ctx context.Context) error {
 
 	forceRelay := r.missedCounter >= r.missedThreshold
 
-	// set the next resolve time for price feeds on wasm contract
-	nextBlockTime := blockTimestamp + uint64(r.resolveDuration.Seconds())
+	// set the next resolve time for price feeds on evm contract
+	nextBlockTime := blockTimestamp + uint64(r.resolveDuration.Nanoseconds())
 	exchangeMsg := r.genRateMsgs(r.requestID, nextBlockTime)
 	if err != nil {
 		return err
@@ -312,8 +312,6 @@ func (r *Relayer) tick(ctx context.Context) error {
 	}
 
 	logs.Msg("broadcasting execute to contract")
-
-	fmt.Println(exchangeMsg, deviationMsg, medianMsg)
 
 	if err := r.relayerClient.BroadcastTx(nextBlockHeight, 1000000, exchangeMsg, deviationMsg, medianMsg, forceRelay); err != nil {
 		r.missedCounter += 1
