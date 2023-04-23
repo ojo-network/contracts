@@ -118,7 +118,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		ctx,
 		logger,
 		cfg.Account.ChainID,
-		cfg.RPC.WssEndpoint,
+		cfg.RPC.WSSEndpoint,
 		cfg.ContractAddress,
 		cfg.Account.Address,
 		cfg.GasPriceCap,

@@ -1,6 +1,7 @@
 cosmwasm/artifacts
 cosmwasm/target
 cw-relayer/build
+cw-relayer/.env
 
 # ide config files
 .idea

@@ -9,6 +9,7 @@ import (
 	"github.com/ojo-network/cw-relayer/tools"
 )
 
+// genRateMsgs generates messages for exchange rates
 func (r *Relayer) genRateMsgs(requestID uint64, resolveTime uint64) (msg []client.PriceFeedData) {
 	for _, rate := range r.exchangeRates {
 		var byteArray [32]byte
@@ -23,6 +24,7 @@ func (r *Relayer) genRateMsgs(requestID uint64, resolveTime uint64) (msg []clien
 	return
 }
 
+// genDeviationsMsg generates messages for deviations
 func (r *Relayer) genDeviationsMsg(requestID uint64, resolveTime uint64) (msg []client.PriceFeedData) {
 	for _, rate := range r.historicalDeviations {
 		byteArray := tools.StringToByte32(rate.Denom)
@@ -37,6 +39,7 @@ func (r *Relayer) genDeviationsMsg(requestID uint64, resolveTime uint64) (msg []
 	return
 }
 
+// genMedianMsg generates messages by collecting medians for denoms
 func (r *Relayer) genMedianMsg(requestID uint64, resolveTime uint64) (msg []client.PriceFeedMedianData) {
 	medianRates := map[[32]byte][]*big.Int{}
 	for _, rate := range r.historicalMedians {
@@ -55,6 +58,8 @@ func (r *Relayer) genMedianMsg(requestID uint64, resolveTime uint64) (msg []clie
 
 	return
 }
+
+// decTofactorBigInt multiplies amount by rate factor to make it compatible with contracts
 func decTofactorBigInt(amount types.Dec) *big.Int {
 	return amount.Mul(RateFactor).TruncateInt().BigInt()
 }
