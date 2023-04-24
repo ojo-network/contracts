@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -51,8 +52,8 @@ type (
 		MedianDuration  int64  `mapstructure:"median_duration"`
 		ResolveDuration string `mapstructure:"resolve_duration"`
 
-		GasAdjustment float64 `mapstructure:"gas_adjustment" validate:"required"`
-		GasPrices     string  `mapstructure:"gas_prices" validate:"required"`
+		GasPriceCap int64 `mapstructure:"gas_price_cap" validate:"required"`
+		GasTipCap   int64 `mapstructure:"gas_tip_cap" validate:"required"`
 
 		// query rpc for ojo node
 		QueryRPCS     []string `mapstructure:"query_rpcs" validate:"required"`
@@ -63,15 +64,13 @@ type (
 	// Account defines account related configuration that is related to the Client
 	// Network and Receives Pricing information.
 	Account struct {
-		AccPrefix string `mapstructure:"acc_prefix" validate:"required"`
-		ChainID   string `mapstructure:"chain_id" validate:"required"`
-		Address   string `mapstructure:"address" validate:"required"`
+		ChainID int64  `mapstructure:"chain_id" validate:"required"`
+		Address string `mapstructure:"address" validate:"required"`
 	}
 
 	// Keyring defines the required Client-chain keyring configuration.
 	Keyring struct {
-		Backend string `mapstructure:"backend" validate:"required"`
-		Dir     string `mapstructure:"dir" validate:"required"`
+		PrivKey string `mapstructure:"priv_key" validate:"required"`
 	}
 
 	RestartConfig struct {
@@ -82,9 +81,7 @@ type (
 
 	// RPC defines RPC configuration of both the wasmd chain and Tendermint nodes.
 	RPC struct {
-		TMRPCEndpoint string `mapstructure:"tmrpc_endpoint" validate:"required"`
-		RPCTimeout    string `mapstructure:"rpc_timeout" validate:"required"`
-		QueryEndpoint string `mapstructure:"query_endpoint" validate:"required"`
+		WSSEndpoint string `mapstructure:"wss_endpoint" validate:"required"`
 	}
 )
 
@@ -102,8 +99,9 @@ func ParseConfig(configPath string) (Config, error) {
 		return cfg, ErrEmptyConfigPath
 	}
 
-	viper.AutomaticEnv()
 	viper.SetConfigFile(configPath)
+	key := os.Getenv("PRIV_KEY")
+	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {
 		return cfg, fmt.Errorf("failed to read config: %w", err)
@@ -135,6 +133,10 @@ func ParseConfig(configPath string) (Config, error) {
 
 	if len(cfg.MaxTickTimeout) == 0 {
 		cfg.MaxTickTimeout = defaultTimeout.String()
+	}
+
+	if cfg.Keyring.PrivKey == "PRIV_KEY" {
+		cfg.Keyring.PrivKey = key
 	}
 
 	if len(cfg.QueryTimeout) == 0 {

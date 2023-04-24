@@ -1,6 +1,6 @@
-# Ojo Cosmwasm Relayer
+# Ojo EVM Relayer
 
-This repo contains the cosmwasm relayer used to take prices from Ojo & Post them to an existing CW on-chain contract.
+This repo contains the evm relayer used to take prices from Ojo & Post them to an existing CW on-chain contract.
 
 ### Relayer
 - Relayer subscribes to event rpc to listen to ojo network for new blocks

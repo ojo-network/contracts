@@ -1,10 +1,7 @@
 package relayer
 
 import (
-	"encoding/json"
-	"fmt"
-	"math/rand"
-	"strconv"
+	"math/big"
 	"testing"
 	"time"
 
@@ -23,7 +20,18 @@ type RelayerTestSuite struct {
 func (rts *RelayerTestSuite) SetupSuite() {
 	rts.relayer = New(
 		zerolog.Nop(),
-		client.RelayerClient{}, "", 100, 5, 10, 0, 1*time.Second, 1*time.Second, 0, 0, 0, AutoRestartConfig{
+		client.RelayerClient{},
+		"",
+		100,
+		5,
+		10,
+		0,
+		1*time.Second,
+		1*time.Second,
+		0,
+		0,
+		0,
+		AutoRestartConfig{
 			AutoRestart: false,
 			Denom:       "",
 			SkipError:   false,
@@ -45,104 +53,38 @@ func (rts *RelayerTestSuite) TestStop() {
 	)
 }
 
-func (rts *RelayerTestSuite) Test_generateRelayMsg() {
-	exchangeRates := types.DecCoins{
+func (rts *RelayerTestSuite) Test_generateRelayMsgs() {
+	rates := types.DecCoins{
 		types.NewDecCoinFromDec("atom", types.MustNewDecFromStr("1.13456789")),
 		types.NewDecCoinFromDec("umee", types.MustNewDecFromStr("1.23456789")),
 		types.NewDecCoinFromDec("juno", types.MustNewDecFromStr("1.33456789")),
 	}
 
-	testCases := []struct {
-		tc         string
-		forceRelay bool
-		msgType    MsgType
-	}{
-		{
-			tc:         "Relay msg",
-			forceRelay: false,
-			msgType:    RelayRate,
-		},
-		{
-			tc:         "Force Relay msg",
-			forceRelay: true,
-			msgType:    RelayRate,
-		},
-		{
-			tc:         "Relay deviations",
-			forceRelay: false,
-			msgType:    RelayHistoricalDeviation,
-		},
-		{
-			tc:         "Force Relay deviations",
-			forceRelay: true,
-			msgType:    RelayHistoricalDeviation,
-		},
+	rts.relayer.exchangeRates = rates
+	rts.relayer.historicalDeviations = rates
+	rts.relayer.historicalMedians = rates
+
+	msgData := rts.relayer.genRateMsgs(0, 0)
+	rts.Require().IsType(msgData, []client.PriceFeedData{})
+	rts.Require().Len(msgData, rts.relayer.exchangeRates.Len())
+
+	// since similar exchange rates are used for deviations, the value should be the same
+	deviationData := rts.relayer.genDeviationsMsg(0, 0)
+	rts.Require().EqualValues(msgData, deviationData)
+
+	for i, msg := range msgData {
+		rts.Require().EqualValues(msg.ResolveTime.Int64(), 0)
+		rts.Require().EqualValues(msg.Id.Int64(), 0)
+		rts.Require().EqualValues(msg.Value, decTofactorBigInt(rts.relayer.exchangeRates[i].Amount))
 	}
 
-	for _, tc := range testCases {
-		rts.Run(tc.tc, func() {
-			msg, err := genRateMsgData(tc.forceRelay, tc.msgType, 0, 0, exchangeRates)
-			rts.Require().NoError(err)
+	medianData := rts.relayer.genMedianMsg(0, 0)
+	rts.Require().IsType(medianData, []client.PriceFeedMedianData{})
+	rts.Require().Len(msgData, rts.relayer.historicalMedians.Len())
 
-			var expectedMsg map[string]Msg
-			err = json.Unmarshal(msg, &expectedMsg)
-			rts.Require().NoError(err)
-
-			var msgKey string
-			if tc.forceRelay {
-				msgKey = fmt.Sprintf("force_%s", tc.msgType.String())
-			} else {
-				msgKey = tc.msgType.String()
-			}
-
-			rates := expectedMsg[msgKey].SymbolRates
-			rts.Require().NotZero(len(rates))
-			for i, rate := range rates {
-				rts.Require().Equal(rate[0], exchangeRates[i].Denom)
-				rts.Require().Equal(rate[1], exchangeRates[i].Amount.Mul(RateFactor).TruncateInt().String())
-			}
-		})
-	}
-}
-
-func (rts *RelayerTestSuite) Test_generateMedianRelayMsg() {
-	var exchangeRates types.DecCoins
-	rateMap := map[string][]interface{}{}
-	for _, denom := range []string{"atom", "umee", "juno"} {
-		for i := 0; i < 10; i++ {
-			price := rand.Float64()
-			if i%2 == 1 {
-				// to have prices above 1
-				price = price * 100000
-			}
-
-			priceDec := types.MustNewDecFromStr(strconv.FormatFloat(price, 'f', 9, 64))
-			exchangeRates = append(exchangeRates, types.NewDecCoinFromDec(denom, priceDec))
-			rateMap[denom] = append(rateMap[denom], priceDec.Mul(RateFactor).TruncateInt().String())
-		}
-	}
-
-	relayMsg, err := genRateMsgData(false, RelayHistoricalMedian, 0, 0, exchangeRates)
-	rts.Require().NoError(err)
-
-	forceRelayMsg, err := genRateMsgData(true, RelayHistoricalMedian, 0, 0, exchangeRates)
-	rts.Require().NoError(err)
-
-	for i, msg := range [][]byte{relayMsg, forceRelayMsg} {
-		var expectedMsg map[string]Msg
-		err = json.Unmarshal(msg, &expectedMsg)
-		rts.Require().NoError(err)
-
-		key := RelayHistoricalMedian.String()
-		if i/1 == 1 {
-			key = fmt.Sprintf("force_%s", key)
-		}
-
-		rates := expectedMsg[key].SymbolRates
-		rts.Require().Len(rates, 3)
-
-		for _, rate := range rates {
-			rts.Require().Equal(rate[1], rateMap[rate[0].(string)])
-		}
+	for i, msg := range medianData {
+		rts.Require().EqualValues(msg.ResolveTime.Int64(), 0)
+		rts.Require().EqualValues(msg.ResolveTime.Int64(), 0)
+		rts.Require().EqualValues(msg.Values, []*big.Int{decTofactorBigInt(rts.relayer.exchangeRates[i].Amount)})
 	}
 }

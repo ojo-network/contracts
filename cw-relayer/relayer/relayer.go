@@ -2,9 +2,7 @@ package relayer
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"strconv"
 	"sync"
 	"time"
 
@@ -154,41 +152,14 @@ func (r *Relayer) increment() {
 
 // restart queries wasmd chain to fetch latest request, median request and deviation request id
 func (r *Relayer) restart(ctx context.Context) error {
-	queryMsgs, err := genRestartQueries(r.contractAddress, r.config.Denom)
+	response, err := r.relayerClient.BroadcastContractQueries(ctx, r.config.Denom)
 	if err != nil {
 		return err
 	}
 
-	responses, err := r.relayerClient.BroadcastContractQuery(ctx, r.queryTimeout, queryMsgs...)
-	if err != nil {
-		return err
-	}
-
-	for _, response := range responses {
-		if len(response.QueryResponse.Data) != 0 {
-			var resp map[string]interface{}
-			err := json.Unmarshal(response.QueryResponse.Data, &resp)
-			if err != nil {
-				return nil
-			}
-
-			id, err := strconv.ParseInt(resp["request_id"].(string), 10, 64)
-			if err != nil {
-				return err
-			}
-
-			// increment request id for relay
-			requestID := uint64(id) + 1
-			switch response.QueryType {
-			case int(QueryRateMsg):
-				r.requestID = requestID
-			case int(QueryMedianRateMsg):
-				r.medianRequestID = requestID
-			case int(QueryDeviationRateMsg):
-				r.deviationRequestID = requestID
-			}
-		}
-	}
+	r.requestID = response.PriceID
+	r.deviationRequestID = response.DeviationID
+	r.medianRequestID = response.MedianID
 
 	return nil
 }
@@ -276,7 +247,7 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 func (r *Relayer) tick(ctx context.Context) error {
 	r.logger.Debug().Msg("executing relayer tick")
 
-	blockHeight, err := r.relayerClient.ChainHeight.GetChainHeight()
+	blockHeight, err := r.relayerClient.ChainHeight.GetBlockHeight()
 	if err != nil {
 		return err
 	}
@@ -284,12 +255,12 @@ func (r *Relayer) tick(ctx context.Context) error {
 		return fmt.Errorf("expected positive block height")
 	}
 
-	blockTimestamp, err := r.relayerClient.ChainHeight.GetChainTimestamp()
+	blockTimestamp, err := r.relayerClient.ChainHeight.GetBlockTime()
 	if err != nil {
 		return err
 	}
 
-	if blockTimestamp.Unix() < 1 {
+	if blockTimestamp < 1 {
 		return fmt.Errorf("expected positive blocktimestamp")
 	}
 
@@ -307,35 +278,31 @@ func (r *Relayer) tick(ctx context.Context) error {
 	forceRelay := r.missedCounter >= r.missedThreshold
 
 	// set the next resolve time for price feeds on wasm contract
-	nextBlockTime := blockTimestamp.Add(r.resolveDuration).Unix()
-	exchangeMsg, err := genRateMsgData(forceRelay, RelayRate, r.requestID, nextBlockTime, r.exchangeRates)
+	nextBlockTime := blockTimestamp + uint64(r.resolveDuration.Seconds())
+	exchangeMsg := r.genRateMsgs(r.requestID, nextBlockTime)
 	if err != nil {
 		return err
 	}
 
-	deviationMsg, err := genRateMsgData(forceRelay, RelayHistoricalDeviation, r.deviationRequestID, nextBlockTime, r.historicalDeviations)
+	deviationMsg := r.genDeviationsMsg(r.deviationRequestID, nextBlockTime)
 	if err != nil {
 		return err
 	}
 
-	var msgs []types.Msg
-	msgs = append(msgs, r.genWasmMsg(exchangeMsg), r.genWasmMsg(deviationMsg))
-
+	var medianMsg []client.PriceFeedMedianData
 	if postMedian {
 		resolveTime := time.Duration(r.resolveDuration.Nanoseconds() * r.medianDuration)
-		nextMedianBlockTime := blockTimestamp.Add(resolveTime).Unix()
-		medianMsg, err := genRateMsgData(forceRelay, RelayHistoricalMedian, r.medianRequestID, nextMedianBlockTime, r.historicalMedians)
+		nextMedianBlockTime := blockTimestamp + uint64(resolveTime.Seconds())
+		medianMsg = r.genMedianMsg(r.medianRequestID, nextMedianBlockTime)
 		if err != nil {
 			return err
 		}
-
-		msgs = append(msgs, r.genWasmMsg(medianMsg))
 	}
 
 	logs := r.logger.Info()
 	logs.Str("contract address", r.contractAddress).
-		Str("relayer address", r.relayerClient.RelayerAddrString).
-		Str("block timestamp", blockTimestamp.String()).
+		Str("relayer address", r.relayerClient.RelayerAddress.String()).
+		Uint64("block timestamp", blockTimestamp).
 		Bool("median posted", postMedian).
 		Uint64("request id", r.requestID).
 		Uint64("deviation request id", r.deviationRequestID)
@@ -346,7 +313,7 @@ func (r *Relayer) tick(ctx context.Context) error {
 
 	logs.Msg("broadcasting execute to contract")
 
-	if err := r.relayerClient.BroadcastTx(nextBlockHeight, r.timeoutHeight, msgs...); err != nil {
+	if err := r.relayerClient.BroadcastTx(nextBlockHeight, 1000000, exchangeMsg, deviationMsg, medianMsg, forceRelay); err != nil {
 		r.missedCounter += 1
 		return err
 	}

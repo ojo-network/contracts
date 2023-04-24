@@ -121,7 +121,7 @@ func (event *EventSubscribe) subscribe(
 	for {
 		select {
 		case <-ctx.Done():
-			err := event.rpcClient.Unsubscribe(ctx, "", queryEventNewBlockHeader.String())
+			err := event.rpcClient.Unsubscribe(ctx, "", tmtypes.EventNewBlockHeader)
 			if err != nil {
 				event.logger.Err(err).Msg("unsubscribing error")
 			}

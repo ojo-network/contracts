@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -11,7 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cosmos/cosmos-sdk/client/input"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
@@ -27,8 +25,6 @@ const (
 
 	flagLogLevel  = "log-level"
 	flagLogFormat = "log-format"
-
-	envVariablePass = "CW_RELAYER_PASS"
 )
 
 var rootCmd = &cobra.Command{
@@ -97,11 +93,6 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 	// listen for and trap any OS signal to gracefully shutdown and exit
 	trapSignal(cancel, logger)
 
-	rpcTimeout, err := time.ParseDuration(cfg.RPC.RPCTimeout)
-	if err != nil {
-		return fmt.Errorf("failed to parse RPC timeout: %w", err)
-	}
-
 	eventTimeout, err := time.ParseDuration(cfg.EventTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to parse Event timeout: %w", err)
@@ -122,27 +113,17 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to parse Resolve Duration: %w", err)
 	}
 
-	// Gather pass via env variable || std input
-	keyringPass, err := getKeyringPassword()
-	if err != nil {
-		return err
-	}
-
 	// client for interacting with the ojo & wasmd chain
 	client, err := relayerclient.NewRelayerClient(
 		ctx,
 		logger,
 		cfg.Account.ChainID,
-		cfg.Keyring.Backend,
-		cfg.Keyring.Dir,
-		keyringPass,
-		cfg.RPC.TMRPCEndpoint,
-		cfg.RPC.QueryEndpoint,
-		rpcTimeout,
+		cfg.RPC.WSSEndpoint,
+		cfg.ContractAddress,
 		cfg.Account.Address,
-		cfg.Account.AccPrefix,
-		cfg.GasAdjustment,
-		cfg.GasPrices,
+		cfg.GasPriceCap,
+		cfg.GasTipCap,
+		cfg.Keyring.PrivKey,
 	)
 	if err != nil {
 		return err
@@ -189,16 +170,6 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 	// Block main process until all spawned goroutines have gracefully exited and
 	// signal has been captured in the main process or if an error occurs.
 	return g.Wait()
-}
-
-func getKeyringPassword() (string, error) {
-	reader := bufio.NewReader(os.Stdin)
-
-	pass := os.Getenv(envVariablePass)
-	if pass == "" {
-		return input.GetString("Enter keyring password", reader)
-	}
-	return pass, nil
 }
 
 // trapSignal will listen for any OS signal and invoke Done on the main

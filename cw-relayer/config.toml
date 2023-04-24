@@ -1,10 +1,10 @@
-contract_address = "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0phg4d"
+contract_address = "0xDDd532622eD16a0044159aF769F510b70aF461d9"
 
 # relayer changes rpcs (event and query) in the order specified in config
 # query rpcs for prices
-query_rpcs = ["api.devnet-n0.ojo-devnet.node.ojo.network:9090","api.devnet-n1.ojo-devnet.node.ojo.network:9090","api.devnet-n2.ojo-devnet.node.ojo.network:9090"]
+query_rpcs = ["rpc-1.ojo.nodes.guru:17490","api.devnet-n1.ojo-devnet.node.ojo.network:9090","api.devnet-n2.ojo-devnet.node.ojo.network:9090"]
 # event rpc to subscribe for new block and set fx rate event
-event_rpcs = ["https://rpc.devnet-n0.ojo-devnet.node.ojo.network:443","https://rpc.devnet-n2.ojo-devnet.node.ojo.network:443"]
+event_rpcs = ["https://rpc-1.ojo.nodes.guru:443","https://rpc.devnet-n2.ojo-devnet.node.ojo.network:443"]
 # event type string to check when new blocks are produced
 event_type = "ojo.oracle.v1.EventSetFxRate"
 
@@ -17,10 +17,10 @@ query_timeout = "3000ms"
 # max query retries to fetch exchange rates or connect to event rpc at startup
 max_retries = 1
 
-# gas adjustment - multiplier for the expected amount of gas
-gas_adjustment = 1.5
 timeout_height = 10
-gas_prices = "0.2stake"
+gas_price_cap = 200
+gas_tip_cap=30
+
 # set median duration to 0 to disable posting medians
 median_duration = 1
 # resolve duration is the estimated delay between price updates on the contract
@@ -42,16 +42,13 @@ skip_error = true
 
 ### account & chain-id for the wasmd relayer account
 [account]
-address = "wasm1usr9g5a4s2qrwl63sdjtrs2qd4a7huh6qksawp"
-chain_id = "wasm-test"
-acc_prefix = "wasm"
-### keyring for the relayer account on the wasmd chain
-[keyring]
-backend = "test"
-dir = "./"
+address = "0x292505757b2380705231Fb69f964f05Aebc078E6"
+chain_id = "80001"
 
-### rpc endpoint for the wasm Chain
+### keyring for the relayer account on the evm chain
+[keyring]
+priv_key = "PRIV_KEY"
+
+### rpc endpoint for the eth Chain
 [rpc]
-rpc_timeout = "2000ms"
-query_endpoint = "0.0.0.0:9090"
-tmrpc_endpoint = "http://localhost:26657"
+wss_endpoint = "wss://"

@@ -2,126 +2,107 @@ package client
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
-	"time"
 
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/rs/zerolog"
-	tmrpcclient "github.com/tendermint/tendermint/rpc/client"
-	tmctypes "github.com/tendermint/tendermint/rpc/core/types"
-	tmtypes "github.com/tendermint/tendermint/types"
-)
-
-var (
-	errParseEventDataNewBlockHeader = errors.New("error parsing EventDataNewBlockHeader")
-	queryEventNewBlockHeader        = tmtypes.QueryForEvent(tmtypes.EventNewBlockHeader)
 )
 
 // ChainHeight is used to cache the chain height of the
 // current node which is being updated each time the
-// node sends an event of EventNewBlockHeader.
+// node sends a new block event.
 // It starts a goroutine to subscribe to blockchain new block event and update the cached height.
 type ChainHeight struct {
 	Logger zerolog.Logger
 
-	mtx                  sync.RWMutex
-	errGetChainHeight    error
-	errGetChainTimestamp error
-	lastChainHeight      int64
-	lastBlockTimestamp   time.Time
+	mtx             sync.RWMutex
+	errGetBlock     error
+	lastBlockHeight uint64
+	lastBlockTime   uint64
 }
 
 // NewChainHeight returns a new ChainHeight struct that
-// starts a new goroutine subscribed to EventNewBlockHeader.
+// starts a new goroutine subscribed to new block event.
 func NewChainHeight(
 	ctx context.Context,
-	rpcClient tmrpcclient.Client,
+	rpcURL string,
 	logger zerolog.Logger,
-	initialHeight int64,
-	initialTimeStamp time.Time,
+	initialHeight uint64,
+	initialBlockTime uint64,
 ) (*ChainHeight, error) {
 	if initialHeight < 1 {
 		return nil, fmt.Errorf("expected positive initial block height")
 	}
 
-	if !rpcClient.IsRunning() {
-		if err := rpcClient.Start(); err != nil {
-			return nil, err
-		}
+	ethClient, err := ethclient.Dial(rpcURL)
+	if err != nil {
+		return nil, err
 	}
 
-	newBlockHeaderSubscription, err := rpcClient.Subscribe(
-		ctx, tmtypes.EventNewBlockHeader, queryEventNewBlockHeader.String())
+	headerSubscription := make(chan *types.Header)
+	_, err = ethClient.SubscribeNewHead(ctx, headerSubscription)
+
 	if err != nil {
 		return nil, err
 	}
 
 	chainHeight := &ChainHeight{
-		Logger:             logger.With().Str("relayer_client", "chain_height").Logger(),
-		errGetChainHeight:  nil,
-		lastChainHeight:    initialHeight,
-		lastBlockTimestamp: initialTimeStamp,
+		Logger:          logger.With().Str("relayer_client", "chain_height").Logger(),
+		errGetBlock:     nil,
+		lastBlockHeight: initialHeight,
+		lastBlockTime:   initialBlockTime,
 	}
 
-	go chainHeight.subscribe(ctx, rpcClient, newBlockHeaderSubscription)
+	go chainHeight.subscribe(ctx, headerSubscription)
 
 	return chainHeight, nil
 }
 
-// updateChainHeight receives the data to be updated thread safe.
-func (chainHeight *ChainHeight) updateChainHeight(blockHeight int64, timeStamp time.Time, err error) {
+// updateBlockHeight receives the data to be updated thread safe.
+func (chainHeight *ChainHeight) updateBlockHeight(blockHeight uint64, blockTime uint64, err error) {
 	chainHeight.mtx.Lock()
 	defer chainHeight.mtx.Unlock()
 
-	chainHeight.lastChainHeight = blockHeight
-	chainHeight.lastBlockTimestamp = timeStamp
-	chainHeight.errGetChainHeight = err
+	chainHeight.lastBlockHeight = blockHeight
+	chainHeight.lastBlockTime = blockTime
+	chainHeight.errGetBlock = err
 }
 
 // subscribe listens to new blocks being made
-// and updates the chain height.
+// and updates the block height.
 func (chainHeight *ChainHeight) subscribe(
 	ctx context.Context,
-	eventsClient tmrpcclient.EventsClient,
-	newBlockHeaderSubscription <-chan tmctypes.ResultEvent,
+	headerSubscription <-chan *types.Header,
 ) {
 	for {
 		select {
 		case <-ctx.Done():
-			err := eventsClient.Unsubscribe(ctx, tmtypes.EventNewBlockHeader, queryEventNewBlockHeader.String())
-			if err != nil {
-				chainHeight.Logger.Err(err)
-				chainHeight.updateChainHeight(chainHeight.lastChainHeight, chainHeight.lastBlockTimestamp, err)
-			}
 			chainHeight.Logger.Info().Msg("closing the ChainHeight subscription")
 			return
 
-		case resultEvent := <-newBlockHeaderSubscription:
-			eventDataNewBlockHeader, ok := resultEvent.Data.(tmtypes.EventDataNewBlockHeader)
-			if !ok {
-				chainHeight.Logger.Err(errParseEventDataNewBlockHeader)
-				chainHeight.updateChainHeight(chainHeight.lastChainHeight, chainHeight.lastBlockTimestamp, errParseEventDataNewBlockHeader)
-				continue
-			}
+		case header := <-headerSubscription:
+			blockNumber := header.Number.Uint64()
+			blockTime := header.Time
 
-			chainHeight.updateChainHeight(eventDataNewBlockHeader.Header.Height, eventDataNewBlockHeader.Header.Time, nil)
+			chainHeight.updateBlockHeight(blockNumber, blockTime, nil)
 		}
 	}
 }
 
-// GetChainHeight returns the last chain height available.
-func (chainHeight *ChainHeight) GetChainHeight() (int64, error) {
+// GetBlockHeight returns the last block height available.
+func (chainHeight *ChainHeight) GetBlockHeight() (uint64, error) {
 	chainHeight.mtx.RLock()
 	defer chainHeight.mtx.RUnlock()
 
-	return chainHeight.lastChainHeight, chainHeight.errGetChainHeight
+	return chainHeight.lastBlockHeight, chainHeight.errGetBlock
 }
 
-// GetChainTimestamp returns the last block timestamp
-func (chainHeight *ChainHeight) GetChainTimestamp() (time.Time, error) {
+// GetBlockTime returns the last block time
+func (chainHeight *ChainHeight) GetBlockTime() (uint64, error) {
 	chainHeight.mtx.RLock()
 	defer chainHeight.mtx.RUnlock()
 
-	return chainHeight.lastBlockTimestamp, chainHeight.errGetChainTimestamp
+	return chainHeight.lastBlockTime, chainHeight.errGetBlock
 }
