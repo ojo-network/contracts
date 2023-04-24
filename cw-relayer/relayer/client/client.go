@@ -97,8 +97,8 @@ func NewRelayerClient(
 	return relayerClient, nil
 }
 
-// BroadcastContractQuery queries contract for rate, median and deviation data for a particular asset and returns latest ids
-func (oc RelayerClient) BroadcastContractQuery(ctx context.Context, assetName string) (QueryResponse, error) {
+// BroadcastContractQueries queries contract for rate, median and deviation data for a particular asset and returns latest ids
+func (oc RelayerClient) BroadcastContractQueries(ctx context.Context, assetName string) (QueryResponse, error) {
 	oracle, err := NewOracle(oc.contractAddress, oc.client)
 	if err != nil {
 		return QueryResponse{}, err
@@ -114,6 +114,7 @@ func (oc RelayerClient) BroadcastContractQuery(ctx context.Context, assetName st
 	var response QueryResponse
 	asset := tools.StringToByte32(assetName)
 
+	// fetch latest request id for asset
 	g.Go(func() error {
 		data, err := oracle.GetPriceData(&callOpts, asset)
 		if err != nil {
@@ -127,6 +128,7 @@ func (oc RelayerClient) BroadcastContractQuery(ctx context.Context, assetName st
 		return nil
 	})
 
+	// fetch latest deviation id for asset
 	g.Go(func() error {
 		data, err := oracle.GetDeviationData(&callOpts, asset)
 		if err != nil {
@@ -140,6 +142,7 @@ func (oc RelayerClient) BroadcastContractQuery(ctx context.Context, assetName st
 		return nil
 	})
 
+	// fetch latest median id for asset
 	g.Go(func() error {
 		data, err := oracle.GetMedianData(&callOpts, asset)
 		if err != nil {

@@ -44,9 +44,10 @@ skip_error = true
 [account]
 address = "0x292505757b2380705231Fb69f964f05Aebc078E6"
 chain_id = "80001"
-### keyring for the relayer account on the wasmd chain
+
+### keyring for the relayer account on the evm chain
 [keyring]
-priv_key = "$PRIV_KEY"
+priv_key = "PRIV_KEY"
 
 ### rpc endpoint for the eth Chain
 [rpc]

@@ -135,7 +135,7 @@ func ParseConfig(configPath string) (Config, error) {
 		cfg.MaxTickTimeout = defaultTimeout.String()
 	}
 
-	if cfg.Keyring.PrivKey == "$PRIV_KEY" {
+	if cfg.Keyring.PrivKey == "PRIV_KEY" {
 		cfg.Keyring.PrivKey = key
 	}
 

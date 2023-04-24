@@ -39,7 +39,7 @@ func (r *Relayer) genDeviationsMsg(requestID uint64, resolveTime uint64) (msg []
 	return
 }
 
-// genMedianMsg generates messages by collecting medians for denoms
+// genMedianMsg generates messages for medians by collecting values of denoms
 func (r *Relayer) genMedianMsg(requestID uint64, resolveTime uint64) (msg []client.PriceFeedMedianData) {
 	medianRates := map[[32]byte][]*big.Int{}
 	for _, rate := range r.historicalMedians {

@@ -152,7 +152,7 @@ func (r *Relayer) increment() {
 
 // restart queries wasmd chain to fetch latest request, median request and deviation request id
 func (r *Relayer) restart(ctx context.Context) error {
-	response, err := r.relayerClient.BroadcastContractQuery(ctx, r.config.Denom)
+	response, err := r.relayerClient.BroadcastContractQueries(ctx, r.config.Denom)
 	if err != nil {
 		return err
 	}
