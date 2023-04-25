@@ -14,7 +14,6 @@ import (
 )
 
 func (s *IntegrationTestSuite) TestQueryRates() {
-	//time.Sleep(5 * time.Minute)
 	address := common.HexToAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3")
 	ethClient, err := ethclient.Dial(orchestrator.EVMRpc)
 	s.Require().NoError(err)
