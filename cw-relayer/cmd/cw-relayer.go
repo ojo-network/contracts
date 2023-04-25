@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cosmos/cosmos-sdk/client/input"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
@@ -30,9 +32,9 @@ const (
 var rootCmd = &cobra.Command{
 	Use:   "cw-relayer [config-file]",
 	Args:  cobra.ExactArgs(1),
-	Short: "cw-relayer is a side-car process for providing Wasm-enabled chains with Ojo's pricing Data",
-	Long: `cw-relayer is a side-car process for providing Wasm-enabled chains with Ojo's pricing Data,
-	It queries prices from ojo node and pushes it to Wasm contracts on regular intervals`,
+	Short: "cw-relayer is a side-car process for providing EVM-enabled chains with Ojo's pricing Data",
+	Long: `cw-relayer is a side-car process for providing EVM-enabled chains with Ojo's pricing Data,
+	It queries prices from ojo node and pushes it to EVM contracts on regular intervals`,
 	RunE: cwRelayerCmdHandler,
 }
 

@@ -19,7 +19,7 @@ function get_networks(){
     }
 
     networks["hardhat"]={
-         chainId:1,
+      chainId:1,
       mining:{
         auto: true,
         interval:1000

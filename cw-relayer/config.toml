@@ -24,7 +24,7 @@ gas_tip_cap=30
 # set median duration to 0 to disable posting medians
 median_duration = 1
 # resolve duration is the estimated delay between price updates on the contract
-resolve_duration = "100000ms"
+resolve_duration = "100
 missed_threshold = 2
 
 # default median data and ref request id at start/restart
@@ -32,23 +32,23 @@ median_request_id = 0
 request_id = 0
 deviation_request_id = 0
 
-
 # restart config
 [restart]
 # fetches request, median and deviation id for denom and set it as default in case of a restart
 auto_id = true
-denom = "TEST-0"
+denom = "ATOM"
 # sets request, median and deviation id to id's mentioned in config, shuts down the relayer otherwise
 skip_error = true
 
 ### account & chain-id for the wasmd relayer account
 [account]
-address = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
-chain_id = "1"
-### keyring for the relayer account on the wasmd chain
+address = "0x292505757b2380705231Fb69f964f05Aebc078E6"
+chain_id = "80001"
+
+### keyring for the relayer account on the evm chain
 [keyring]
-priv_key = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+priv_key = "$PRIV_KEY"
 
 ### rpc endpoint for the eth Chain
 [rpc]
-wss_endpoint = "ws://127.0.0.1:8545/"
+wss_endpoint = "wss://"
