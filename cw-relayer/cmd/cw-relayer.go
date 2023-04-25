@@ -108,17 +108,12 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to parse Query timeout: %w", err)
 	}
 
-	resolveDuration, err := time.ParseDuration(cfg.ResolveDuration)
-	if err != nil {
-		return fmt.Errorf("failed to parse Resolve Duration: %w", err)
-	}
-
 	// client for interacting with the ojo & wasmd chain
 	client, err := relayerclient.NewRelayerClient(
 		ctx,
 		logger,
 		cfg.Account.ChainID,
-		cfg.RPC.WssEndpoint,
+		cfg.RPC.WSSEndpoint,
 		cfg.ContractAddress,
 		cfg.Account.Address,
 		cfg.GasPriceCap,
@@ -152,7 +147,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		cfg.MissedThreshold,
 		cfg.MaxRetries,
 		cfg.MedianDuration,
-		resolveDuration,
+		cfg.ResolveDuration,
 		queryTimeout,
 		cfg.RequestID,
 		cfg.MedianRequestID,

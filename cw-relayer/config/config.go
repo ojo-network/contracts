@@ -3,7 +3,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -37,7 +36,7 @@ type (
 
 		ProviderTimeout string `mapstructure:"provider_timeout"`
 		ContractAddress string `mapstructure:"contract_address"`
-		TimeoutHeight   int64  `mapstructure:"timeout_height"`
+		TimeoutHeight   uint64 `mapstructure:"timeout_height"`
 		EventTimeout    string `mapstructure:"event_timeout"`
 		MaxTickTimeout  string `mapstructure:"max_tick_timeout"`
 		QueryTimeout    string `mapstructure:"query_timeout"`
@@ -49,8 +48,8 @@ type (
 
 		// force relay prices and reset epoch time in contracts if err in broadcasting tx
 		MissedThreshold int64  `mapstructure:"missed_threshold"`
-		MedianDuration  int64  `mapstructure:"median_duration"`
-		ResolveDuration string `mapstructure:"resolve_duration"`
+		MedianDuration  uint64 `mapstructure:"median_duration"`
+		ResolveDuration uint64 `mapstructure:"resolve_duration" validate:"required"`
 
 		GasPriceCap int64 `mapstructure:"gas_price_cap" validate:"required"`
 		GasTipCap   int64 `mapstructure:"gas_tip_cap" validate:"required"`
@@ -81,7 +80,7 @@ type (
 
 	// RPC defines RPC configuration of both the wasmd chain and Tendermint nodes.
 	RPC struct {
-		WssEndpoint string `mapstructure:"wss_endpoint" validate:"required"`
+		WSSEndpoint string `mapstructure:"wss_endpoint" validate:"required"`
 	}
 )
 
@@ -99,15 +98,15 @@ func ParseConfig(configPath string) (Config, error) {
 		return cfg, ErrEmptyConfigPath
 	}
 
-	viper.SetConfigFile(configPath)
-	key := os.Getenv("PRIV_KEY")
-	viper.AutomaticEnv()
+	vpr := viper.New()
+	vpr.SetConfigFile(configPath)
+	vpr.AutomaticEnv()
 
-	if err := viper.ReadInConfig(); err != nil {
+	if err := vpr.ReadInConfig(); err != nil {
 		return cfg, fmt.Errorf("failed to read config: %w", err)
 	}
 
-	if err := viper.Unmarshal(&cfg); err != nil {
+	if err := vpr.Unmarshal(&cfg); err != nil {
 		return cfg, fmt.Errorf("failed to decode config: %w", err)
 	}
 
@@ -135,16 +134,12 @@ func ParseConfig(configPath string) (Config, error) {
 		cfg.MaxTickTimeout = defaultTimeout.String()
 	}
 
-	if cfg.Keyring.PrivKey == "$PRIV_KEY" {
-		cfg.Keyring.PrivKey = key
-	}
-
 	if len(cfg.QueryTimeout) == 0 {
 		cfg.QueryTimeout = defaultTimeout.String()
 	}
 
-	if len(cfg.ResolveDuration) == 0 {
-		cfg.ResolveDuration = defaultResolveDuration.String()
+	if cfg.ResolveDuration == 0 {
+		cfg.ResolveDuration = uint64(defaultResolveDuration.Seconds())
 	}
 
 	if len(cfg.TickEventType) == 0 {

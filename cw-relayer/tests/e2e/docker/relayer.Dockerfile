@@ -49,6 +49,7 @@ RUN apk add bash \
     jq
 
 COPY --from=builder /cw-relayer/build/cw-relayer /usr/bin/cw-relayer
+COPY --from=builder /cw-relayer/tests/e2e/config/relayer-config.toml /usr/local/config.toml
 
 ENV HOME /
 WORKDIR $HOME

@@ -20,8 +20,6 @@ type IntegrationTestSuite struct {
 
 func TestIntegrationTestSuite(t *testing.T) {
 	suite.Run(t, new(IntegrationTestSuite))
-
-	//time.Sleep(2 * time.Minute)
 }
 
 func (s *IntegrationTestSuite) SetupSuite() {
@@ -39,6 +37,6 @@ func (s *IntegrationTestSuite) SetupSuite() {
 
 func (s *IntegrationTestSuite) TearDownSuite() {
 	s.T().Log("---> tearing down")
-	//err := s.orchestrator.TearDownDockerResources()
-	//s.Require().NoError(err)
+	err := s.orchestrator.TearDownDockerResources()
+	s.Require().NoError(err)
 }

@@ -56,3 +56,37 @@ jobs:
         if: env.GIT_DIFF
         run: |
           make test-unit-contract
+          
+
+  test-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v3
+      - uses: technote-space/get-diff-action@v6.1.2
+        with:
+          PATTERNS: |
+            cw-relayer/**/**.go
+            cw-relayer/go.mod
+            cw-relayer/go.sum
+
+      - uses: actions/setup-go@v3
+        if: env.GIT_DIFF
+        with:
+          go-version: 1.19
+          cache: true
+          cache-dependency-path: cw-relayer/go.sum
+
+      - name: Install Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18.x'
+
+      - name: Install packages
+        run: |
+          cd evm && yarn install
+
+      - name: Test e2e
+        if: env.GIT_DIFF
+        run: |
+          make test-e2e

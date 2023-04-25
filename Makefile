@@ -43,9 +43,9 @@ update-abi:
 	cd cw-relayer && rm -r ./relayer/client/oracle.go && abigen --abi /Users/aniketdixit/GolandProjects/contracts/evm/abi/contracts/Oracle.sol/PriceFeed.json --pkg client --type Oracle --out ./relayer/client/oracle.go
 
 test-e2e:
-	cd evm && npx hardhat node > ./chain.log 2>&1 &
+	cd evm && yarn hardhat node > ./chain.log 2>&1 &
 	sleep 2
-	cd evm && npx hardhat run ./scripts/deploy.ts --network localhost > ./chain_deploy.log 2>&1 &
+	cd evm && yarn hardhat run ./scripts/deploy.ts --network localhost > ./chain_deploy.log 2>&1 &
 	cd cw-relayer && ${MAKE} test-e2e
 
 start-relayer:

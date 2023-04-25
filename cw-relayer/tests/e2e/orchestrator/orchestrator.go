@@ -14,6 +14,12 @@ const (
 	CONTAINER_NAME = "cw-relayer-evm"
 )
 
+var (
+	RelayerAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+	EVMRpc         = "http://localhost:8545"
+	priv_key       = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+)
+
 // Orchestrator is responsible for managing docker resources,
 // their configuration files, and environment variables.
 type Orchestrator struct {
@@ -21,7 +27,6 @@ type Orchestrator struct {
 	dockerNetwork *dockertest.Network
 
 	wasmdResource *dockertest.Resource
-	WasmRPC       string
 
 	QueryRpc        string
 	ContractAddress string
@@ -29,9 +34,6 @@ type Orchestrator struct {
 
 func (o *Orchestrator) InitDockerResources(t *testing.T) error {
 	var err error
-
-	o.WasmRPC = "http://localhost:8545"
-
 	t.Log("-> initializing docker network")
 	err = o.initNetwork()
 	if err != nil {

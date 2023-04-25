@@ -97,7 +97,8 @@ func NewRelayerClient(
 	return relayerClient, nil
 }
 
-func (oc RelayerClient) BroadcastContractQuery(ctx context.Context, assetName string) (QueryResponse, error) {
+// BroadcastContractQueries queries contract for rate, median and deviation data for a particular asset and returns latest ids
+func (oc RelayerClient) BroadcastContractQueries(ctx context.Context, assetName string) (QueryResponse, error) {
 	oracle, err := NewOracle(oc.contractAddress, oc.client)
 	if err != nil {
 		return QueryResponse{}, err
@@ -113,6 +114,7 @@ func (oc RelayerClient) BroadcastContractQuery(ctx context.Context, assetName st
 	var response QueryResponse
 	asset := tools.StringToByte32(assetName)
 
+	// fetch latest request id for asset
 	g.Go(func() error {
 		data, err := oracle.GetPriceData(&callOpts, asset)
 		if err != nil {
@@ -126,6 +128,7 @@ func (oc RelayerClient) BroadcastContractQuery(ctx context.Context, assetName st
 		return nil
 	})
 
+	// fetch latest deviation id for asset
 	g.Go(func() error {
 		data, err := oracle.GetDeviationData(&callOpts, asset)
 		if err != nil {
@@ -139,6 +142,7 @@ func (oc RelayerClient) BroadcastContractQuery(ctx context.Context, assetName st
 		return nil
 	})
 
+	// fetch latest median id for asset
 	g.Go(func() error {
 		data, err := oracle.GetMedianData(&callOpts, asset)
 		if err != nil {
@@ -157,7 +161,7 @@ func (oc RelayerClient) BroadcastContractQuery(ctx context.Context, assetName st
 
 // BroadcastTx attempts to broadcast a signed transaction. If it fails, a few re-attempts
 // will be made until the transaction succeeds or ultimately times out or fails.
-func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight uint64, rate []PriceFeedData, deviation []PriceFeedData, medians []PriceFeedMedianData, disableResolve bool) error {
+func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight uint64, rates []PriceFeedData, deviations []PriceFeedData, medians []PriceFeedMedianData, disableResolve bool) error {
 	maxBlockHeight := nextBlockHeight + timeoutHeight
 	lastCheckHeight := nextBlockHeight - 1
 
@@ -204,13 +208,13 @@ func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight uint64, rate 
 			},
 		}
 
-		respRate, err := session.PostPrices(rate, disableResolve)
+		respRate, err := session.PostPrices(rates, disableResolve)
 		if err != nil {
 			return err
 		}
 
 		session.incrementNonce()
-		respDeviation, err := session.PostDeviations(deviation, disableResolve)
+		respDeviation, err := session.PostDeviations(deviations, disableResolve)
 		if err != nil {
 			return err
 		}
