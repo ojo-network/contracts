@@ -26,7 +26,7 @@ func (rts *RelayerTestSuite) SetupSuite() {
 		5,
 		10,
 		0,
-		1*time.Second,
+		10,
 		1*time.Second,
 		0,
 		0,
