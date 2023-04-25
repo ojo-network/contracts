@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/ojo-network/cw-relayer/relayer/client"
+	"github.com/ojo-network/cw-relayer/tools"
 )
 
 type RelayerTestSuite struct {
@@ -60,6 +61,12 @@ func (rts *RelayerTestSuite) Test_generateRelayMsgs() {
 		types.NewDecCoinFromDec("juno", types.MustNewDecFromStr("1.33456789")),
 	}
 
+	rateMap := map[[32]byte][]*big.Int{}
+	for _, rate := range rates {
+		byteArray := tools.StringToByte32(rate.Denom)
+		rateMap[byteArray] = append(rateMap[byteArray], decTofactorBigInt(rate.Amount))
+	}
+
 	rts.relayer.exchangeRates = rates
 	rts.relayer.historicalDeviations = rates
 	rts.relayer.historicalMedians = rates
@@ -82,9 +89,9 @@ func (rts *RelayerTestSuite) Test_generateRelayMsgs() {
 	rts.Require().IsType(medianData, []client.PriceFeedMedianData{})
 	rts.Require().Len(msgData, rts.relayer.historicalMedians.Len())
 
-	for i, msg := range medianData {
+	for _, msg := range medianData {
 		rts.Require().EqualValues(msg.ResolveTime.Int64(), 0)
 		rts.Require().EqualValues(msg.ResolveTime.Int64(), 0)
-		rts.Require().EqualValues(msg.Values, []*big.Int{decTofactorBigInt(rts.relayer.exchangeRates[i].Amount)})
+		rts.Require().EqualValues(msg.Values, rateMap[msg.AssetName])
 	}
 }
