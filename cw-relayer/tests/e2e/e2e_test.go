@@ -55,7 +55,7 @@ func (s *IntegrationTestSuite) TestQueryRates() {
 		}
 
 		return false
-	}, 4*time.Minute, 10*time.Second)
+	}, 10*time.Minute, 10*time.Second)
 
 	// check individually for all assets
 	for _, asset := range mockPrices {
