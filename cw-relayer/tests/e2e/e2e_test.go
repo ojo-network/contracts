@@ -38,11 +38,17 @@ func (s *IntegrationTestSuite) TestQueryRates() {
 		rate, err := oracle.GetPriceData(&callOpts, tools.StringToByte32(mockPrices[0].Denom))
 		s.Require().NoError(err)
 
+		s.T().Log(rate)
+
 		deviationRate, err := session.GetDeviationData(tools.StringToByte32(mockPrices[0].Denom))
 		s.Require().NoError(err)
 
+		s.T().Log(deviationRate)
+
 		medianRate, err := session.GetMedianData(tools.StringToByte32(mockPrices[0].Denom))
 		s.Require().NoError(err)
+
+		s.T().Log(medianRate)
 
 		if rate.Id.Int64() != 0 && deviationRate.Id.Int64() != 0 && medianRate.Id.Int64() != 0 {
 			return true
