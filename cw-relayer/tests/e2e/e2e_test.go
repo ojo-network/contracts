@@ -40,11 +40,7 @@ func (s *IntegrationTestSuite) TestQueryRates() {
 			// wait till contract is deployed
 			s.Require().Eventually(func() bool {
 				_, err = oracle.GetPriceData(&callOpts, tools.StringToByte32(mockPrices[0].Denom))
-				if err == nil {
-					return true
-				}
-
-				return false
+				return err == nil
 			}, 2*time.Minute, 10*time.Second)
 		}
 	}
