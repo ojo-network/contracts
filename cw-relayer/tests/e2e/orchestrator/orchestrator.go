@@ -17,7 +17,6 @@ const (
 var (
 	RelayerAddress  = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 	ContractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"
-	EVMRpc          = "http://localhost:8545"
 	priv_key        = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 )
 
@@ -27,9 +26,9 @@ type Orchestrator struct {
 	dockerPool    *dockertest.Pool
 	dockerNetwork *dockertest.Network
 
-	wasmdResource *dockertest.Resource
-
-	QueryRpc string
+	evmResource *dockertest.Resource
+	EVMRpc      string
+	QueryRpc    string
 }
 
 func (o *Orchestrator) InitDockerResources(t *testing.T) error {
@@ -61,11 +60,23 @@ func (o *Orchestrator) InitDockerResources(t *testing.T) error {
 		"hardhat node failed to produce blocks",
 	)
 
+	t.Log("--> deploy contract")
+	err = o.deployContract()
+	if err != nil {
+		return err
+	}
+
+	t.Log("--> start relayer")
+	err = o.startRelayer()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (o *Orchestrator) TearDownDockerResources() error {
-	err := o.dockerPool.Purge(o.wasmdResource)
+	err := o.dockerPool.Purge(o.evmResource)
 	if err != nil {
 		return err
 	}

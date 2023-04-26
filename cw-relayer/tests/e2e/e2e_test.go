@@ -15,7 +15,7 @@ import (
 
 func (s *IntegrationTestSuite) TestQueryRates() {
 	address := common.HexToAddress(orchestrator.ContractAddress)
-	ethClient, err := ethclient.Dial(orchestrator.EVMRpc)
+	ethClient, err := ethclient.Dial(s.orchestrator.EVMRpc)
 	s.Require().NoError(err)
 
 	oracle, err := client.NewOracle(address, ethClient)
@@ -38,24 +38,18 @@ func (s *IntegrationTestSuite) TestQueryRates() {
 		rate, err := oracle.GetPriceData(&callOpts, tools.StringToByte32(mockPrices[0].Denom))
 		s.Require().NoError(err)
 
-		s.T().Log(rate)
-
 		deviationRate, err := session.GetDeviationData(tools.StringToByte32(mockPrices[0].Denom))
 		s.Require().NoError(err)
 
-		s.T().Log(deviationRate)
-
 		medianRate, err := session.GetMedianData(tools.StringToByte32(mockPrices[0].Denom))
 		s.Require().NoError(err)
-
-		s.T().Log(medianRate)
 
 		if rate.Id.Int64() != 0 && deviationRate.Id.Int64() != 0 && medianRate.Id.Int64() != 0 {
 			return true
 		}
 
 		return false
-	}, 10*time.Minute, 10*time.Second)
+	}, 5*time.Minute, 10*time.Second)
 
 	// check individually for all assets
 	for _, asset := range mockPrices {

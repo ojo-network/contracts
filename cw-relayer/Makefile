@@ -61,7 +61,6 @@ test-unit:
 	@go test -mod=readonly -race $(PACKAGES_UNIT) -v
 
 test-e2e:
-	$(MAKE) docker-build-relayer-e2e
 	@go test -mod=readonly -race $(PACKAGES_E2E) -v
 
 .PHONY: test-unit test-e2e test-unit

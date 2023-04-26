@@ -69,6 +69,9 @@ jobs:
             cw-relayer/**/**.go
             cw-relayer/go.mod
             cw-relayer/go.sum
+            evm/contracts/*
+            evm/test/*
+            evm/*
 
       - uses: actions/setup-go@v3
         if: env.GIT_DIFF
@@ -76,15 +79,6 @@ jobs:
           go-version: 1.19
           cache: true
           cache-dependency-path: cw-relayer/go.sum
-
-      - name: Install Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18.x'
-
-      - name: Install packages
-        run: |
-          cd evm && yarn install
 
       - name: Test e2e
         if: env.GIT_DIFF
