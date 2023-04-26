@@ -34,12 +34,13 @@ func (s *IntegrationTestSuite) TestQueryRates() {
 	}
 
 	// handle delay in deployment of contract
-	_, err = oracle.GetPriceData(&callOpts, tools.StringToByte32(mockPrices[0].Denom))
+	checkDenom := tools.StringToByte32(mockPrices[0].Denom)
+	_, err = oracle.GetPriceData(&callOpts, checkDenom)
 	if err != nil {
 		if err == bind.ErrNoCode {
 			// wait till contract is deployed
 			s.Require().Eventually(func() bool {
-				_, err = oracle.GetPriceData(&callOpts, tools.StringToByte32(mockPrices[0].Denom))
+				_, err = oracle.GetPriceData(&callOpts, checkDenom)
 				return err == nil
 			}, 2*time.Minute, 10*time.Second)
 		}
@@ -47,13 +48,13 @@ func (s *IntegrationTestSuite) TestQueryRates() {
 
 	// eventually the contract will have price, deviation and median data
 	s.Require().Eventually(func() bool {
-		rate, err := oracle.GetPriceData(&callOpts, tools.StringToByte32(mockPrices[0].Denom))
+		rate, err := oracle.GetPriceData(&callOpts, checkDenom)
 		s.Require().NoError(err)
 
-		deviationRate, err := session.GetDeviationData(tools.StringToByte32(mockPrices[0].Denom))
+		deviationRate, err := session.GetDeviationData(checkDenom)
 		s.Require().NoError(err)
 
-		medianRate, err := session.GetMedianData(tools.StringToByte32(mockPrices[0].Denom))
+		medianRate, err := session.GetMedianData(checkDenom)
 		s.Require().NoError(err)
 
 		if rate.Id.Int64() != 0 && deviationRate.Id.Int64() != 0 && medianRate.Id.Int64() != 0 {
@@ -65,17 +66,95 @@ func (s *IntegrationTestSuite) TestQueryRates() {
 
 	// check individually for all assets
 	for _, asset := range mockPrices {
-		rate, err := oracle.GetPriceData(&callOpts, tools.StringToByte32(asset.Denom))
-		s.Require().NoError(err)
-		s.Require().Equal(rate.Value.Int64(), asset.Amount.Mul(relayer.RateFactor).TruncateInt().Int64())
+		amount := relayer.DecTofactorBigInt(asset.Amount).Int64()
+		checkDenom := tools.StringToByte32(asset.Denom)
 
-		deviationRate, err := session.GetDeviationData(tools.StringToByte32(asset.Denom))
+		rate, err := oracle.GetPriceData(&callOpts, checkDenom)
 		s.Require().NoError(err)
-		s.Require().Equal(deviationRate.Value.Int64(), asset.Amount.Mul(relayer.RateFactor).TruncateInt().Int64())
+		s.Require().Equal(rate.Value.Int64(), amount)
 
-		medianRate, err := session.GetMedianData(tools.StringToByte32(asset.Denom))
+		deviationRate, err := session.GetDeviationData(checkDenom)
+		s.Require().NoError(err)
+		s.Require().Equal(deviationRate.Value.Int64(), amount)
+
+		medianRate, err := session.GetMedianData(checkDenom)
 		s.Require().NoError(err)
 		s.Require().Len(medianRate.Values, 1)
-		s.Require().EqualValues(medianRate.Values[0].Int64(), asset.Amount.Mul(relayer.RateFactor).TruncateInt().Int64())
+		s.Require().Equal(medianRate.Values[0].Int64(), amount)
+	}
+}
+
+func (s *IntegrationTestSuite) TestQueryBulkRates() {
+	address := common.HexToAddress(orchestrator.ContractAddress)
+	ethClient, err := ethclient.Dial(s.orchestrator.EVMRpc)
+	s.Require().NoError(err)
+
+	oracle, err := client.NewOracle(address, ethClient)
+	s.Require().NoError(err)
+
+	mockPrices := s.priceServer.GetMockPrices()
+	s.Require().NotZero(len(mockPrices))
+
+	callOpts := bind.CallOpts{
+		Pending: false,
+	}
+
+	session := &client.OracleSession{
+		Contract: oracle,
+		CallOpts: callOpts,
+	}
+
+	// handle delay in deployment of contract
+	checkDenom := tools.StringToByte32(mockPrices[0].Denom)
+	_, err = oracle.GetPriceData(&callOpts, checkDenom)
+	if err != nil {
+		if err == bind.ErrNoCode {
+			// wait till contract is deployed
+			s.Require().Eventually(func() bool {
+				_, err = oracle.GetPriceData(&callOpts, checkDenom)
+				return err == nil
+			}, 2*time.Minute, 10*time.Second)
+		}
+	}
+
+	// check bulk queries
+	var assetNames [][32]byte
+	for _, assets := range mockPrices {
+		assetNames = append(assetNames, tools.StringToByte32(assets.Denom))
+	}
+
+	var (
+		rates          []client.PriceFeedData
+		deviationRates []client.PriceFeedData
+		medianRates    []client.PriceFeedMedianData
+	)
+
+	s.Require().Eventually(func() bool {
+		rates, err = oracle.GetPriceDataBulk(&callOpts, assetNames)
+		s.Require().NoError(err)
+		s.Require().Len(rates, len(mockPrices))
+
+		deviationRates, err = session.GetDeviationDataBulk(assetNames)
+		s.Require().NoError(err)
+		s.Require().Len(deviationRates, len(mockPrices))
+
+		medianRates, err = session.GetMedianDataBulk(assetNames)
+		s.Require().NoError(err)
+		s.Require().Len(medianRates, len(mockPrices))
+
+		if rates[0].Id.Int64() != 0 && deviationRates[0].Id.Int64() != 0 && medianRates[0].Id.Int64() != 0 {
+			return true
+		}
+
+		return false
+	}, 5*time.Minute, 10*time.Second)
+
+	// check individually for all assets
+	for i, asset := range mockPrices {
+		amount := relayer.DecTofactorBigInt(asset.Amount).Int64()
+
+		s.Require().Equal(rates[i].Value.Int64(), amount)
+		s.Require().Equal(deviationRates[i].Value.Int64(), amount)
+		s.Require().Equal(medianRates[i].Values[0].Int64(), amount)
 	}
 }

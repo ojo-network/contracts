@@ -64,7 +64,7 @@ func (rts *RelayerTestSuite) Test_generateRelayMsgs() {
 	rateMap := map[[32]byte][]*big.Int{}
 	for _, rate := range rates {
 		byteArray := tools.StringToByte32(rate.Denom)
-		rateMap[byteArray] = append(rateMap[byteArray], decTofactorBigInt(rate.Amount))
+		rateMap[byteArray] = append(rateMap[byteArray], DecTofactorBigInt(rate.Amount))
 	}
 
 	rts.relayer.exchangeRates = rates
@@ -82,7 +82,7 @@ func (rts *RelayerTestSuite) Test_generateRelayMsgs() {
 	for i, msg := range msgData {
 		rts.Require().EqualValues(msg.ResolveTime.Int64(), 0)
 		rts.Require().EqualValues(msg.Id.Int64(), 0)
-		rts.Require().EqualValues(msg.Value, decTofactorBigInt(rts.relayer.exchangeRates[i].Amount))
+		rts.Require().EqualValues(msg.Value, DecTofactorBigInt(rts.relayer.exchangeRates[i].Amount))
 	}
 
 	medianData := rts.relayer.genMedianMsg(0, 0)
