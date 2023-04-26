@@ -33,6 +33,22 @@ func (s *IntegrationTestSuite) TestQueryRates() {
 		CallOpts: callOpts,
 	}
 
+	// handle delay in deployment of contract
+	_, err = oracle.GetPriceData(&callOpts, tools.StringToByte32(mockPrices[0].Denom))
+	if err != nil {
+		if err == bind.ErrNoCode {
+			// wait till contract is deployed
+			s.Require().Eventually(func() bool {
+				_, err = oracle.GetPriceData(&callOpts, tools.StringToByte32(mockPrices[0].Denom))
+				if err == nil {
+					return true
+				}
+
+				return false
+			}, 2*time.Minute, 10*time.Second)
+		}
+	}
+
 	// eventually the contract will have price, deviation and median data
 	s.Require().Eventually(func() bool {
 		rate, err := oracle.GetPriceData(&callOpts, tools.StringToByte32(mockPrices[0].Denom))
