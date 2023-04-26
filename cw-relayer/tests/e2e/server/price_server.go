@@ -12,6 +12,8 @@ import (
 	"google.golang.org/grpc"
 )
 
+const QUERY_PORT = "9090"
+
 type Server struct {
 	oracletypes.UnimplementedQueryServer
 	mockPrices []types.DecCoin
@@ -48,8 +50,8 @@ func (s *Server) setMockPrices() {
 	}
 }
 
-func (s *Server) InitMockPriceServer(grpcPort string) error {
-	lis, err := net.Listen("tcp", ":"+grpcPort)
+func (s *Server) InitMockPriceServer() error {
+	lis, err := net.Listen("tcp", ":"+QUERY_PORT)
 	if err != nil {
 		return err
 	}

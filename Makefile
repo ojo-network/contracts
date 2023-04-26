@@ -43,7 +43,7 @@ update-abi:
 	cd cw-relayer && rm -r ./relayer/client/oracle.go && abigen --abi /Users/aniketdixit/GolandProjects/contracts/evm/abi/contracts/Oracle.sol/PriceFeed.json --pkg client --type Oracle --out ./relayer/client/oracle.go
 
 docker-build-relayer-e2e:
-	@DOCKER_BUILDKIT=1 docker build -t cw-relayer-evm -f tests/test.Dockerfile .
+	@DOCKER_BUILDKIT=1 docker build -t cw-relayer-evm -f tests/e2etests.Dockerfile .
 
 test-e2e:
 	${MAKE} docker-build-relayer-e2e

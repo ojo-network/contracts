@@ -1,8 +1,8 @@
-contract_address = "0xDDd532622eD16a0044159aF769F510b70aF461d9"
+contract_address = "$CONTRACT_ADDRESS"
 
 # relayer changes rpcs (event and query) in the order specified in config
 # query rpcs for prices
-query_rpcs = ["rpc-1.ojo.nodes.guru:17490","api.devnet-n1.ojo-devnet.node.ojo.network:9090","api.devnet-n2.ojo-devnet.node.ojo.network:9090"]
+query_rpcs = ["$QUERY_RPC"]
 # event rpc to subscribe for new block and set fx rate event
 event_rpcs = ["https://rpc-1.ojo.nodes.guru:443","https://rpc.devnet-n2.ojo-devnet.node.ojo.network:443"]
 # event type string to check when new blocks are produced
@@ -18,13 +18,13 @@ query_timeout = "3000ms"
 max_retries = 1
 
 timeout_height = 10
-gas_price_cap = 200
+gas_price_cap = 9278636
 gas_tip_cap=30
 
 # set median duration to 0 to disable posting medians
 median_duration = 1
 # resolve duration is the estimated delay between price updates on the contract
-resolve_duration = "100
+resolve_duration = 100000
 missed_threshold = 2
 
 # default median data and ref request id at start/restart
@@ -42,8 +42,8 @@ skip_error = true
 
 ### account & chain-id for the wasmd relayer account
 [account]
-address = "0x292505757b2380705231Fb69f964f05Aebc078E6"
-chain_id = "80001"
+address = "$RELAYER_ADDRESS"
+chain_id = "1"
 
 ### keyring for the relayer account on the evm chain
 [keyring]
@@ -51,4 +51,4 @@ priv_key = "$PRIV_KEY"
 
 ### rpc endpoint for the eth Chain
 [rpc]
-wss_endpoint = "wss://"
+wss_endpoint = "ws://0.0.0.0:8545"

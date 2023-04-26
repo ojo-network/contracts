@@ -9,6 +9,8 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
+
+	"github.com/ojo-network/cw-relayer/tests/e2e/server"
 )
 
 func (o *Orchestrator) initRelayer() error {
@@ -26,6 +28,7 @@ func (o *Orchestrator) initRelayer() error {
 				fmt.Sprintf("EVM_RELAYER_ADDRESS=%s", RelayerAddress),
 				fmt.Sprintf("EVM_PRIV_KEY=%s", priv_key),
 				fmt.Sprintf("EVM_CONTRACT_ADDRESS=%s", ContractAddress),
+				fmt.Sprintf("EVM_QUERY_RPC=%s", fmt.Sprintf("host.docker.internal:%v", server.QUERY_PORT)),
 			},
 		},
 		noRestart,

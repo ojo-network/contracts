@@ -9,8 +9,6 @@ import (
 	"github.com/ojo-network/cw-relayer/tests/e2e/server"
 )
 
-const QUERY_PORT = "9090"
-
 type IntegrationTestSuite struct {
 	suite.Suite
 
@@ -31,7 +29,7 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	s.Require().NoError(err)
 
 	s.T().Log("---> initializing mock price server")
-	err = s.priceServer.InitMockPriceServer(QUERY_PORT)
+	err = s.priceServer.InitMockPriceServer()
 	s.Require().NoError(err)
 }
 
