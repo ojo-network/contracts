@@ -43,6 +43,8 @@ func (s *IntegrationTestSuite) TestQueryRates() {
 				_, err = oracle.GetPriceData(&callOpts, checkDenom)
 				return err == nil
 			}, 2*time.Minute, 10*time.Second)
+		} else {
+			s.Require().FailNow(err.Error())
 		}
 	}
 
@@ -114,6 +116,8 @@ func (s *IntegrationTestSuite) TestQueryBulkRates() {
 				_, err = oracle.GetPriceData(&callOpts, checkDenom)
 				return err == nil
 			}, 2*time.Minute, 10*time.Second)
+		} else {
+			s.Require().FailNow(err.Error())
 		}
 	}
 
