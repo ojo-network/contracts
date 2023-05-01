@@ -39,14 +39,14 @@ type Relayer struct {
 	exchangeRates        types.DecCoins
 	historicalMedians    types.DecCoins
 	historicalDeviations types.DecCoins
-	resolveDuration      time.Duration
 	queryTimeout         time.Duration
 
 	// if missedCounter >= missedThreshold, force relay prices (bypasses timing restrictions)
 	missedCounter   int64
 	missedThreshold int64
-	timeoutHeight   int64
-	medianDuration  int64
+	timeoutHeight   uint64
+	medianDuration  uint64
+	resolveDuration uint64
 	maxQueryRetries int64
 	queryRetries    int64
 	index           int
@@ -66,11 +66,11 @@ func New(
 	logger zerolog.Logger,
 	oc client.RelayerClient,
 	contractAddress string,
-	timeoutHeight int64,
+	timeoutHeight uint64,
 	missedThreshold int64,
 	maxQueryRetries int64,
-	medianDuration int64,
-	resolveDuration time.Duration,
+	medianDuration uint64,
+	resolveDuration uint64,
 	queryTimeout time.Duration,
 	requestID uint64,
 	medianRequestID uint64,
@@ -157,9 +157,17 @@ func (r *Relayer) restart(ctx context.Context) error {
 		return err
 	}
 
-	r.requestID = response.PriceID
-	r.deviationRequestID = response.DeviationID
-	r.medianRequestID = response.MedianID
+	if r.requestID < response.PriceID {
+		r.requestID = response.PriceID
+	}
+
+	if r.deviationRequestID < response.DeviationID {
+		r.deviationRequestID = response.DeviationID
+	}
+
+	if r.medianRequestID < response.MedianID {
+		r.medianRequestID = response.MedianID
+	}
 
 	return nil
 }
@@ -277,8 +285,8 @@ func (r *Relayer) tick(ctx context.Context) error {
 
 	forceRelay := r.missedCounter >= r.missedThreshold
 
-	// set the next resolve time for price feeds on wasm contract
-	nextBlockTime := blockTimestamp + uint64(r.resolveDuration.Seconds())
+	// set the max resolve time for contracts
+	nextBlockTime := blockTimestamp + r.resolveDuration
 	exchangeMsg := r.genRateMsgs(r.requestID, nextBlockTime)
 	if err != nil {
 		return err
@@ -291,8 +299,8 @@ func (r *Relayer) tick(ctx context.Context) error {
 
 	var medianMsg []client.PriceFeedMedianData
 	if postMedian {
-		resolveTime := time.Duration(r.resolveDuration.Nanoseconds() * r.medianDuration)
-		nextMedianBlockTime := blockTimestamp + uint64(resolveTime.Seconds())
+		resolveTime := r.resolveDuration * r.medianDuration
+		nextMedianBlockTime := blockTimestamp + resolveTime
 		medianMsg = r.genMedianMsg(r.medianRequestID, nextMedianBlockTime)
 		if err != nil {
 			return err
@@ -313,7 +321,7 @@ func (r *Relayer) tick(ctx context.Context) error {
 
 	logs.Msg("broadcasting execute to contract")
 
-	if err := r.relayerClient.BroadcastTx(nextBlockHeight, 1000000, exchangeMsg, deviationMsg, medianMsg, forceRelay); err != nil {
+	if err := r.relayerClient.BroadcastTx(nextBlockHeight, r.timeoutHeight, exchangeMsg, deviationMsg, medianMsg, forceRelay); err != nil {
 		r.missedCounter += 1
 		return err
 	}

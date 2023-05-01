@@ -46,7 +46,7 @@ start:
 	echo -ne '\n' | build/cw-relayer config.toml
 
 docker-build-relayer-e2e:
-	@DOCKER_BUILDKIT=1 docker build -t cw-relayer -f tests/e2e/docker/relayer.Dockerfile .
+	@DOCKER_BUILDKIT=1 docker build -t cw-relayer-evm -f tests/e2e/docker/relayer.Dockerfile .
 
 .PHONY: build install start docker-build-relayer-e2e
 
@@ -61,9 +61,7 @@ test-unit:
 	@go test -mod=readonly -race $(PACKAGES_UNIT) -v
 
 test-e2e:
-	$(MAKE) docker-build-relayer-e2e
 	@go test -mod=readonly -race $(PACKAGES_E2E) -v
-
 
 .PHONY: test-unit test-e2e test-unit
 

@@ -30,9 +30,9 @@ const (
 var rootCmd = &cobra.Command{
 	Use:   "cw-relayer [config-file]",
 	Args:  cobra.ExactArgs(1),
-	Short: "cw-relayer is a side-car process for providing Wasm-enabled chains with Ojo's pricing Data",
-	Long: `cw-relayer is a side-car process for providing Wasm-enabled chains with Ojo's pricing Data,
-	It queries prices from ojo node and pushes it to Wasm contracts on regular intervals`,
+	Short: "cw-relayer is a side-car process for providing EVM-enabled chains with Ojo's pricing Data",
+	Long: `cw-relayer is a side-car process for providing EVM-enabled chains with Ojo's pricing Data,
+	It queries prices from ojo node and pushes it to EVM contracts on regular intervals`,
 	RunE: cwRelayerCmdHandler,
 }
 
@@ -108,11 +108,6 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to parse Query timeout: %w", err)
 	}
 
-	resolveDuration, err := time.ParseDuration(cfg.ResolveDuration)
-	if err != nil {
-		return fmt.Errorf("failed to parse Resolve Duration: %w", err)
-	}
-
 	// client for interacting with the ojo & wasmd chain
 	client, err := relayerclient.NewRelayerClient(
 		ctx,
@@ -152,7 +147,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		cfg.MissedThreshold,
 		cfg.MaxRetries,
 		cfg.MedianDuration,
-		resolveDuration,
+		cfg.ResolveDuration,
 		queryTimeout,
 		cfg.RequestID,
 		cfg.MedianRequestID,
