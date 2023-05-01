@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 	"github.com/stretchr/testify/require"
@@ -15,9 +16,9 @@ const (
 )
 
 var (
-	RelayerAddress  = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
-	ContractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"
-	priv_key        = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+	relayerAddress  = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+	privKey         = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+	ContractAddress = common.HexToAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3")
 )
 
 // Orchestrator is responsible for managing docker resources,

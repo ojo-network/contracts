@@ -25,8 +25,8 @@ func (o *Orchestrator) initRelayer() error {
 			ExposedPorts: []string{"8545"},
 			PortBindings: map[docker.Port][]docker.PortBinding{},
 			Env: []string{
-				fmt.Sprintf("EVM_RELAYER_ADDRESS=%s", RelayerAddress),
-				fmt.Sprintf("EVM_PRIV_KEY=%s", priv_key),
+				fmt.Sprintf("EVM_RELAYER_ADDRESS=%s", relayerAddress),
+				fmt.Sprintf("EVM_PRIV_KEY=%s", privKey),
 				fmt.Sprintf("EVM_CONTRACT_ADDRESS=%s", ContractAddress),
 				fmt.Sprintf("EVM_QUERY_RPC=%s", fmt.Sprintf("host.docker.internal:%v", server.QUERY_PORT)),
 			},
