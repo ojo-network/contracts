@@ -218,12 +218,17 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 			return err
 		}
 
-		if deviationsQueryResponse.MedianDeviations.Empty() {
+		if len(deviationsQueryResponse.MedianDeviations) == 0 {
 			return fmt.Errorf("median deviations empty")
 		}
 
+		deviations := make([]types.DecCoin, len(deviationsQueryResponse.MedianDeviations))
+		for i, priceStamp := range deviationsQueryResponse.MedianDeviations {
+			deviations[i] = *priceStamp.ExchangeRate
+		}
+
 		mu.Lock()
-		r.historicalDeviations = deviationsQueryResponse.MedianDeviations
+		r.historicalDeviations = deviations
 		mu.Unlock()
 
 		return nil
@@ -236,12 +241,17 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 				return err
 			}
 
-			if medianQueryResponse.Medians.Empty() {
+			if len(medianQueryResponse.Medians) == 0 {
 				return fmt.Errorf("median rates empty")
 			}
 
+			medians := make([]types.DecCoin, len(medianQueryResponse.Medians))
+			for i, priceStamp := range medianQueryResponse.Medians {
+				medians[i] = *priceStamp.ExchangeRate
+			}
+
 			mu.Lock()
-			r.historicalMedians = medianQueryResponse.Medians
+			r.historicalMedians = medians
 			mu.Unlock()
 
 			return nil
