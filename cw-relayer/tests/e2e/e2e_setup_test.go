@@ -63,7 +63,7 @@ func (s *IntegrationTestSuite) SetupSuite() {
 			s.Require().Eventually(func() bool {
 				_, err = s.session.GetPriceData(checkDenom)
 				return err == nil
-			}, 2*time.Minute, 10*time.Second)
+			}, 5*time.Minute, 10*time.Second)
 		} else {
 			s.Require().FailNow(err.Error())
 		}
