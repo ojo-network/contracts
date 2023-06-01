@@ -46,7 +46,7 @@ func (o *Orchestrator) InitDockerResources(t *testing.T) error {
 		return err
 	}
 
-	t.Log("-> verifying wasm node is creating blocks")
+	t.Log("-> verifying evm node is creating blocks")
 	require.Eventually(
 		t,
 		func() bool {
