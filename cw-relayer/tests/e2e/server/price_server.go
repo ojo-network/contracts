@@ -16,7 +16,8 @@ const QUERY_PORT = "9090"
 
 type Server struct {
 	oracletypes.UnimplementedQueryServer
-	mockPrices []types.DecCoin
+	mockPrices  []types.DecCoin
+	priceStamps []oracletypes.PriceStamp
 }
 
 func (s *Server) ExchangeRates(context.Context, *oracletypes.QueryExchangeRates) (*oracletypes.QueryExchangeRatesResponse, error) {
@@ -27,13 +28,13 @@ func (s *Server) ExchangeRates(context.Context, *oracletypes.QueryExchangeRates)
 
 func (s *Server) Medians(context.Context, *oracletypes.QueryMedians) (*oracletypes.QueryMediansResponse, error) {
 	return &oracletypes.QueryMediansResponse{
-		Medians: s.mockPrices,
+		Medians: s.priceStamps,
 	}, nil
 }
 
 func (s *Server) MedianDeviations(context.Context, *oracletypes.QueryMedianDeviations) (*oracletypes.QueryMedianDeviationsResponse, error) {
 	return &oracletypes.QueryMedianDeviationsResponse{
-		MedianDeviations: s.mockPrices,
+		MedianDeviations: s.priceStamps,
 	}, nil
 }
 
@@ -46,7 +47,12 @@ func (s *Server) setMockPrices() {
 		}
 
 		priceDec := types.MustNewDecFromStr(strconv.FormatFloat(price, 'f', 9, 64))
-		s.mockPrices = append(s.mockPrices, types.NewDecCoinFromDec(fmt.Sprintf("TEST-%v", i), priceDec))
+		exchangeRate := types.NewDecCoinFromDec(fmt.Sprintf("TEST-%v", i), priceDec)
+		s.mockPrices = append(s.mockPrices, exchangeRate)
+		s.priceStamps = append(s.priceStamps, oracletypes.PriceStamp{
+			ExchangeRate: &exchangeRate,
+			BlockNum:     uint64(i),
+		})
 	}
 }
 

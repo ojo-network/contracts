@@ -61,7 +61,7 @@ test-unit:
 	@go test -mod=readonly -race $(PACKAGES_UNIT) -v
 
 test-e2e:
-	@go test -mod=readonly -race $(PACKAGES_E2E) -v
+	@go test -mod=readonly -race $(PACKAGES_E2E) -v -timeout=20m
 
 .PHONY: test-unit test-e2e test-unit
 

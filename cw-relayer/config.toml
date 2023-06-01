@@ -18,7 +18,7 @@ query_timeout = "3000ms"
 max_retries = 1
 
 timeout_height = 10
-gas_price_cap = 9278636
+gas_price_cap = 20535038
 gas_tip_cap=30
 
 # set median duration to 0 to disable posting medians
