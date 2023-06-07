@@ -206,3 +206,10 @@ func (o *Orchestrator) startRelayer(contractAddress string) error {
 			"sh", "-c", fmt.Sprintf("chmod +x config/relayer_bootstrap.sh && config/relayer_bootstrap.sh %s", contractAddress),
 		})
 }
+
+func (o *Orchestrator) restartRelayer(contractAddress string) error {
+	return o.execWasmCmd(
+		[]string{
+			"sh", "-c", fmt.Sprintf("sudo killall -9 cw-relayer && config/relayer_bootstrap.sh %s", contractAddress),
+		})
+}

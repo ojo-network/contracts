@@ -23,7 +23,7 @@ type RelayerTestSuite struct {
 func (rts *RelayerTestSuite) SetupSuite() {
 	rts.relayer = New(
 		zerolog.Nop(),
-		client.RelayerClient{}, "", 100, 5, 10, 0, 1*time.Second, 1*time.Second, 0, 0, 0, AutoRestartConfig{
+		client.RelayerClient{}, "", 100, 5, 10, 0, 0, true, 1*time.Second, 1*time.Second, 0, 0, 0, AutoRestartConfig{
 			AutoRestart: false,
 			Denom:       "",
 			SkipError:   false,

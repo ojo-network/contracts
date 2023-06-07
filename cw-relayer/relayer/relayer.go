@@ -23,7 +23,10 @@ import (
 
 var (
 	// RateFactor is used to convert ojo prices to contract-compatible values.
-	RateFactor = types.NewDec(10).Power(9)
+	RateFactor   = types.NewDec(10).Power(9)
+	noRates      = fmt.Errorf("no rates found")
+	noMedians    = fmt.Errorf("median deviations empty")
+	noDeviations = fmt.Errorf("deviation deviations empty")
 )
 
 // Relayer defines a structure that queries prices from ojo and publishes prices to wasm contract.
@@ -45,13 +48,16 @@ type Relayer struct {
 	queryTimeout         time.Duration
 
 	// if missedCounter >= missedThreshold, force relay prices (bypasses timing restrictions)
-	missedCounter   int64
-	missedThreshold int64
-	timeoutHeight   int64
-	medianDuration  int64
-	maxQueryRetries int64
-	queryRetries    int64
-	index           int
+	missedCounter     int64
+	missedThreshold   int64
+	timeoutHeight     int64
+	medianDuration    int64
+	deviationDuration int64
+	maxQueryRetries   int64
+	queryRetries      int64
+	index             int
+
+	ignoreMedianErrors bool
 
 	event  chan struct{}
 	config AutoRestartConfig
@@ -72,6 +78,8 @@ func New(
 	missedThreshold int64,
 	maxQueryRetries int64,
 	medianDuration int64,
+	deviationDuration int64,
+	ignoreMedianErrors bool,
 	resolveDuration time.Duration,
 	queryTimeout time.Duration,
 	requestID uint64,
@@ -90,6 +98,8 @@ func New(
 		timeoutHeight:      timeoutHeight,
 		queryTimeout:       queryTimeout,
 		medianDuration:     medianDuration,
+		deviationDuration:  deviationDuration,
+		ignoreMedianErrors: ignoreMedianErrors,
 		resolveDuration:    resolveDuration,
 		requestID:          requestID,
 		medianRequestID:    medianRequestID,
@@ -193,10 +203,10 @@ func (r *Relayer) restart(ctx context.Context) error {
 	return nil
 }
 
-func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
+func (r *Relayer) setDenomPrices(ctx context.Context, postMedian, postDeviation bool) error {
 	if r.queryRetries > r.maxQueryRetries {
 		r.queryRetries = 0
-		return fmt.Errorf("retry threshold exceeded")
+		return noRates
 	}
 
 	grpcConn, err := grpc.Dial(
@@ -209,7 +219,7 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 	// retry or switch rpc
 	if err != nil {
 		r.increment()
-		return r.setDenomPrices(ctx, postMedian)
+		return r.setDenomPrices(ctx, postMedian, postDeviation)
 	}
 
 	defer grpcConn.Close()
@@ -224,7 +234,7 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 	if err != nil || queryResponse.ExchangeRates.Empty() {
 		r.logger.Debug().Msg("error querying exchange rates")
 		r.increment()
-		return r.setDenomPrices(ctx, postMedian)
+		return r.setDenomPrices(ctx, postMedian, postDeviation)
 	}
 
 	r.exchangeRates = queryResponse.ExchangeRates
@@ -232,7 +242,7 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 	var mu sync.Mutex
 	g, _ := errgroup.WithContext(ctx)
 
-	if postMedian {
+	if postDeviation {
 		g.Go(func() error {
 			deviationsQueryResponse, err := queryClient.MedianDeviations(ctx, &oracletypes.QueryMedianDeviations{})
 			if err != nil {
@@ -240,7 +250,7 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 			}
 
 			if len(deviationsQueryResponse.MedianDeviations) == 0 {
-				return fmt.Errorf("median deviations empty")
+				return noDeviations
 			}
 
 			deviations := make([]types.DecCoin, len(deviationsQueryResponse.MedianDeviations))
@@ -254,7 +264,9 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 
 			return nil
 		})
+	}
 
+	if postMedian {
 		g.Go(func() error {
 			medianQueryResponse, err := queryClient.Medians(ctx, &oracletypes.QueryMedians{})
 			if err != nil {
@@ -262,7 +274,7 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 			}
 
 			if len(medianQueryResponse.Medians) == 0 {
-				return fmt.Errorf("median rates empty")
+				return noMedians
 			}
 
 			medians := make([]types.DecCoin, len(medianQueryResponse.Medians))
@@ -307,12 +319,19 @@ func (r *Relayer) tick(ctx context.Context) error {
 		postMedian = r.requestID%uint64(r.medianDuration) == 0
 	}
 
-	if err := r.setDenomPrices(ctx, postMedian); err != nil {
-		return err
+	var postDeviation bool
+	if r.deviationDuration > 0 {
+		postDeviation = r.requestID%uint64(r.deviationDuration) == 0
+	}
+
+	err = r.setDenomPrices(ctx, postMedian, postDeviation)
+	if err != noRates {
+		if !r.ignoreMedianErrors && (err == noMedians || err == noDeviations) {
+			return err
+		}
 	}
 
 	nextBlockHeight := blockHeight + 1
-
 	forceRelay := r.missedCounter >= r.missedThreshold
 
 	// set the next resolve time for price feeds on wasm contract
@@ -349,8 +368,11 @@ func (r *Relayer) tick(ctx context.Context) error {
 		Uint64("request id", r.requestID)
 
 	if postMedian {
-		logs.Uint64("median request id", r.medianRequestID).
-			Uint64("deviation request id", r.deviationRequestID)
+		logs.Uint64("median request id", r.medianRequestID)
+	}
+
+	if postDeviation {
+		logs.Uint64("deviation request id", r.deviationRequestID)
 	}
 
 	logs.Msg("broadcasting execute to contract")
@@ -368,8 +390,11 @@ func (r *Relayer) tick(ctx context.Context) error {
 	// increment request id to be stored in contracts
 	r.requestID += 1
 	if postMedian {
-		r.deviationRequestID += 1
 		r.medianRequestID += 1
+	}
+
+	if postDeviation {
+		r.deviationRequestID += 1
 	}
 
 	return nil
