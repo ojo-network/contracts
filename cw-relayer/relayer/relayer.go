@@ -232,29 +232,29 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 	var mu sync.Mutex
 	g, _ := errgroup.WithContext(ctx)
 
-	g.Go(func() error {
-		deviationsQueryResponse, err := queryClient.MedianDeviations(ctx, &oracletypes.QueryMedianDeviations{})
-		if err != nil {
-			return err
-		}
-
-		if len(deviationsQueryResponse.MedianDeviations) == 0 {
-			return fmt.Errorf("median deviations empty")
-		}
-
-		deviations := make([]types.DecCoin, len(deviationsQueryResponse.MedianDeviations))
-		for i, priceStamp := range deviationsQueryResponse.MedianDeviations {
-			deviations[i] = *priceStamp.ExchangeRate
-		}
-
-		mu.Lock()
-		r.historicalDeviations = deviations
-		mu.Unlock()
-
-		return nil
-	})
-
 	if postMedian {
+		g.Go(func() error {
+			deviationsQueryResponse, err := queryClient.MedianDeviations(ctx, &oracletypes.QueryMedianDeviations{})
+			if err != nil {
+				return err
+			}
+
+			if len(deviationsQueryResponse.MedianDeviations) == 0 {
+				return fmt.Errorf("median deviations empty")
+			}
+
+			deviations := make([]types.DecCoin, len(deviationsQueryResponse.MedianDeviations))
+			for i, priceStamp := range deviationsQueryResponse.MedianDeviations {
+				deviations[i] = *priceStamp.ExchangeRate
+			}
+
+			mu.Lock()
+			r.historicalDeviations = deviations
+			mu.Unlock()
+
+			return nil
+		})
+
 		g.Go(func() error {
 			medianQueryResponse, err := queryClient.Medians(ctx, &oracletypes.QueryMedians{})
 			if err != nil {
