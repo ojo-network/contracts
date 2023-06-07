@@ -232,29 +232,29 @@ func (r *Relayer) setDenomPrices(ctx context.Context, postMedian bool) error {
 	var mu sync.Mutex
 	g, _ := errgroup.WithContext(ctx)
 
-	g.Go(func() error {
-		deviationsQueryResponse, err := queryClient.MedianDeviations(ctx, &oracletypes.QueryMedianDeviations{})
-		if err != nil {
-			return err
-		}
-
-		if len(deviationsQueryResponse.MedianDeviations) == 0 {
-			return fmt.Errorf("median deviations empty")
-		}
-
-		deviations := make([]types.DecCoin, len(deviationsQueryResponse.MedianDeviations))
-		for i, priceStamp := range deviationsQueryResponse.MedianDeviations {
-			deviations[i] = *priceStamp.ExchangeRate
-		}
-
-		mu.Lock()
-		r.historicalDeviations = deviations
-		mu.Unlock()
-
-		return nil
-	})
-
 	if postMedian {
+		g.Go(func() error {
+			deviationsQueryResponse, err := queryClient.MedianDeviations(ctx, &oracletypes.QueryMedianDeviations{})
+			if err != nil {
+				return err
+			}
+
+			if len(deviationsQueryResponse.MedianDeviations) == 0 {
+				return fmt.Errorf("median deviations empty")
+			}
+
+			deviations := make([]types.DecCoin, len(deviationsQueryResponse.MedianDeviations))
+			for i, priceStamp := range deviationsQueryResponse.MedianDeviations {
+				deviations[i] = *priceStamp.ExchangeRate
+			}
+
+			mu.Lock()
+			r.historicalDeviations = deviations
+			mu.Unlock()
+
+			return nil
+		})
+
 		g.Go(func() error {
 			medianQueryResponse, err := queryClient.Medians(ctx, &oracletypes.QueryMedians{})
 			if err != nil {
@@ -322,15 +322,15 @@ func (r *Relayer) tick(ctx context.Context) error {
 		return err
 	}
 
-	deviationMsg, err := genRateMsgData(forceRelay, RelayHistoricalDeviation, r.deviationRequestID, nextBlockTime, r.historicalDeviations)
-	if err != nil {
-		return err
-	}
-
 	var msgs []types.Msg
-	msgs = append(msgs, r.genWasmMsg(exchangeMsg), r.genWasmMsg(deviationMsg))
+	msgs = append(msgs, r.genWasmMsg(exchangeMsg))
 
 	if postMedian {
+		deviationMsg, err := genRateMsgData(forceRelay, RelayHistoricalDeviation, r.deviationRequestID, nextBlockTime, r.historicalDeviations)
+		if err != nil {
+			return err
+		}
+
 		resolveTime := time.Duration(r.resolveDuration.Nanoseconds() * r.medianDuration)
 		nextMedianBlockTime := blockTimestamp.Add(resolveTime).Unix()
 		medianMsg, err := genRateMsgData(forceRelay, RelayHistoricalMedian, r.medianRequestID, nextMedianBlockTime, r.historicalMedians)
@@ -338,7 +338,7 @@ func (r *Relayer) tick(ctx context.Context) error {
 			return err
 		}
 
-		msgs = append(msgs, r.genWasmMsg(medianMsg))
+		msgs = append(msgs, r.genWasmMsg(medianMsg), r.genWasmMsg(deviationMsg))
 	}
 
 	logs := r.logger.Info()
@@ -346,11 +346,11 @@ func (r *Relayer) tick(ctx context.Context) error {
 		Str("relayer address", r.relayerClient.RelayerAddrString).
 		Str("block timestamp", blockTimestamp.String()).
 		Bool("median posted", postMedian).
-		Uint64("request id", r.requestID).
-		Uint64("deviation request id", r.deviationRequestID)
+		Uint64("request id", r.requestID)
 
 	if postMedian {
-		logs.Uint64("median request id", r.medianRequestID)
+		logs.Uint64("median request id", r.medianRequestID).
+			Uint64("deviation request id", r.deviationRequestID)
 	}
 
 	logs.Msg("broadcasting execute to contract")
@@ -367,8 +367,8 @@ func (r *Relayer) tick(ctx context.Context) error {
 
 	// increment request id to be stored in contracts
 	r.requestID += 1
-	r.deviationRequestID += 1
 	if postMedian {
+		r.deviationRequestID += 1
 		r.medianRequestID += 1
 	}
 
