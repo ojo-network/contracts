@@ -12,6 +12,9 @@ gas_adjustment = 1.5
 timeout_height = 10
 gas_prices = "0.2stake"
 median_duration = 1
+deviation_duration = 1
+ignore_median_errors = true
+
 missed_threshold = 2
 event_type = "ojo.oracle.v1.EventSetFxRate"
 

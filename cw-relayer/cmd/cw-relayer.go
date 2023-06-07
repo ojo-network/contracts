@@ -172,7 +172,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		cfg.MaxRetries,
 		cfg.MedianDuration,
 		cfg.DeviationDuration,
-		cfg.BypassMedianErrors,
+		cfg.IgnoreMedianErrors,
 		resolveDuration,
 		queryTimeout,
 		cfg.RequestID,

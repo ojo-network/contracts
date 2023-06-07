@@ -51,7 +51,7 @@ type (
 		MedianDuration     int64  `mapstructure:"median_duration"`
 		DeviationDuration  int64  `mapsturcutre:"deviation_duration"`
 		ResolveDuration    string `mapstructure:"resolve_duration"`
-		BypassMedianErrors bool   `mapstructure:"bypass_median_errors"`
+		IgnoreMedianErrors bool   `mapstructure:"ignore_median_errors"`
 
 		GasAdjustment float64 `mapstructure:"gas_adjustment" validate:"required"`
 		GasPrices     string  `mapstructure:"gas_prices" validate:"required"`
