@@ -322,15 +322,15 @@ func (r *Relayer) tick(ctx context.Context) error {
 		return err
 	}
 
-	deviationMsg, err := genRateMsgData(forceRelay, RelayHistoricalDeviation, r.deviationRequestID, nextBlockTime, r.historicalDeviations)
-	if err != nil {
-		return err
-	}
-
 	var msgs []types.Msg
-	msgs = append(msgs, r.genWasmMsg(exchangeMsg), r.genWasmMsg(deviationMsg))
+	msgs = append(msgs, r.genWasmMsg(exchangeMsg))
 
 	if postMedian {
+		deviationMsg, err := genRateMsgData(forceRelay, RelayHistoricalDeviation, r.deviationRequestID, nextBlockTime, r.historicalDeviations)
+		if err != nil {
+			return err
+		}
+
 		resolveTime := time.Duration(r.resolveDuration.Nanoseconds() * r.medianDuration)
 		nextMedianBlockTime := blockTimestamp.Add(resolveTime).Unix()
 		medianMsg, err := genRateMsgData(forceRelay, RelayHistoricalMedian, r.medianRequestID, nextMedianBlockTime, r.historicalMedians)
@@ -338,7 +338,7 @@ func (r *Relayer) tick(ctx context.Context) error {
 			return err
 		}
 
-		msgs = append(msgs, r.genWasmMsg(medianMsg))
+		msgs = append(msgs, r.genWasmMsg(medianMsg), r.genWasmMsg(deviationMsg))
 	}
 
 	logs := r.logger.Info()
