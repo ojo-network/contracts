@@ -346,11 +346,11 @@ func (r *Relayer) tick(ctx context.Context) error {
 		Str("relayer address", r.relayerClient.RelayerAddrString).
 		Str("block timestamp", blockTimestamp.String()).
 		Bool("median posted", postMedian).
-		Uint64("request id", r.requestID).
-		Uint64("deviation request id", r.deviationRequestID)
+		Uint64("request id", r.requestID)
 
 	if postMedian {
-		logs.Uint64("median request id", r.medianRequestID)
+		logs.Uint64("median request id", r.medianRequestID).
+			Uint64("deviation request id", r.deviationRequestID)
 	}
 
 	logs.Msg("broadcasting execute to contract")
@@ -367,8 +367,8 @@ func (r *Relayer) tick(ctx context.Context) error {
 
 	// increment request id to be stored in contracts
 	r.requestID += 1
-	r.deviationRequestID += 1
 	if postMedian {
+		r.deviationRequestID += 1
 		r.medianRequestID += 1
 	}
 
