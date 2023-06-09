@@ -178,14 +178,18 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		cfg.MedianRequestID,
 		cfg.DeviationRequestID,
 		cfg.MedianDuration,
+		cfg.DeviationDuration,
+		cfg.IgnoreMedianErrors,
 		relayer.AutoRestartConfig{AutoRestart: cfg.Restart.AutoID, Denom: cfg.Restart.Denom, SkipError: cfg.Restart.SkipError},
 		tick.Tick,
 	)
 
-	g.Go(func() error {
-		// start the process that queries the prices on Ojo & submits them on Wasmd
-		return startPriceRelayer(ctx, logger, newRelayer)
-	})
+	g.Go(
+		func() error {
+			// start the process that queries the prices on Ojo & submits them on Wasmd
+			return startPriceRelayer(ctx, logger, newRelayer)
+		},
+	)
 
 	// Block main process until all spawned goroutines have gracefully exited and
 	// signal has been captured in the main process or if an error occurs.
