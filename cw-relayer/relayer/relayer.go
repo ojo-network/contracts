@@ -359,6 +359,7 @@ func (r *Relayer) tick(ctx context.Context) error {
 		Str("relayer address", r.relayerClient.RelayerAddrString).
 		Str("block timestamp", blockTimestamp.String()).
 		Bool("median posted", postMedian).
+		Bool("deviation posted", postDeviation).
 		Uint64("request id", r.requestID)
 
 	var msgs []types.Msg
@@ -377,7 +378,7 @@ func (r *Relayer) tick(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		
+
 		msgs = append(msgs, r.genWasmMsg(deviationMsg))
 		logs.Uint64("deviation request id", r.deviationRequestID)
 	}
