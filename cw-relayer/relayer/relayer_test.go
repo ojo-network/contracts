@@ -23,11 +23,26 @@ type RelayerTestSuite struct {
 func (rts *RelayerTestSuite) SetupSuite() {
 	rts.relayer = New(
 		zerolog.Nop(),
-		client.RelayerClient{}, "", 100, 5, 10, 0, 0, true, 1*time.Second, 1*time.Second, 0, 0, 0, AutoRestartConfig{
+		client.RelayerClient{},
+		"",
+		100,
+		5,
+		10,
+		0,
+		0,
+		2,
+		true,
+		1*time.Second,
+		1*time.Second,
+		0,
+		0,
+		0,
+		AutoRestartConfig{
 			AutoRestart: false,
 			Denom:       "",
 			SkipError:   false,
-		}, nil, []string{""})
+		}, nil, []string{""},
+	)
 }
 
 func TestServiceTestSuite(t *testing.T) {
@@ -80,28 +95,30 @@ func (rts *RelayerTestSuite) Test_generateRelayMsg() {
 	}
 
 	for _, tc := range testCases {
-		rts.Run(tc.tc, func() {
-			msg, err := genRateMsgData(tc.forceRelay, tc.msgType, 0, 0, exchangeRates)
-			rts.Require().NoError(err)
+		rts.Run(
+			tc.tc, func() {
+				msg, err := genRateMsgData(tc.forceRelay, tc.msgType, 0, 0, exchangeRates)
+				rts.Require().NoError(err)
 
-			var expectedMsg map[string]Msg
-			err = json.Unmarshal(msg, &expectedMsg)
-			rts.Require().NoError(err)
+				var expectedMsg map[string]Msg
+				err = json.Unmarshal(msg, &expectedMsg)
+				rts.Require().NoError(err)
 
-			var msgKey string
-			if tc.forceRelay {
-				msgKey = fmt.Sprintf("force_%s", tc.msgType.String())
-			} else {
-				msgKey = tc.msgType.String()
+				var msgKey string
+				if tc.forceRelay {
+					msgKey = fmt.Sprintf("force_%s", tc.msgType.String())
+				} else {
+					msgKey = tc.msgType.String()
+				}
+
+				rates := expectedMsg[msgKey].SymbolRates
+				rts.Require().NotZero(len(rates))
+				for i, rate := range rates {
+					rts.Require().Equal(rate[0], exchangeRates[i].Denom)
+					rts.Require().Equal(rate[1], exchangeRates[i].Amount.Mul(RateFactor).TruncateInt().String())
+				}
 			}
-
-			rates := expectedMsg[msgKey].SymbolRates
-			rts.Require().NotZero(len(rates))
-			for i, rate := range rates {
-				rts.Require().Equal(rate[0], exchangeRates[i].Denom)
-				rts.Require().Equal(rate[1], exchangeRates[i].Amount.Mul(RateFactor).TruncateInt().String())
-			}
-		})
+		)
 	}
 }
 
