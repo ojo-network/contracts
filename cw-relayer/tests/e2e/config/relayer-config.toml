@@ -17,6 +17,7 @@ ignore_median_errors = false
 
 missed_threshold = 2
 event_type = "ojo.oracle.v1.EventSetFxRate"
+skip_num_events= 2
 
 [restart]
 auto_id = true
