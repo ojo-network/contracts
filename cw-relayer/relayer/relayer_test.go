@@ -117,7 +117,7 @@ func (rts *RelayerTestSuite) Test_generateRelayMsg() {
 					rts.Require().Equal(rate[0], exchangeRates[i].Denom)
 					rts.Require().Equal(rate[1], exchangeRates[i].Amount.Mul(RateFactor).TruncateInt().String())
 				}
-			}
+			},
 		)
 	}
 }
