@@ -52,6 +52,9 @@ type (
 		MedianDuration    int64  `mapstructure:"median_duration"`
 		DeviationDuration int64  `mapstructure:"deviation_duration"`
 
+		// skip price update events
+		SkipNumEvents int64 `mapstructure:"skip_num_events"`
+
 		// if true, would ignore any errors when querying median or deviations
 		IgnoreMedianErrors bool `mapstructure:"ignore_median_errors"`
 

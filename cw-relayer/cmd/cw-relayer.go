@@ -179,6 +179,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		cfg.DeviationRequestID,
 		cfg.MedianDuration,
 		cfg.DeviationDuration,
+		cfg.SkipNumEvents,
 		cfg.IgnoreMedianErrors,
 		relayer.AutoRestartConfig{AutoRestart: cfg.Restart.AutoID, Denom: cfg.Restart.Denom, SkipError: cfg.Restart.SkipError},
 		tick.Tick,

@@ -61,6 +61,7 @@ type Relayer struct {
 	deviationDuration int64
 	maxQueryRetries   int64
 	queryRetries      int64
+	skipNumEvents     int64
 	index             int
 
 	ignoreMedianErrors bool
@@ -94,6 +95,7 @@ func New(
 	deviationRequestID uint64,
 	medianDuration int64,
 	deviationDuration int64,
+	skipNumEvents int64,
 	ignoreMedianErrors bool,
 	config AutoRestartConfig,
 	event chan struct{},
@@ -118,6 +120,7 @@ func New(
 		deviationDuration:  deviationDuration,
 		ignoreMedianErrors: ignoreMedianErrors,
 		resolveDuration:    resolveDuration,
+		skipNumEvents:      skipNumEvents,
 		requestID:          requestID,
 		medianRequestID:    medianRequestID,
 		deviationRequestID: deviationRequestID,
@@ -161,12 +164,23 @@ func (r *Relayer) Start(ctx context.Context) error {
 			Uint64("deviation request id", r.deviationRequestID).Msg("relayer state startup successful")
 	}
 
+	epoch := int64(-1)
+	skipEvents := r.skipNumEvents > 0
+	r.skipNumEvents++
 	for {
 		select {
 		case <-ctx.Done():
 			r.closer.Close()
 
 		case <-r.event:
+			epoch++
+			if skipEvents {
+				if epoch%r.skipNumEvents != 0 {
+					r.logger.Debug().Int64("epoch", epoch).Msg("skipping events")
+					continue
+				}
+			}
+			
 			r.logger.Debug().Msg("relayer tick")
 			startTime := time.Now()
 			if err := r.tick(ctx); err != nil {
