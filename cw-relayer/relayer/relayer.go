@@ -171,16 +171,15 @@ func (r *Relayer) Start(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			r.closer.Close()
+			return nil
 
 		case <-r.event:
 			epoch++
-			if skipEvents {
-				if epoch%r.skipNumEvents != 0 {
-					r.logger.Debug().Int64("epoch", epoch).Msg("skipping events")
-					continue
-				}
+			if skipEvents && epoch%r.skipNumEvents != 0 {
+				r.logger.Debug().Int64("epoch", epoch).Msg("skipping events")
+				continue
 			}
-			
+
 			r.logger.Debug().Msg("relayer tick")
 			startTime := time.Now()
 			if err := r.tick(ctx); err != nil {
