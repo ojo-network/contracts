@@ -43,7 +43,7 @@ jobs:
           --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
           --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
           cosmwasm/workspace-optimizer:0.12.7
-          tar -zcvf scrt-cosmwasm-artifacts-${{ env.RELEASE_VERSION }}.tar.gz cosmwasm/artifacts
+          tar -zcvf cosmwasm-artifacts-${{ env.RELEASE_VERSION }}.tar.gz cosmwasm/artifacts
       - name: Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
