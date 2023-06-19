@@ -2,7 +2,7 @@
 authors = ["ojonetwork"]
 edition = "2021"
 name = "std-reference"
-version = "0.0.1"
+version = "0.0.2"
 
 exclude = [
     "contract.wasm",
