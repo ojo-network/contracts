@@ -37,8 +37,9 @@ func NewBlockHeightSubscription(
 	maxRetries int64,
 ) (*EventSubscribe, error) {
 	newEvent := &EventSubscribe{
-		logger:         logger.With().Str("event", tickEventType).Logger(),
-		Tick:           make(chan struct{}),
+		logger: logger.With().Str("event", tickEventType).Logger(),
+		// assuming 15-second price update
+		Tick:           make(chan struct{}, 4),
 		timeout:        timeout,
 		maxTickTimeout: maxTickTimeout,
 		rpcAddress:     rpcAddress,

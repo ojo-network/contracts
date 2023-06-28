@@ -47,9 +47,16 @@ type (
 		DeviationRequestID uint64 `mapstructure:"deviation_request_id"`
 
 		// force relay prices and reset epoch time in contracts if err in broadcasting tx
-		MissedThreshold int64  `mapstructure:"missed_threshold"`
-		MedianDuration  int64  `mapstructure:"median_duration"`
-		ResolveDuration string `mapstructure:"resolve_duration"`
+		MissedThreshold   int64  `mapstructure:"missed_threshold"`
+		MedianDuration    int64  `mapstructure:"median_duration"`
+		DeviationDuration int64  `mapstructure:"deviation_duration"`
+		ResolveDuration   string `mapstructure:"resolve_duration"`
+
+		// skip price update events
+		SkipNumEvents int64 `mapstructure:"skip_num_events"`
+
+		// if true, would ignore any errors when querying median or deviations
+		IgnoreMedianErrors bool `mapstructure:"ignore_median_errors"`
 
 		GasAdjustment float64 `mapstructure:"gas_adjustment" validate:"required"`
 		GasPrices     string  `mapstructure:"gas_prices" validate:"required"`

@@ -171,6 +171,9 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		cfg.MissedThreshold,
 		cfg.MaxRetries,
 		cfg.MedianDuration,
+		cfg.DeviationDuration,
+		cfg.SkipNumEvents,
+		cfg.IgnoreMedianErrors,
 		resolveDuration,
 		queryTimeout,
 		cfg.RequestID,
@@ -181,10 +184,12 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		cfg.QueryRPCS,
 	)
 
-	g.Go(func() error {
-		// start the process that queries the prices on Ojo & submits them on Wasmd
-		return startPriceRelayer(ctx, logger, newRelayer)
-	})
+	g.Go(
+		func() error {
+			// start the process that queries the prices on Ojo & submits them on Wasmd
+			return startPriceRelayer(ctx, logger, newRelayer)
+		},
+	)
 
 	// Block main process until all spawned goroutines have gracefully exited and
 	// signal has been captured in the main process or if an error occurs.

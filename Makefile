@@ -35,6 +35,9 @@ test-unit-contract:
 compile-contract:
 	cosmwasm/scripts/build_artifacts.sh
 
+compile-contract-arm:
+	cosmwasm/scripts/build_artifacts_arm.sh
+
 start-relayer:
 	cd cw-relayer && ${MAKE} start
 
@@ -45,4 +48,11 @@ test-e2e:
 	cd cw-relayer && ${MAKE} test-e2e
 	rm cw-relayer/tests/e2e/config/std_reference.wasm
 
-.PHONY: test-e2e
+test-e2e-arm:
+	@echo "Running e2e tests"
+	${MAKE} compile-contract-arm
+	cp -f cosmwasm/artifacts/std_reference-aarch64.wasm cw-relayer/tests/e2e/config/std_reference.wasm
+	cd cw-relayer && ${MAKE} test-e2e
+	rm cw-relayer/tests/e2e/config/std_reference.wasm
+
+.PHONY: test-e2e test-e2e-arm compile-contract compile-contract-arm
