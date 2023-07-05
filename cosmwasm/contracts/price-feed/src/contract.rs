@@ -1,15 +1,21 @@
+use cosmwasm_schema::serde::Serialize;
 use cosmwasm_std::{
-    entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
-    StdResult, Uint256, Uint64,
+    entry_point, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo, Reply,
+    Response, StdError, StdResult, SubMsg, Timestamp, Uint256, Uint64, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
+use std::ops::{Add, Index};
 
 use crate::errors::ContractError;
+use crate::errors::ContractError::TriggerRequestDisabled;
+use crate::helpers::generate_oracle_event;
+use crate::msg::ExecuteMsg::{RelayHistoricalDeviation, RequestRelay};
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::state;
 use crate::state::{
     RefData, RefMedianData, ReferenceData, ADMIN, DEVIATIONDATA, MEDIANREFDATA, MEDIANSTATUS,
-    REFDATA, RELAYERS,
+    REFDATA, RELAYERS, TOTALREQUEST, TRIGGER_REQUEST,
 };
 
 const E0: Uint64 = Uint64::zero();
@@ -44,6 +50,7 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    let blocktime = _env.block.time;
     match msg {
         ExecuteMsg::UpdateAdmin { admin } => {
             let admin = deps.api.addr_validate(&admin)?;
@@ -82,7 +89,12 @@ pub fn execute(
             resolve_time,
             request_id,
         ),
-        ExecuteMsg::RelayHistoricalDeviation {
+        ExecuteMsg::ChangeTrigger { trigger } => {
+            ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+            TRIGGER_REQUEST.save(deps.storage, &trigger)?;
+            Ok(Response::new().add_attribute("change_trigger", trigger.to_string()))
+        }
+        RelayHistoricalDeviation {
             symbol_rates,
             resolve_time,
             request_id,
@@ -98,6 +110,11 @@ pub fn execute(
             resolve_time,
             request_id,
         ),
+        RequestRelay {
+            symbol,
+            resolve_time,
+            callback_data,
+        } => execute_demand_price(deps, info, blocktime, symbol, resolve_time, callback_data),
     }
 }
 
@@ -162,6 +179,43 @@ fn execute_remove_relayers(
     }
 
     Ok(Response::new().add_attribute("action", "remove_relayers"))
+}
+
+fn execute_demand_price(
+    deps: DepsMut,
+    info: MessageInfo,
+    blocktime: Timestamp,
+    symbol: String,
+    resolve_time: Uint64,
+    callback_data: Binary,
+) -> Result<Response, ContractError> {
+    let status = TRIGGER_REQUEST
+        .may_load(deps.storage)
+        .unwrap()
+        .unwrap_or_default();
+    if !status {
+        return Err(TriggerRequestDisabled {});
+    }
+
+
+    let contract_address = deps.api.addr_validate(&info.sender.to_string()).unwrap();
+    let mut request_id = contract_address.clone().to_string();
+    request_id.push('_');
+    request_id.push_str(blocktime.nanos().to_string().as_str());
+
+    let event = generate_oracle_event(
+        info.sender.clone().to_string(),
+        symbol.clone(),
+        resolve_time.clone(),
+        callback_data.clone(),
+        request_id.clone(),
+    );
+
+    Ok(Response::new()
+        .add_attribute("action", "demand_price")
+        .add_attribute("request_id", request_id).
+        add_attribute("serving_oracle", oralce)
+        .add_event(event))
 }
 
 fn execute_relay(
@@ -368,6 +422,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetDeviationRefBulk { symbols } => {
             to_binary(&query_deviation_ref_bulk(deps, &symbols)?)
         }
+        QueryMsg::GetTotalRequest {} => to_binary(&TOTALREQUEST.load(deps.storage)?),
     }
 }
 
@@ -409,7 +464,7 @@ fn query_reference_data_bulk(
 // can only support USD
 fn query_median_ref(deps: Deps, symbol: &str) -> StdResult<RefMedianData> {
     if !MEDIANSTATUS.load(deps.storage)? {
-        return Err(StdError::generic_err ("MEDIAN DISABLED"));
+        return Err(StdError::generic_err("MEDIAN DISABLED"));
     }
 
     if symbol == "USD" {
@@ -925,10 +980,7 @@ mod tests {
             // Check if relay was successful
             let err = query_median_ref_data_bulk(deps.as_ref(), &symbols.clone()).unwrap_err();
 
-            assert_eq!(
-                err,
-                StdError::generic_err ("MEDIAN DISABLED")
-            );
+            assert_eq!(err, StdError::generic_err("MEDIAN DISABLED"));
         }
 
         #[test]

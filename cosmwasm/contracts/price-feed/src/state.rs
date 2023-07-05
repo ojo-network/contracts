@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Uint256, Uint64};
+use cosmwasm_std::{Addr, Response, Uint256, Uint64};
 use cw_controllers::Admin;
 use cw_storage_plus::{Item, Map};
 
@@ -20,6 +20,10 @@ pub const MEDIANSTATUS: Item<bool> = Item::new("medianstatus");
 
 // Used to store Deviation data
 pub const DEVIATIONDATA: Map<&str, RefData> = Map::new("deviationdata");
+
+pub const TRIGGER_REQUEST: Item<bool> = Item::new("triggerequest");
+
+pub const TOTALREQUEST: Item<Uint64> = Item::new("totalrequest");
 
 #[cw_serde]
 pub struct RefData {
@@ -62,6 +66,7 @@ impl RefMedianData {
 }
 
 #[cw_serde]
+#[derive(Default)]
 pub struct ReferenceData {
     // Pair rate e.g. rate of BTC/USD
     pub rate: Uint256,

@@ -171,56 +171,55 @@ func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight int64, msgs .
 	}
 
 	// re-try tx until timeout
-	for lastCheckHeight < maxBlockHeight {
-		latestBlockHeight, err := oc.ChainHeight.GetChainHeight()
-		if err != nil {
-			return err
-		}
+	//for lastCheckHeight < maxBlockHeight {
+	//	latestBlockHeight, err := oc.ChainHeight.GetChainHeight()
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//	if latestBlockHeight <= lastCheckHeight {
+	//		continue
+	//	}
 
-		if latestBlockHeight <= lastCheckHeight {
-			continue
-		}
-
-		// set last check height to latest block height
-		lastCheckHeight = latestBlockHeight
-
-		resp, err := BroadcastTx(clientCtx, factory, msgs...)
-		if resp != nil && resp.Code != 0 {
-			telemetry.IncrCounter(1, "failure", "tx", "code")
-			oc.logger.Error().Msg(resp.String())
-			err = fmt.Errorf("invalid response code from tx: %d", resp.Code)
-		}
-
-		if err != nil {
-			var (
-				code uint32
-				hash string
-			)
-			if resp != nil {
-				code = resp.Code
-				hash = resp.TxHash
-			}
-
-			oc.logger.Debug().
-				Err(err).
-				Int64("max_height", maxBlockHeight).
-				Int64("last_check_height", lastCheckHeight).
-				Str("tx_hash", hash).
-				Uint32("tx_code", code).
-				Msg("failed to broadcast tx; retrying...")
-
-			time.Sleep(time.Second * 1)
-			continue
-		}
-
-		oc.logger.Info().
-			Uint32("tx_code", resp.Code).
-			Str("tx_hash", resp.TxHash).
-			Int64("tx_height", resp.Height).
-			Msg("successfully broadcasted tx")
-
-		return nil
+	// set last check height to latest block height
+	//lastCheckHeight = latestBlockHeight
+	resp, err := BroadcastTx(clientCtx, factory, msgs...)
+	if resp != nil && resp.Code != 0 {
+		telemetry.IncrCounter(1, "failure", "tx", "code")
+		oc.logger.Error().Msg(resp.String())
+		err = fmt.Errorf("invalid response code from tx: %d", resp.Code)
 	}
+
+	if err != nil {
+		var (
+			code uint32
+			hash string
+		)
+		if resp != nil {
+			code = resp.Code
+			hash = resp.TxHash
+		}
+
+		oc.logger.Debug().
+			Err(err).
+			Int64("max_height", maxBlockHeight).
+			Int64("last_check_height", lastCheckHeight).
+			Str("tx_hash", hash).
+			Uint32("tx_code", code).
+			Msg("failed to broadcast tx; retrying...")
+
+		//time.Sleep(time.Second * 1)
+		//continue
+	}
+
+	oc.logger.Info().
+		Uint32("tx_code", resp.Code).
+		Str("tx_hash", resp.TxHash).
+		Int64("tx_height", resp.Height).
+		Msg("successfully broadcasted tx")
+
+	return nil
+	//}
 
 	telemetry.IncrCounter(1, "failure", "tx", "timeout")
 	return errors.New("broadcasting tx timed out")

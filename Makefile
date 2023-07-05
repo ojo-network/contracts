@@ -15,6 +15,17 @@ deploy:
 	@echo "Deploying ref contract"
 	./scripts/deploy_contract.sh
 
+trigger-event:
+	@echo "Deploying ref contract"
+	./scripts/trigger_event.sh
+
+restart:
+	${MAKE} kill-dev
+	${MAKE} localnet
+	sleep 5
+	${MAKE} deploy
+
+
 kill-dev:
 	@echo "Killing wasmd and removing previous data"
 	-@rm -rf ./data

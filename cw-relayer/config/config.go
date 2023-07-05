@@ -55,6 +55,8 @@ type (
 		// skip price update events
 		SkipNumEvents int64 `mapstructure:"skip_num_events"`
 
+		NumBundle int64 `mapstructure:"num_bundle"`
+
 		// if true, would ignore any errors when querying median or deviations
 		IgnoreMedianErrors bool `mapstructure:"ignore_median_errors"`
 

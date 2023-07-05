@@ -71,6 +71,22 @@ type (
 	symbol struct {
 		Symbol string `json:"symbol"`
 	}
+
+	CallbackData struct {
+		RequestID    string `json:"request_id"`
+		Symbol       string `json:"symbol"`
+		SymbolRate   string `json:"symbol_rate"`
+		ResolveTime  string `json:"resolve_time"`
+		CallbackData []byte `json:"callback_data"`
+	}
+
+	Callback struct {
+		Req CallbackData `json:"callback"`
+	}
+
+	Execute struct {
+		Callback Callback `json:"execute"`
+	}
 )
 
 func genRestartQueries(contractAddress, Denom string) ([]client.SmartQuery, error) {
@@ -114,10 +130,10 @@ func genRestartQueries(contractAddress, Denom string) ([]client.SmartQuery, erro
 	}, nil
 }
 
-func (r *Relayer) genWasmMsg(msgData []byte) *wasmtypes.MsgExecuteContract {
+func (r *Relayer) genWasmMsg(to string, msgData []byte) *wasmtypes.MsgExecuteContract {
 	return &wasmtypes.MsgExecuteContract{
 		Sender:   r.relayerClient.RelayerAddrString,
-		Contract: r.contractAddress,
+		Contract: to,
 		Msg:      msgData,
 		Funds:    nil,
 	}

@@ -163,16 +163,25 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	contractTick, err := relayerclient.NewContractSubscribe(ctx, cfg.RPC.TMRPCEndpoint, cfg.ContractAddress, logger)
+	if err != nil {
+		return err
+	}
+
+	g.Go(func() error {
+		return contractTick.Subscribe(ctx)
+	})
+
 	newRelayer := relayer.New(
 		logger,
 		client,
+		contractTick,
 		cfg.ContractAddress,
 		cfg.TimeoutHeight,
 		cfg.MissedThreshold,
 		cfg.MaxRetries,
 		cfg.MedianDuration,
 		cfg.DeviationDuration,
-		cfg.SkipNumEvents,
 		cfg.IgnoreMedianErrors,
 		resolveDuration,
 		queryTimeout,

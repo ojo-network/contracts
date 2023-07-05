@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint64;
+use cosmwasm_std::{Addr, Binary, Uint256, Uint64};
 
 use crate::state::{RefData, RefMedianData, ReferenceData};
 
@@ -44,6 +44,18 @@ pub enum ExecuteMsg {
         // Request ID of the results on Ojo
         request_id: Uint64,
     },
+
+    // Relays a vector of symbols and their corresponding rates
+    RequestRelay {
+        symbol: String,
+        resolve_time: Uint64,
+        callback_data: Binary,
+    },
+
+    ChangeTrigger {
+        trigger: bool,
+    },
+
     // Relays a vector of symbols and their corresponding rates
     RelayHistoricalMedian {
         // A vector of symbols and their corresponding rates where:
@@ -127,6 +139,7 @@ pub enum QueryMsg {
         // Symbol to query
         symbol: String,
     },
+
     #[returns(Vec < RefMedianData >)]
     // Returns the RefMedianData of the given symbols
     GetMedianRefDataBulk {

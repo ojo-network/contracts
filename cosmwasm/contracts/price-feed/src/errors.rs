@@ -21,4 +21,7 @@ pub enum ContractError {
 
     #[error("Cannot migrate from unsupported version: {previous_version}")]
     CannotMigrateVersion { previous_version: String },
+
+    #[error("Trigger request disabled")]
+    TriggerRequestDisabled {},
 }
