@@ -163,7 +163,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	contractTick, err := relayerclient.NewContractSubscribe(ctx, cfg.RPC.TMRPCEndpoint, cfg.ContractAddress, logger)
+	contractTick, err := relayerclient.NewContractSubscribe(cfg.RPC.TMRPCEndpoint, cfg.ContractAddress, logger)
 	if err != nil {
 		return err
 	}

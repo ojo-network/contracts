@@ -43,7 +43,6 @@ pub mod helper {
         to_binary, Binary, CosmosMsg, DepsMut, Env, Event, Response, StdError, StdResult, SubMsg,
         SubMsgResponse, SubMsgResult, Uint128, Uint256, Uint64, WasmMsg,
     };
-    use std::ops::Deref;
 
     pub fn oracle_submessage(
         oracle_address: String,
@@ -95,5 +94,35 @@ pub mod helper {
             .attributes
             .iter()
             .any(|attr| attr.key == key && attr.value == value)
+    }
+}
+
+pub mod verify {
+    use cosmwasm_schema::cw_serde;
+    use cosmwasm_std::{
+        to_binary, Deps, DepsMut, Env, MessageInfo, QueryRequest, StdResult, WasmQuery,
+    };
+    use std::fmt::Binary;
+    #[cw_serde]
+    pub enum QueryMsg {
+        IsRelayer { relayer: String },
+    }
+
+    pub fn verify_relayer(
+        deps: &DepsMut,
+        env: &Env,
+        contract_address: String,
+        sender: String,
+    ) -> StdResult<bool> {
+        let is_relayer_query_msg = QueryMsg::IsRelayer {
+            relayer: sender.into(),
+        };
+
+        let wasm_query = QueryRequest::Wasm(WasmQuery::Smart {
+            contract_addr: contract_address.to_string(),
+            msg: to_binary(&is_relayer_query_msg)?,
+        });
+
+        deps.querier.query(&wasm_query)
     }
 }

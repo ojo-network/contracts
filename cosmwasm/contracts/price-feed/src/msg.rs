@@ -1,10 +1,12 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Binary, Uint256, Uint64};
+use cosmwasm_std::{Addr, Binary, Uint128, Uint256, Uint64};
 
 use crate::state::{RefData, RefMedianData, ReferenceData};
 
 #[cw_serde]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    pub block_threshold:Uint64
+}
 
 #[cw_serde]
 pub struct MigrateMsg {}
@@ -51,6 +53,8 @@ pub enum ExecuteMsg {
         resolve_time: Uint64,
         callback_data: Binary,
     },
+
+    RelayerPing{},
 
     ChangeTrigger {
         trigger: bool,

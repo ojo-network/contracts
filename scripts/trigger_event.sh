@@ -21,13 +21,12 @@ REQUEST_RELAY='{"execute":{"request_relay": {"symbol": "ATOM", "resolve_time": "
 for i in {1..100}
 do
     $BINARY tx wasm execute $QUERY_CONTRACT "$REQUEST_RELAY" --from $DEMOWALLET --home ./data/$CHAINID_1 $TXFLAG
-    $BINARY q wasm contract-state smart $QUERY_CONTRACT '{"get_price":{}}' --home ./data/$CHAINID_1
+    $BINARY q wasm contract-state smart $QUERY_CONTRACT '"get_price"' --home ./data/$CHAINID_1
 done
 
-#CALLBACK='{"callback":{"symbol": "ATOM", "symbol_rate": "1000000", "resolve_time": "1625267345000", "callback_data": "test"}}'
-#$BINARY tx wasm execute $QUERY_CONTRACT "$CALLBACK" --from $DEMOWALLET --home ./data/$CHAINID_1 $TXFLAG
-#
-#QUERY='{"get_total_request":{}}'
-#$BINARY query wasm contract-state smart $CONTRACT "$QUERY" $NODE --output json
-##
-#
+CALLBACK='{"callback":{"symbol": "ATOM", "symbol_rate": "1000000", "resolve_time": "1625267345000", "callback_data": "test"}}'
+$BINARY tx wasm execute $QUERY_CONTRACT "$CALLBACK" --from $DEMOWALLET --home ./data/$CHAINID_1 $TXFLAG
+
+QUERY='{"get_total_request":{}}'
+$BINARY query wasm contract-state smart $CONTRACT "$QUERY" $NODE --output json
+

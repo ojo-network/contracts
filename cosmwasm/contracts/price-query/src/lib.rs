@@ -1,11 +1,10 @@
-use std::arch::is_aarch64_feature_detected;
 use cosmwasm_std::{
     attr, entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo, Reply,
-    Response, StdError, StdResult, SubMsg, SubMsgResponse, Uint128,
-    Uint64, WasmMsg,
+    Response, StdError, StdResult, SubMsg, SubMsgResponse, Uint128, Uint64, WasmMsg,
 };
+use std::arch::is_aarch64_feature_detected;
 
-use cosmwasm_schema::{QueryResponses};
+use cosmwasm_schema::QueryResponses;
 use thiserror::Error;
 
 use crate::ContractError::Std;
@@ -33,7 +32,7 @@ pub struct InitMsg {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(Uint64)]
-    GetPrice
+    GetPrice,
 }
 
 #[cw_serde]
@@ -93,7 +92,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 fn query_request(deps: Deps) -> StdResult<Uint64> {
     let price = PRICE.may_load(deps.storage)?.unwrap_or(Uint64::zero());
 
-    Ok(price)
+    Ok(price)ar
 }
 
 fn execute_request_relay(
@@ -119,16 +118,24 @@ fn execute_request_relay(
 
 fn execute_callback(
     deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
+    env: Env,
+    info: MessageInfo,
     msg: CallbackData,
 ) -> Result<Response, ContractError> {
     // Implement your callback logic here
+    let config = CONFIG.load(deps.storage)?;
+    let oracle_address = config.contract_address;
+
     let prev_id = REQUEST.load(deps.storage)?;
     let request_id = msg.request_id;
-    // if !prev_id.eq(&request_id){
-    //     return Err(Std(StdError::generic_err("request id does not match")))
-    // }
+
+    let check = price_feed_helper::verify::verify_relayer(
+        &deps,
+        &env,
+        oracle_address,
+        info.sender.to_string(),
+    )
+    .unwrap_or(false);
 
     PRICE.save(deps.storage, &msg.symbol_rate)?;
 
@@ -138,6 +145,7 @@ fn execute_callback(
         .add_attribute("symbol", msg.symbol)
         .add_attribute("symbol_rate", msg.symbol_rate)
         .add_attribute("resolve_time", msg.resolve_time)
+        .add_attribute("is_verified", check.to_string())
         .add_attribute("prev_id", prev_id))
 }
 

@@ -87,6 +87,10 @@ type (
 	Execute struct {
 		Callback Callback `json:"execute"`
 	}
+
+	Ping struct {
+		Ping struct{} `json:"ping"`
+	}
 )
 
 func genRestartQueries(contractAddress, Denom string) ([]client.SmartQuery, error) {

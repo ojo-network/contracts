@@ -1,22 +1,20 @@
 use cosmwasm_schema::serde::Serialize;
 use cosmwasm_std::{
     entry_point, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo, Reply,
-    Response, StdError, StdResult, SubMsg, Timestamp, Uint256, Uint64, WasmMsg,
+    Response, StdError, StdResult, SubMsg, Timestamp, Uint256, Uint64, WasmMsg,Order
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
-use std::ops::{Add, Index};
+use std::ops::{Add, Deref, Index, Sub};
+use cw_storage_plus::{Bound, Bounder};
 
 use crate::errors::ContractError;
 use crate::errors::ContractError::TriggerRequestDisabled;
 use crate::helpers::generate_oracle_event;
-use crate::msg::ExecuteMsg::{RelayHistoricalDeviation, RequestRelay};
+use crate::msg::ExecuteMsg::{RelayerPing, RelayHistoricalDeviation, RequestRelay};
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state;
-use crate::state::{
-    RefData, RefMedianData, ReferenceData, ADMIN, DEVIATIONDATA, MEDIANREFDATA, MEDIANSTATUS,
-    REFDATA, RELAYERS, TOTALREQUEST, TRIGGER_REQUEST,
-};
+use crate::state::{RefData, RefMedianData, ReferenceData, ADMIN, DEVIATIONDATA, MEDIANREFDATA, MEDIANSTATUS, REFDATA, RELAYERS, TOTALREQUEST, TRIGGER_REQUEST, PINGCHECK, LAST_RELAYER, BLOCK_THRESHOLD};
 
 const E0: Uint64 = Uint64::zero();
 const E9: Uint64 = Uint64::new(1_000_000_000u64);
@@ -31,7 +29,7 @@ pub fn instantiate(
     mut deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     // Set contract version
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
@@ -39,6 +37,7 @@ pub fn instantiate(
     // Set sender as admin
     ADMIN.set(deps.branch(), Some(info.sender))?;
     MEDIANSTATUS.save(deps.storage, &true)?;
+    BLOCK_THRESHOLD.save(deps.storage, &msg.block_threshold)?;
 
     Ok(Response::default())
 }
@@ -46,11 +45,11 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let blocktime = _env.block.time;
+    let blocktime = env.block.time;
     match msg {
         ExecuteMsg::UpdateAdmin { admin } => {
             let admin = deps.api.addr_validate(&admin)?;
@@ -114,7 +113,18 @@ pub fn execute(
             symbol,
             resolve_time,
             callback_data,
-        } => execute_demand_price(deps, info, blocktime, symbol, resolve_time, callback_data),
+        } => execute_demand_price(deps, info, env,blocktime, symbol, resolve_time, callback_data),
+        RelayerPing {}=>{
+            let check=query_is_relayer(deps.as_ref(), &info.sender).unwrap_or(false);
+            if !check{
+                return Err(ContractError::UnauthorizedRelayer {msg:info.sender.to_string()})
+            }
+            let relayer  = deps.api.addr_validate(&info.sender.to_string())?;
+            // TODO: do security checks
+            PINGCHECK.save(deps.storage, &relayer, &Uint64::new(blocktime.nanos()))?;
+
+            Ok(Response::default())
+        }
     }
 }
 
@@ -184,6 +194,7 @@ fn execute_remove_relayers(
 fn execute_demand_price(
     deps: DepsMut,
     info: MessageInfo,
+    env: Env,
     blocktime: Timestamp,
     symbol: String,
     resolve_time: Uint64,
@@ -197,13 +208,15 @@ fn execute_demand_price(
         return Err(TriggerRequestDisabled {});
     }
 
-
     let contract_address = deps.api.addr_validate(&info.sender.to_string()).unwrap();
     let mut request_id = contract_address.clone().to_string();
     request_id.push('_');
     request_id.push_str(blocktime.nanos().to_string().as_str());
 
+   let next_relayer= select_relayer(deps,blocktime.nanos())?;
+
     let event = generate_oracle_event(
+        next_relayer.to_string(),
         info.sender.clone().to_string(),
         symbol.clone(),
         resolve_time.clone(),
@@ -213,10 +226,59 @@ fn execute_demand_price(
 
     Ok(Response::new()
         .add_attribute("action", "demand_price")
-        .add_attribute("request_id", request_id).
-        add_attribute("serving_oracle", oralce)
+        .add_attribute("request_id", request_id)
         .add_event(event))
 }
+
+
+pub fn select_relayer(deps: DepsMut, blocktime : u64) -> StdResult<Addr> {
+    // Get the last selected relayer
+    let last_relayer = LAST_RELAYER.may_load(deps.storage)?;
+
+    let addr = match &last_relayer {
+        Some(addr_str) => deps.api.addr_validate(addr_str)?,
+        None => Addr::unchecked(""),
+    };
+
+    let start = if last_relayer.is_some() {
+        Some(Bound::exclusive(&addr))
+    } else {
+        Some(Bound::inclusive(&addr))
+    };
+
+    let threshold = BLOCK_THRESHOLD.load(deps.storage)?;
+
+    // Find the next available relayer
+    let mut iter = RELAYERS.range(deps.storage, start, None, Order::Ascending);
+
+    let mut next_relayer = None;
+    while let Some(result) = iter.next() {
+        let (key, _) = result?;
+        let last_ping = PINGCHECK.load(deps.storage, &key).unwrap_or(Uint64::from(blocktime));
+        if blocktime- last_ping.u64() > threshold.u64() {
+            next_relayer = Some(key.clone());
+            break;
+        }
+    }
+
+    // If no next relayer was found, start from the beginning
+    if next_relayer.is_none() {
+        let mut iter = RELAYERS.range(deps.storage, Some(Bound::inclusive(&Addr::unchecked(""))), None, Order::Ascending);
+        while let Some(result) = iter.next() {
+            let (key, _) = result?;
+            let last_ping = PINGCHECK.load(deps.storage, &key).unwrap_or(Uint64::from(blocktime));
+            if blocktime  - last_ping.u64() > threshold.u64() {
+                next_relayer = Some(key.clone());
+                break;
+            }
+        }
+    }
+
+
+    // If no available relayer was found, return an error
+    next_relayer.ok_or_else(|| StdError::generic_err("No relayers available"))
+}
+
 
 fn execute_relay(
     deps: DepsMut,
@@ -422,7 +484,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetDeviationRefBulk { symbols } => {
             to_binary(&query_deviation_ref_bulk(deps, &symbols)?)
         }
-        QueryMsg::GetTotalRequest {} => to_binary(&TOTALREQUEST.load(deps.storage)?),
     }
 }
 
