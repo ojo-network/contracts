@@ -10,8 +10,8 @@ use std::ops::{Add, Deref, Index, Sub};
 
 use crate::errors::ContractError;
 use crate::errors::ContractError::TriggerRequestDisabled;
-use crate::helpers::generate_oracle_event;
-use crate::msg::ExecuteMsg::{RelayerPing, RequestRelay};
+use crate::helpers::{EventType, generate_oracle_event};
+use crate::msg::ExecuteMsg::{RelayerPing, RequestDeviation, RequestMedian, RequestRate, RequestRelay};
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state;
 use crate::state::{RefData, RefMedianData, ReferenceData, ADMIN, DEVIATIONDATA, LAST_RELAYER, MEDIANREFDATA, MEDIANSTATUS, PINGCHECK, REFDATA, RELAYERS, TOTALREQUEST, TRIGGER_REQUEST, PING_THRESHOLD};
@@ -62,18 +62,47 @@ pub fn execute(
             TRIGGER_REQUEST.save(deps.storage, &trigger)?;
             Ok(Response::new().add_attribute("change_trigger", trigger.to_string()))
         }
-        RequestRelay {
+        RequestRate {
             symbol,
             resolve_time,
             callback_data,
+
         } => execute_demand_price(
             deps,
             info,
-            env,
             block_time,
             symbol,
             resolve_time,
             callback_data,
+            EventType::RequestRate,
+        ),
+        RequestDeviation {
+            symbol,
+            resolve_time,
+            callback_data,
+
+        } => execute_demand_price(
+            deps,
+            info,
+            block_time,
+            symbol,
+            resolve_time,
+            callback_data,
+            EventType::RequestDeviation,
+        ),
+        RequestMedian {
+            symbol,
+            resolve_time,
+            callback_data,
+
+        } => execute_demand_price(
+            deps,
+            info,
+            block_time,
+            symbol,
+            resolve_time,
+            callback_data,
+            EventType::RequestMedian,
         ),
         RelayerPing {} => {
             let check = query_is_relayer(deps.as_ref(), &info.sender).unwrap_or(false);
@@ -156,11 +185,11 @@ fn execute_remove_relayers(
 fn execute_demand_price(
     deps: DepsMut,
     info: MessageInfo,
-    env: Env,
     blocktime: Timestamp,
     symbol: String,
     resolve_time: Uint64,
     callback_data: Binary,
+    event_type: EventType
 ) -> Result<Response, ContractError> {
     let status = TRIGGER_REQUEST
         .may_load(deps.storage)
@@ -184,6 +213,7 @@ fn execute_demand_price(
         resolve_time.clone(),
         callback_data.clone(),
         request_id.clone(),
+        event_type
     );
 
     Ok(Response::new()

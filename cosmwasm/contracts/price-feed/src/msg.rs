@@ -31,7 +31,19 @@ pub enum ExecuteMsg {
     },
 
     // Relays a vector of symbols and their corresponding rates
-    RequestRelay {
+    RequestRate {
+        symbol: String,
+        resolve_time: Uint64,
+        callback_data: Binary,
+    },
+
+    RequestMedian {
+        symbol: String,
+        resolve_time: Uint64,
+        callback_data: Binary,
+    },
+
+    RequestDeviation {
         symbol: String,
         resolve_time: Uint64,
         callback_data: Binary,

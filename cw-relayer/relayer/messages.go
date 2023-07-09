@@ -11,7 +11,7 @@ type (
 		RequestID    string `json:"request_id"`
 		Symbol       string `json:"symbol"`
 		SymbolRate   string `json:"symbol_rate"`
-		ResolveTime  string `json:"resolve_time"`
+		LastUpdated  string `json:"last_updated"`
 		CallbackData []byte `json:"callback_data"`
 	}
 

@@ -1,26 +1,57 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{
-    to_binary, Binary, DepsMut, Env, Event, SubMsgResponse, SubMsgResult, Uint128, Uint256, Uint64,
-};
+use cosmwasm_std::{to_binary, Binary, DepsMut, Env, Event, SubMsgResponse, SubMsgResult, Uint128, Uint256, Uint64, StdResult};
 
 pub mod RequestRelay {
     use cosmwasm_schema::cw_serde;
-    use cosmwasm_std::StdResult;
+    use cosmwasm_std::{StdResult,Uint64,Binary};
 
     #[cw_serde]
-    pub struct RequestRelayData {
+    pub struct RequestRateData {
         pub symbol: String,
-        pub resolve_time: cosmwasm_std::Uint64,
-        pub callback_data: cosmwasm_std::Binary,
+        pub resolve_time: Uint64,
+        pub callback_data: Binary,
     }
 
     #[cw_serde]
-    pub struct CallbackData {
+    pub struct RequestDeviationData{
+        pub symbol: String,
+        pub resolve_time: Uint64,
+        pub callback_data: Binary,
+    }
+
+    #[cw_serde]
+    pub struct RequestMedianData{
+        pub symbol: String,
+        pub resolve_time: Uint64,
+        pub callback_data:Binary,
+    }
+}
+
+    #[cw_serde]
+    pub struct RateDataCallback {
         pub request_id: String,
         pub symbol: String,
-        pub symbol_rate: cosmwasm_std::Uint64,
-        pub resolve_time: cosmwasm_std::Uint64,
-        pub callback_data: cosmwasm_std::Binary,
+        pub symbol_rate: Uint64,
+        pub last_updated: Uint64,
+        pub callback_data: Binary,
+    }
+
+    #[cw_serde]
+    pub struct RateMedianCallback {
+        pub request_id: String,
+        pub symbol: String,
+        pub symbol_rate: Vec<Uint64>,
+        pub last_updated: Uint64,
+        pub callback_data: Binary,
+    }
+
+    #[cw_serde]
+    pub struct RateDeviationCallback {
+        pub request_id: String,
+        pub symbol: String,
+        pub symbol_rate: Uint64,
+        pub last_updated: Uint64,
+        pub callback_data: Binary,
     }
 
     #[cw_serde]
@@ -30,9 +61,9 @@ pub mod RequestRelay {
     }
 
     impl RequestRelayData {
-        pub fn into_binary(self) -> StdResult<cosmwasm_std::Binary> {
+        pub fn into_binary(self) -> StdResult<Binary> {
             let msg = OracleMsg::RequestRelay(self);
-            cosmwasm_std::to_binary(&msg)
+            to_binary(&msg)
         }
     }
 }
@@ -108,7 +139,6 @@ pub mod verify {
         IsRelayer { relayer: String },
     }
 
-
     pub fn verify_relayer(
         deps: &DepsMut,
         env: &Env,
@@ -131,5 +161,4 @@ pub mod Error{
         #[error("Invalid Relayer address: {relayer_address}")]
         InvalidRelayer {relayer_address:String},
     }
-
 }

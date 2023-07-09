@@ -1,4 +1,12 @@
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Binary, Event, Uint64};
+
+#[cw_serde]
+pub enum EventType{
+    RequestRate,
+    RequestMedian,
+    RequestDeviation,
+}
 
 pub fn generate_oracle_event(
     relayer_address: String,
@@ -7,9 +15,24 @@ pub fn generate_oracle_event(
     resolve_time: Uint64,
     callback_data: Binary,
     request_id: String,
+    event_type: EventType,
 ) -> Event {
-    Event::new("price-feed")
-        .add_attribute("relayer_address", relayer_address)
+    let event = Event::new("price-feed");
+    match event_type{
+        EventType::RequestRate => {
+            event.add_attribute("request_type","request_rate");
+        }
+
+        EventType::RequestMedian=>{
+            event.add_attribute("request_type", "request_median")
+        }
+
+        EventType::RequestDeviation=>{
+            event.add_attribute("request_type","request_deviation")
+        }
+
+    }
+    event.add_attribute("relayer_address", relayer_address)
         .add_attribute("event_contract_address", contract_address)
         .add_attribute("symbol", symbol.clone())
         .add_attribute("resolve_time", resolve_time)

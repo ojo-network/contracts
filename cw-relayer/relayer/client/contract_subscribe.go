@@ -14,6 +14,7 @@ const queryType = "wasm-price-feed"
 
 type (
 	ContractSubscribe struct {
+		nodeURL         []string
 		Logger          zerolog.Logger
 		query           string
 		contractAddress string
@@ -33,12 +34,12 @@ type (
 )
 
 func NewContractSubscribe(
-	[]nodeURL string,
+	nodeURL []string,
 	contractAddress string,
 	relayerAddress string,
 	logger zerolog.Logger,
 ) (*ContractSubscribe, error) {
-	client, err := rpcclient.New(nodeURL, "/websocket")
+	client, err := rpcclient.New(nodeURL[0], "/websocket")
 	if err != nil {
 		return nil, err
 	}
@@ -50,6 +51,7 @@ func NewContractSubscribe(
 		query:           query,
 		contractAddress: contractAddress,
 		client:          client,
+		nodeURL:         nodeURL,
 		Out:             make(chan struct{}),
 	}
 

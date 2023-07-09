@@ -39,6 +39,7 @@ type (
 
 		MaxRetries   int64  `mapstructure:"max_retries" validate:"required"`
 		PingDuration string `mapstructure:"ping_duration" validate:"required"`
+		TickDuration string `mapstructure:"tick_duration" validate:"required"`
 		NumBundle    int64  `mapstructure:"num_bundle"`
 
 		ContractAddress string `mapstructure:"contract_address"`

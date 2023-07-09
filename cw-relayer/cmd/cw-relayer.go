@@ -107,6 +107,11 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to parse Event timeout: %w", err)
 	}
 
+	tickDuration, err := time.ParseDuration(cfg.TickDuration)
+	if err != nil {
+		return fmt.Errorf("failed to parse Tick duration: %w", err)
+	}
+
 	maxTickTimeout, err := time.ParseDuration(cfg.Timeout.MaxTickTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to parse Event timeout: %w", err)
@@ -188,16 +193,27 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return contractTick.Subscribe(ctx)
 	})
 
+	priceService := relayer.NewPriceService(
+		logger,
+		cfg.DataRPC.QueryRPCS,
+		cfg.MaxRetries,
+		queryTimeout,
+		tick.Tick,
+	)
+
+	g.Go(func() error {
+		return priceService.Start(ctx)
+	})
+
 	newRelayer := relayer.New(
 		logger,
 		client,
 		contractTick,
+		priceService,
 		cfg.ContractAddress,
 		cfg.Timeout.TimeoutHeight,
-		cfg.MaxRetries,
-		queryTimeout,
-		tick.Tick,
-		cfg.DataRPC.QueryRPCS,
+		tickDuration,
+		contractTick.Out,
 	)
 
 	g.Go(

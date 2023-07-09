@@ -170,7 +170,7 @@ func (oc RelayerClient) BroadcastTx(timeoutHeight int64, msgs ...sdk.Msg) error 
 		return err
 	}
 
-	factory, err := oc.CreateTxFactory()
+	factory, err := oc.CreateTxFactory(&clientCtx)
 	if err != nil {
 		return err
 	}
@@ -232,7 +232,7 @@ func (oc RelayerClient) BroadcastTx(timeoutHeight int64, msgs ...sdk.Msg) error 
 
 func (oc RelayerClient) BroadcastContractQuery(ctx context.Context, timeout time.Duration, queries ...SmartQuery) ([]QueryResponse, error) {
 	grpcConn, err := grpc.Dial(
-		oc.QueryRpc,
+		oc.QueryRpc[0],
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 
@@ -333,12 +333,7 @@ func (oc RelayerClient) CreateClientContext() (client.Context, error) {
 
 // CreateTxFactory creates an SDK Factory instance used for transaction
 // generation, signing and broadcasting.
-func (oc RelayerClient) CreateTxFactory() (tx.Factory, error) {
-	clientCtx, err := oc.CreateClientContext()
-	if err != nil {
-		return tx.Factory{}, err
-	}
-
+func (oc RelayerClient) CreateTxFactory(clientCtx *client.Context) (tx.Factory, error) {
 	txFactory := tx.Factory{}.
 		WithAccountRetriever(clientCtx.AccountRetriever).
 		WithChainID(oc.ChainID).
