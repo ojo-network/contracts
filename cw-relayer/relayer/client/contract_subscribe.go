@@ -33,8 +33,9 @@ type (
 )
 
 func NewContractSubscribe(
-	nodeURL string,
+	[]nodeURL string,
 	contractAddress string,
+	relayerAddress string,
 	logger zerolog.Logger,
 ) (*ContractSubscribe, error) {
 	client, err := rpcclient.New(nodeURL, "/websocket")
@@ -42,7 +43,7 @@ func NewContractSubscribe(
 		return nil, err
 	}
 
-	query := fmt.Sprintf("%s._contract_address='%s'", queryType, contractAddress)
+	query := fmt.Sprintf("%s._contract_address='%s AND %s.relayer_address=%s'", queryType, contractAddress, queryType, relayerAddress)
 
 	contractSubscribe := &ContractSubscribe{
 		Logger:          logger.With().Str("relayer_client", "chain_height").Logger(),
@@ -90,6 +91,7 @@ func (cs *ContractSubscribe) Subscribe(
 						cs.setPriceRequest(priceRequests)
 					}
 				}
+
 			default:
 				cs.Logger.Error().Err(fmt.Errorf("Unknown event type: %T\n", event))
 			}
@@ -120,7 +122,7 @@ func (cs *ContractSubscribe) GetPriceRequest() map[string][]PriceRequest {
 func parseEvents(attrs []abcitypes.EventAttribute) (priceRequest []PriceRequest) {
 	for i := 0; i < len(attrs); i += 6 {
 		req := PriceRequest{}
-		for _, attr := range attrs[i : i+6] {
+		for _, attr := range attrs[i : i+7] {
 			val := string(attr.Value)
 			switch string(attr.Key) {
 			case "_contract_address":

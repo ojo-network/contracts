@@ -108,6 +108,7 @@ pub mod verify {
         IsRelayer { relayer: String },
     }
 
+
     pub fn verify_relayer(
         deps: &DepsMut,
         env: &Env,
@@ -118,11 +119,17 @@ pub mod verify {
             relayer: sender.into(),
         };
 
-        let wasm_query = QueryRequest::Wasm(WasmQuery::Smart {
-            contract_addr: contract_address.to_string(),
-            msg: to_binary(&is_relayer_query_msg)?,
-        });
-
-        deps.querier.query(&wasm_query)
+        deps.querier.query_wasm_smart(contract_address,&is_relayer_query_msg)
     }
+}
+
+pub mod Error{
+    use thiserror::Error;
+
+    #[derive(Error, Debug, PartialEq)]
+    pub enum Error {
+        #[error("Invalid Relayer address: {relayer_address}")]
+        InvalidRelayer {relayer_address:String},
+    }
+
 }

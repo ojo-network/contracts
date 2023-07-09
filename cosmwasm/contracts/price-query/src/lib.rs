@@ -13,6 +13,8 @@ use cosmwasm_schema::schemars::_private::NoSerialize;
 use cosmwasm_std::WasmMsg::Execute;
 use cw2::set_contract_version;
 use cw_storage_plus::Item;
+use serde_json::error;
+use price_feed_helper::Error;
 use price_feed_helper::helper::oracle_submessage;
 use price_feed_helper::RequestRelay::OracleMsg::{Callback, RequestRelay};
 use price_feed_helper::RequestRelay::*;
@@ -91,8 +93,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 fn query_request(deps: Deps) -> StdResult<Uint64> {
     let price = PRICE.may_load(deps.storage)?.unwrap_or(Uint64::zero());
-
-    Ok(price)ar
+    Ok(price)
 }
 
 fn execute_request_relay(
@@ -137,6 +138,12 @@ fn execute_callback(
     )
     .unwrap_or(false);
 
+    if !check{
+        return Err(ContractError::Custom(Error::Error::InvalidRelayer {
+            relayer_address:info.sender.to_string()
+        }));
+    }
+
     PRICE.save(deps.storage, &msg.symbol_rate)?;
 
     Ok(Response::new()
@@ -167,4 +174,7 @@ pub fn process_reply(deps: DepsMut, _env: Env, reply: SubMsgResponse) -> StdResu
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
+
+    #[error("{0}")]
+    Custom(#[from] Error),
 }

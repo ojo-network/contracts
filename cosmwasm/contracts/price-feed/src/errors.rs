@@ -14,7 +14,7 @@ pub enum ContractError {
     Unauthorized { msg: String },
 
     #[error("Unauthorized Relayer : {msg}")]
-    UnauthorizedRelayer{msg:String},
+    UnauthorizedRelayer { msg: String },
 
     #[error("Median is disabled")]
     MedianDisabled {},
@@ -27,5 +27,4 @@ pub enum ContractError {
 
     #[error("Trigger request disabled")]
     TriggerRequestDisabled {},
-
 }

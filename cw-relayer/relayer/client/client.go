@@ -38,8 +38,8 @@ type (
 		KeyringBackend    string
 		KeyringDir        string
 		KeyringPass       string
-		TMRPC             string
-		QueryRpc          string
+		TMRPC             []string
+		QueryRpc          []string
 		RPCTimeout        time.Duration
 		RelayerAddr       sdk.AccAddress
 		RelayerAddrString string
@@ -73,8 +73,8 @@ func NewRelayerClient(
 	keyringBackend string,
 	keyringDir string,
 	keyringPass string,
-	tmRPC string,
-	queryEndpoint string,
+	tmRPC []string,
+	queryEndpoint []string,
 	rpcTimeout time.Duration,
 	RelayerAddrString string,
 	accPrefix string,
@@ -156,7 +156,12 @@ func (r *passReader) Read(p []byte) (n int, err error) {
 
 // BroadcastTx attempts to broadcast a signed transaction. If it fails, a few re-attempts
 // will be made until the transaction succeeds or ultimately times out or fails.
-func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight int64, msgs ...sdk.Msg) error {
+func (oc RelayerClient) BroadcastTx(timeoutHeight int64, msgs ...sdk.Msg) error {
+	nextBlockHeight, err := oc.ChainHeight.GetChainHeight()
+	if err != nil {
+		return nil
+	}
+
 	maxBlockHeight := nextBlockHeight + timeoutHeight
 	lastCheckHeight := nextBlockHeight - 1
 
@@ -171,55 +176,55 @@ func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight int64, msgs .
 	}
 
 	// re-try tx until timeout
-	//for lastCheckHeight < maxBlockHeight {
-	//	latestBlockHeight, err := oc.ChainHeight.GetChainHeight()
-	//	if err != nil {
-	//		return err
-	//	}
-	//
-	//	if latestBlockHeight <= lastCheckHeight {
-	//		continue
-	//	}
-
-	// set last check height to latest block height
-	//lastCheckHeight = latestBlockHeight
-	resp, err := BroadcastTx(clientCtx, factory, msgs...)
-	if resp != nil && resp.Code != 0 {
-		telemetry.IncrCounter(1, "failure", "tx", "code")
-		oc.logger.Error().Msg(resp.String())
-		err = fmt.Errorf("invalid response code from tx: %d", resp.Code)
-	}
-
-	if err != nil {
-		var (
-			code uint32
-			hash string
-		)
-		if resp != nil {
-			code = resp.Code
-			hash = resp.TxHash
+	for lastCheckHeight < maxBlockHeight {
+		latestBlockHeight, err := oc.ChainHeight.GetChainHeight()
+		if err != nil {
+			return err
 		}
 
-		oc.logger.Debug().
-			Err(err).
-			Int64("max_height", maxBlockHeight).
-			Int64("last_check_height", lastCheckHeight).
-			Str("tx_hash", hash).
-			Uint32("tx_code", code).
-			Msg("failed to broadcast tx; retrying...")
+		if latestBlockHeight <= lastCheckHeight {
+			continue
+		}
 
-		//time.Sleep(time.Second * 1)
-		//continue
+		// set last check height to latest block height
+		//lastCheckHeight = latestBlockHeight
+		resp, err := BroadcastTx(clientCtx, factory, msgs...)
+		if resp != nil && resp.Code != 0 {
+			telemetry.IncrCounter(1, "failure", "tx", "code")
+			oc.logger.Error().Msg(resp.String())
+			err = fmt.Errorf("invalid response code from tx: %d", resp.Code)
+		}
+
+		if err != nil {
+			var (
+				code uint32
+				hash string
+			)
+			if resp != nil {
+				code = resp.Code
+				hash = resp.TxHash
+			}
+
+			oc.logger.Debug().
+				Err(err).
+				Int64("max_height", maxBlockHeight).
+				Int64("last_check_height", lastCheckHeight).
+				Str("tx_hash", hash).
+				Uint32("tx_code", code).
+				Msg("failed to broadcast tx; retrying...")
+
+			time.Sleep(time.Second * 1)
+			continue
+		}
+
+		oc.logger.Info().
+			Uint32("tx_code", resp.Code).
+			Str("tx_hash", resp.TxHash).
+			Int64("tx_height", resp.Height).
+			Msg("successfully broadcasted tx")
+
+		return nil
 	}
-
-	oc.logger.Info().
-		Uint32("tx_code", resp.Code).
-		Str("tx_hash", resp.TxHash).
-		Int64("tx_height", resp.Height).
-		Msg("successfully broadcasted tx")
-
-	return nil
-	//}
 
 	telemetry.IncrCounter(1, "failure", "tx", "timeout")
 	return errors.New("broadcasting tx timed out")
@@ -282,14 +287,14 @@ func (oc RelayerClient) CreateClientContext() (client.Context, error) {
 		return client.Context{}, err
 	}
 
-	httpClient, err := tmjsonclient.DefaultHTTPClient(oc.TMRPC)
+	httpClient, err := tmjsonclient.DefaultHTTPClient(oc.TMRPC[0])
 	if err != nil {
 		return client.Context{}, err
 	}
 
 	httpClient.Timeout = oc.RPCTimeout
 
-	tmRPC, err := rpchttp.NewWithClient(oc.TMRPC, "/websocket", httpClient)
+	tmRPC, err := rpchttp.NewWithClient(oc.TMRPC[0], "/websocket", httpClient)
 	if err != nil {
 		return client.Context{}, err
 	}
@@ -309,7 +314,7 @@ func (oc RelayerClient) CreateClientContext() (client.Context, error) {
 		Codec:             oc.Encoding.Marshaler,
 		LegacyAmino:       oc.Encoding.Amino,
 		Input:             os.Stdin,
-		NodeURI:           oc.TMRPC,
+		NodeURI:           oc.TMRPC[0],
 		Client:            tmRPC,
 		Keyring:           kr,
 		FromAddress:       oc.RelayerAddr,

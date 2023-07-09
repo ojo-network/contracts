@@ -97,29 +97,29 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 	// listen for and trap any OS signal to gracefully shutdown and exit
 	trapSignal(cancel, logger)
 
-	rpcTimeout, err := time.ParseDuration(cfg.RPC.RPCTimeout)
+	rpcTimeout, err := time.ParseDuration(cfg.TargetRPC.RPCTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to parse RPC timeout: %w", err)
 	}
 
-	eventTimeout, err := time.ParseDuration(cfg.EventTimeout)
+	eventTimeout, err := time.ParseDuration(cfg.Timeout.EventTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to parse Event timeout: %w", err)
 	}
 
-	maxTickTimeout, err := time.ParseDuration(cfg.MaxTickTimeout)
+	maxTickTimeout, err := time.ParseDuration(cfg.Timeout.MaxTickTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to parse Event timeout: %w", err)
 	}
 
-	queryTimeout, err := time.ParseDuration(cfg.QueryTimeout)
+	queryTimeout, err := time.ParseDuration(cfg.Timeout.QueryTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to parse Query timeout: %w", err)
 	}
 
-	resolveDuration, err := time.ParseDuration(cfg.ResolveDuration)
+	pingDuration, err := time.ParseDuration(cfg.PingDuration)
 	if err != nil {
-		return fmt.Errorf("failed to parse Resolve Duration: %w", err)
+		return fmt.Errorf("failed to parse Ping Duration: %w", err)
 	}
 
 	// Gather pass via env variable || std input
@@ -136,34 +136,50 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		cfg.Keyring.Backend,
 		cfg.Keyring.Dir,
 		keyringPass,
-		cfg.RPC.TMRPCEndpoint,
-		cfg.RPC.QueryEndpoint,
+		cfg.TargetRPC.TMRPCEndpoint,
+		cfg.TargetRPC.QueryEndpoint,
 		rpcTimeout,
 		cfg.Account.Address,
 		cfg.Account.AccPrefix,
-		cfg.GasAdjustment,
-		cfg.GasPrices,
+		cfg.Gas.GasAdjustment,
+		cfg.Gas.GasPrices,
 	)
 	if err != nil {
 		return err
 	}
 
+	uptimePing := relayer.NewUptimePing(
+		logger,
+		cfg.Account.Address,
+		cfg.ContractAddress,
+		client,
+	)
+
+	g.Go(func() error {
+		return uptimePing.StartPing(ctx, pingDuration)
+	})
+
 	// subscribe to new block heights
 	tick, err := relayerclient.NewBlockHeightSubscription(
 		ctx,
-		cfg.EventRPCS,
+		logger,
+		cfg.DataRPC.EventRPCS,
 		eventTimeout,
 		maxTickTimeout,
 		cfg.TickEventType,
-		logger,
-		cfg.Restart.SkipError,
+		cfg.BlockHeightConfig.SkipError,
 		cfg.MaxRetries,
 	)
 	if err != nil {
 		return err
 	}
 
-	contractTick, err := relayerclient.NewContractSubscribe(cfg.RPC.TMRPCEndpoint, cfg.ContractAddress, logger)
+	contractTick, err := relayerclient.NewContractSubscribe(
+		cfg.TargetRPC.TMRPCEndpoint,
+		cfg.ContractAddress,
+		cfg.Account.Address,
+		logger,
+	)
 	if err != nil {
 		return err
 	}
@@ -177,20 +193,11 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		client,
 		contractTick,
 		cfg.ContractAddress,
-		cfg.TimeoutHeight,
-		cfg.MissedThreshold,
+		cfg.Timeout.TimeoutHeight,
 		cfg.MaxRetries,
-		cfg.MedianDuration,
-		cfg.DeviationDuration,
-		cfg.IgnoreMedianErrors,
-		resolveDuration,
 		queryTimeout,
-		cfg.RequestID,
-		cfg.MedianRequestID,
-		cfg.DeviationRequestID,
-		relayer.AutoRestartConfig{AutoRestart: cfg.Restart.AutoID, Denom: cfg.Restart.Denom, SkipError: cfg.Restart.SkipError},
 		tick.Tick,
-		cfg.QueryRPCS,
+		cfg.DataRPC.QueryRPCS,
 	)
 
 	g.Go(

@@ -1,20 +1,20 @@
 use cosmwasm_schema::serde::Serialize;
 use cosmwasm_std::{
-    entry_point, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo, Reply,
-    Response, StdError, StdResult, SubMsg, Timestamp, Uint256, Uint64, WasmMsg,Order
+    entry_point, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo, Order,
+    Reply, Response, StdError, StdResult, SubMsg, Timestamp, Uint256, Uint64, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
+use cw_storage_plus::{Bound, Bounder};
 use semver::Version;
 use std::ops::{Add, Deref, Index, Sub};
-use cw_storage_plus::{Bound, Bounder};
 
 use crate::errors::ContractError;
 use crate::errors::ContractError::TriggerRequestDisabled;
 use crate::helpers::generate_oracle_event;
-use crate::msg::ExecuteMsg::{RelayerPing, RelayHistoricalDeviation, RequestRelay};
+use crate::msg::ExecuteMsg::{RelayerPing, RequestRelay};
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state;
-use crate::state::{RefData, RefMedianData, ReferenceData, ADMIN, DEVIATIONDATA, MEDIANREFDATA, MEDIANSTATUS, REFDATA, RELAYERS, TOTALREQUEST, TRIGGER_REQUEST, PINGCHECK, LAST_RELAYER, BLOCK_THRESHOLD};
+use crate::state::{RefData, RefMedianData, ReferenceData, ADMIN, DEVIATIONDATA, LAST_RELAYER, MEDIANREFDATA, MEDIANSTATUS, PINGCHECK, REFDATA, RELAYERS, TOTALREQUEST, TRIGGER_REQUEST, PING_THRESHOLD};
 
 const E0: Uint64 = Uint64::zero();
 const E9: Uint64 = Uint64::new(1_000_000_000u64);
@@ -37,7 +37,7 @@ pub fn instantiate(
     // Set sender as admin
     ADMIN.set(deps.branch(), Some(info.sender))?;
     MEDIANSTATUS.save(deps.storage, &true)?;
-    BLOCK_THRESHOLD.save(deps.storage, &msg.block_threshold)?;
+    PING_THRESHOLD.save(deps.storage, &msg.ping_threshold)?;
 
     Ok(Response::default())
 }
@@ -49,79 +49,41 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let blocktime = env.block.time;
+    let block_time = env.block.time;
     match msg {
         ExecuteMsg::UpdateAdmin { admin } => {
             let admin = deps.api.addr_validate(&admin)?;
             Ok(ADMIN.execute_update_admin(deps, info, Some(admin))?)
         }
-        ExecuteMsg::MedianStatus { status } => {
-            ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
-            MEDIANSTATUS.save(deps.storage, &status)?;
-            Ok(Response::default().add_attribute("action", "execute_median_status"))
-        }
         ExecuteMsg::AddRelayers { relayers } => execute_add_relayers(deps, info, relayers),
         ExecuteMsg::RemoveRelayers { relayers } => execute_remove_relayers(deps, info, relayers),
-        ExecuteMsg::Relay {
-            symbol_rates,
-            resolve_time,
-            request_id,
-        } => execute_relay(deps, info, symbol_rates, resolve_time, request_id),
-        ExecuteMsg::ForceRelay {
-            symbol_rates,
-            resolve_time,
-            request_id,
-        } => execute_force_relay(deps, info, symbol_rates, resolve_time, request_id),
-        ExecuteMsg::RelayHistoricalMedian {
-            symbol_rates,
-            resolve_time,
-            request_id,
-        } => execute_relay_historical_median(deps, info, symbol_rates, resolve_time, request_id),
-        ExecuteMsg::ForceRelayHistoricalMedian {
-            symbol_rates,
-            resolve_time,
-            request_id,
-        } => execute_force_relay_historical_median(
-            deps,
-            info,
-            symbol_rates,
-            resolve_time,
-            request_id,
-        ),
         ExecuteMsg::ChangeTrigger { trigger } => {
             ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
             TRIGGER_REQUEST.save(deps.storage, &trigger)?;
             Ok(Response::new().add_attribute("change_trigger", trigger.to_string()))
         }
-        RelayHistoricalDeviation {
-            symbol_rates,
-            resolve_time,
-            request_id,
-        } => execute_relay_historical_deviation(deps, info, symbol_rates, resolve_time, request_id),
-        ExecuteMsg::ForceRelayHistoricalDeviation {
-            symbol_rates,
-            resolve_time,
-            request_id,
-        } => execute_force_relay_historical_deviation(
-            deps,
-            info,
-            symbol_rates,
-            resolve_time,
-            request_id,
-        ),
         RequestRelay {
             symbol,
             resolve_time,
             callback_data,
-        } => execute_demand_price(deps, info, env,blocktime, symbol, resolve_time, callback_data),
-        RelayerPing {}=>{
-            let check=query_is_relayer(deps.as_ref(), &info.sender).unwrap_or(false);
-            if !check{
-                return Err(ContractError::UnauthorizedRelayer {msg:info.sender.to_string()})
+        } => execute_demand_price(
+            deps,
+            info,
+            env,
+            block_time,
+            symbol,
+            resolve_time,
+            callback_data,
+        ),
+        RelayerPing {} => {
+            let check = query_is_relayer(deps.as_ref(), &info.sender).unwrap_or(false);
+            if !check {
+                return Err(ContractError::UnauthorizedRelayer {
+                    msg: info.sender.to_string(),
+                });
             }
-            let relayer  = deps.api.addr_validate(&info.sender.to_string())?;
-            // TODO: do security checks
-            PINGCHECK.save(deps.storage, &relayer, &Uint64::new(blocktime.nanos()))?;
+            let relayer = deps.api.addr_validate(&info.sender.to_string())?;
+            PINGCHECK.save(deps.storage, &relayer, &Uint64::new(block_time.nanos()))?;
 
             Ok(Response::default())
         }
@@ -213,7 +175,7 @@ fn execute_demand_price(
     request_id.push('_');
     request_id.push_str(blocktime.nanos().to_string().as_str());
 
-   let next_relayer= select_relayer(deps,blocktime.nanos())?;
+    let next_relayer = select_relayer(deps, blocktime.nanos())?;
 
     let event = generate_oracle_event(
         next_relayer.to_string(),
@@ -230,9 +192,9 @@ fn execute_demand_price(
         .add_event(event))
 }
 
-
-pub fn select_relayer(deps: DepsMut, blocktime : u64) -> StdResult<Addr> {
+pub fn select_relayer(deps: DepsMut, blocktime: u64) -> StdResult<Addr> {
     // Get the last selected relayer
+
     let last_relayer = LAST_RELAYER.may_load(deps.storage)?;
 
     let addr = match &last_relayer {
@@ -246,7 +208,7 @@ pub fn select_relayer(deps: DepsMut, blocktime : u64) -> StdResult<Addr> {
         Some(Bound::inclusive(&addr))
     };
 
-    let threshold = BLOCK_THRESHOLD.load(deps.storage)?;
+    let threshold = PING_THRESHOLD.load(deps.storage)?;
 
     // Find the next available relayer
     let mut iter = RELAYERS.range(deps.storage, start, None, Order::Ascending);
@@ -254,8 +216,10 @@ pub fn select_relayer(deps: DepsMut, blocktime : u64) -> StdResult<Addr> {
     let mut next_relayer = None;
     while let Some(result) = iter.next() {
         let (key, _) = result?;
-        let last_ping = PINGCHECK.load(deps.storage, &key).unwrap_or(Uint64::from(blocktime));
-        if blocktime- last_ping.u64() > threshold.u64() {
+        let last_ping = PINGCHECK
+            .load(deps.storage, &key)
+            .unwrap_or(Uint64::from(blocktime));
+        if blocktime - last_ping.u64() > threshold.u64() {
             next_relayer = Some(key.clone());
             break;
         }
@@ -263,22 +227,27 @@ pub fn select_relayer(deps: DepsMut, blocktime : u64) -> StdResult<Addr> {
 
     // If no next relayer was found, start from the beginning
     if next_relayer.is_none() {
-        let mut iter = RELAYERS.range(deps.storage, Some(Bound::inclusive(&Addr::unchecked(""))), None, Order::Ascending);
+        let mut iter = RELAYERS.range(
+            deps.storage,
+            Some(Bound::inclusive(&Addr::unchecked(""))),
+            None,
+            Order::Ascending,
+        );
         while let Some(result) = iter.next() {
             let (key, _) = result?;
-            let last_ping = PINGCHECK.load(deps.storage, &key).unwrap_or(Uint64::from(blocktime));
-            if blocktime  - last_ping.u64() > threshold.u64() {
+            let last_ping = PINGCHECK
+                .load(deps.storage, &key)
+                .unwrap_or(Uint64::from(blocktime));
+            if blocktime - last_ping.u64() > threshold.u64() {
                 next_relayer = Some(key.clone());
                 break;
             }
         }
     }
 
-
     // If no available relayer was found, return an error
     next_relayer.ok_or_else(|| StdError::generic_err("No relayers available"))
 }
-
 
 fn execute_relay(
     deps: DepsMut,
@@ -294,6 +263,7 @@ fn execute_relay(
             msg: String::from("Sender is not a relayer"),
         });
     }
+
 
     // Saves price data
     for (symbol, rate) in symbol_rates {
@@ -484,6 +454,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetDeviationRefBulk { symbols } => {
             to_binary(&query_deviation_ref_bulk(deps, &symbols)?)
         }
+        QueryMsg::PingThreshold {} => to_binary(&PING_THRESHOLD.load(deps.storage)?),
     }
 }
 

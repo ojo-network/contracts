@@ -28,11 +28,11 @@ type EventSubscribe struct {
 
 func NewBlockHeightSubscription(
 	ctx context.Context,
+	logger zerolog.Logger,
 	rpcAddress []string,
 	timeout time.Duration,
 	maxTickTimeout time.Duration,
 	tickEventType string,
-	logger zerolog.Logger,
 	skipError bool,
 	maxRetries int64,
 ) (*EventSubscribe, error) {

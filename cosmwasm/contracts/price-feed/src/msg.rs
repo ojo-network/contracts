@@ -5,7 +5,7 @@ use crate::state::{RefData, RefMedianData, ReferenceData};
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub block_threshold:Uint64
+    pub ping_threshold: Uint64,
 }
 
 #[cw_serde]
@@ -18,11 +18,7 @@ pub enum ExecuteMsg {
         // Address of the new owner
         admin: String,
     },
-    // Updates the contract config
-    MedianStatus {
-        // Address of the new owner
-        status: bool,
-    },
+
     // Whitelists addresses into relayer set
     AddRelayers {
         // Addresses of the to-be relayers
@@ -33,19 +29,6 @@ pub enum ExecuteMsg {
         // Addresses to revoke the relayer rights
         relayers: Vec<String>,
     },
-    // Relays a vector of symbols and their corresponding rates
-    Relay {
-        // A vector of symbols and their corresponding rates where:
-        // symbol_rate := (symbol, rate)
-        // e.g.
-        // BTC = 19,343.34, ETH = 1,348.57
-        // symbol_rates ≡ <("BTC", 19343340000000), ("ETH", 1348570000000)>
-        symbol_rates: Vec<(String, Uint64)>,
-        // Resolve time of request on Ojo in Unix timestamp
-        resolve_time: Uint64,
-        // Request ID of the results on Ojo
-        request_id: Uint64,
-    },
 
     // Relays a vector of symbols and their corresponding rates
     RequestRelay {
@@ -54,50 +37,10 @@ pub enum ExecuteMsg {
         callback_data: Binary,
     },
 
-    RelayerPing{},
+    RelayerPing {},
 
     ChangeTrigger {
         trigger: bool,
-    },
-
-    // Relays a vector of symbols and their corresponding rates
-    RelayHistoricalMedian {
-        // A vector of symbols and their corresponding rates where:
-        // symbol_rate := (symbol, rate)
-        // e.g.
-        // BTC = 19,343.34, ETH = 1,348.57
-        // symbol_rates ≡ <("BTC", 19343340000000), ("ETH", 1348570000000)>
-        symbol_rates: Vec<(String, Vec<Uint64>)>,
-        // Resolve time of request on Ojo in Unix timestamp
-        resolve_time: Uint64,
-        // Request ID of the results on Ojo
-        request_id: Uint64,
-    },
-    // Relays a vector of symbols and their corresponding rates
-    RelayHistoricalDeviation {
-        symbol_rates: Vec<(String, Uint64)>,
-        resolve_time: Uint64,
-        // Request ID of the results on Ojo
-        request_id: Uint64,
-    },
-    // Same as Relay but without the resolve_time guard
-    ForceRelay {
-        symbol_rates: Vec<(String, Uint64)>,
-        resolve_time: Uint64,
-        request_id: Uint64,
-    },
-    // Same as Relay but without the resolve_time guard
-    ForceRelayHistoricalMedian {
-        symbol_rates: Vec<(String, Vec<Uint64>)>,
-        resolve_time: Uint64,
-        request_id: Uint64,
-    },
-    // Relays a vector of symbols and their corresponding deviations
-    ForceRelayHistoricalDeviation {
-        symbol_rates: Vec<(String, Uint64)>,
-        resolve_time: Uint64,
-        // Request ID of the results on Ojo
-        request_id: Uint64,
     },
 }
 
@@ -110,6 +53,10 @@ pub enum QueryMsg {
     //return median status
     #[returns(bool)]
     MedianStatus {},
+
+    #[returns(Uint256)]
+    PingThreshold {},
+
     // Queries if given a address is a relayer
     #[returns(bool)]
     IsRelayer {
