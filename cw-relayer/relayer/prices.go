@@ -3,7 +3,6 @@ package relayer
 import (
 	"context"
 	"fmt"
-	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/ojo-network/cw-relayer/tools"
 	oracletypes "github.com/ojo-network/ojo/x/oracle/types"
 	"github.com/rs/zerolog"
@@ -16,15 +15,17 @@ import (
 )
 
 type PriceService struct {
-	logger               zerolog.Logger
-	queryRPCS            []string
-	maxQueryRetries      int64
-	queryRetries         int64
-	index                int
-	exchangeRates        map[string]Price
-	historicalMedians    types.DecCoins
-	historicalDeviations types.DecCoins
-	queryTimeout         time.Duration
+	logger          zerolog.Logger
+	queryRPCS       []string
+	maxQueryRetries int64
+	queryRetries    int64
+	index           int
+
+	exchangeRates  map[string]Price
+	deviationRates map[string]Deviation
+	medianRates    map[string]Median
+
+	queryTimeout time.Duration
 
 	mut sync.Mutex
 
@@ -32,8 +33,18 @@ type PriceService struct {
 }
 
 type Price struct {
-	Price     types.Int
-	TimeStamp string
+	Price     string
+	Timestamp string
+}
+
+type Deviation struct {
+	Deviation string
+	Timestamp string
+}
+
+type Median struct {
+	Median    []string
+	Timestamp string
 }
 
 func NewPriceService(
@@ -103,10 +114,9 @@ func (p *PriceService) setDenomPrices(ctx context.Context) error {
 	}
 
 	for _, coin := range queryResponse.ExchangeRates {
-		coin.Amount.Mul(RateFactor).TruncateInt()
 		p.exchangeRates[coin.Denom] = Price{
-			Price:     coin.Amount.Mul(RateFactor).TruncateInt(),
-			TimeStamp: strconv.Itoa(int(time.Now().Unix())),
+			Price:     coin.Amount.Mul(RateFactor).TruncateInt().String(),
+			Timestamp: strconv.Itoa(int(time.Now().Unix())),
 		}
 	}
 
@@ -122,13 +132,22 @@ func (p *PriceService) setDenomPrices(ctx context.Context) error {
 				return noDeviations
 			}
 
-			deviations := make([]types.DecCoin, len(deviationsQueryResponse.MedianDeviations))
-			for i, priceStamp := range deviationsQueryResponse.MedianDeviations {
-				deviations[i] = *priceStamp.ExchangeRate
+			deviations := make(map[string]Deviation)
+			for _, priceStamp := range deviationsQueryResponse.MedianDeviations {
+				denom := priceStamp.ExchangeRate.Denom
+				amount := priceStamp.ExchangeRate.Amount.Mul(RateFactor).TruncateInt()
+				if _, found := deviations[denom]; !found {
+					deviations[denom] = Deviation{
+						Deviation: amount.String(),
+						Timestamp: strconv.Itoa(int(time.Now().Unix())),
+					}
+				} else {
+					p.logger.Err(fmt.Errorf("multiple deviations found"))
+				}
 			}
 
 			p.mut.Lock()
-			p.historicalDeviations = deviations
+			p.deviationRates = deviations
 			p.mut.Unlock()
 
 			return nil
@@ -146,13 +165,22 @@ func (p *PriceService) setDenomPrices(ctx context.Context) error {
 				return noMedians
 			}
 
-			medians := make([]types.DecCoin, len(medianQueryResponse.Medians))
-			for i, priceStamp := range medianQueryResponse.Medians {
-				medians[i] = *priceStamp.ExchangeRate
+			medians := make(map[string]Median)
+			for _, priceStamp := range medianQueryResponse.Medians {
+				denom := priceStamp.ExchangeRate.Denom
+				amount := priceStamp.ExchangeRate.Amount.Mul(RateFactor).TruncateInt()
+				if median, found := medians[denom]; !found {
+					medians[denom] = Median{
+						Median:    []string{amount.String()},
+						Timestamp: strconv.Itoa(int(time.Now().Unix())),
+					}
+				} else {
+					median.Median = append(median.Median, amount.String())
+					medians[denom] = median
+				}
 			}
-
 			p.mut.Lock()
-			p.historicalMedians = medians
+			p.medianRates = medians
 			p.mut.Unlock()
 
 			return nil
@@ -168,6 +196,42 @@ func (p *PriceService) GetPrices(denoms []string) map[string]Price {
 	p.mut.Unlock()
 
 	rates := make(map[string]Price)
+	for _, denom := range denoms {
+		price, found := exchangeRates[denom]
+		if !found {
+			continue
+		}
+
+		rates[denom] = price
+	}
+
+	return rates
+}
+
+func (p *PriceService) GetMedians(denoms []string) map[string]Median {
+	p.mut.Lock()
+	exchangeRates := p.medianRates
+	p.mut.Unlock()
+
+	rates := make(map[string]Median)
+	for _, denom := range denoms {
+		price, found := exchangeRates[denom]
+		if !found {
+			continue
+		}
+
+		rates[denom] = price
+	}
+
+	return rates
+}
+
+func (p *PriceService) GetDeviations(denoms []string) map[string]Deviation {
+	p.mut.Lock()
+	exchangeRates := p.deviationRates
+	p.mut.Unlock()
+
+	rates := make(map[string]Deviation)
 	for _, denom := range denoms {
 		price, found := exchangeRates[denom]
 		if !found {

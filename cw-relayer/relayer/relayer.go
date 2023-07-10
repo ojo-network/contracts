@@ -115,26 +115,65 @@ func (r *Relayer) processRequests(requests map[string][]client.PriceRequest) ([]
 	}
 
 	prices := r.ps.GetPrices(denomList)
+	medians := r.ps.GetMedians(denomList)
+	deviations := r.ps.GetDeviations(denomList)
 	for denom, reqs := range requests {
 		for _, req := range reqs {
-			price, found := prices[denom]
-			if !found {
-				// skipping request symbol not found
-				r.logger.Debug().Str("denom", denom).Msg("Denom price not found")
-				continue
+			var callback interface{}
+			switch req.Event {
+			case client.RequestRate:
+				price, found := prices[denom]
+				if !found {
+					// skipping request symbol not found
+					r.logger.Debug().Str("denom", denom).Msg("Denom price not found")
+					continue
+				}
+
+				callback = CallbackRate{
+					CallbackData{
+						RequestID:    req.RequestID,
+						Symbol:       denom,
+						SymbolRate:   price.Price,
+						LastUpdated:  price.Timestamp,
+						CallbackData: []byte(req.CallbackData),
+					},
+				}
+			case client.RequestMedian:
+				median, found := medians[denom]
+				if !found {
+					// skipping request symbol not found
+					r.logger.Debug().Str("denom", denom).Msg("Denom Medians not found")
+					continue
+				}
+
+				callback = CallbackMedian{Req: CallbackDataMedian{
+					RequestID:    req.RequestID,
+					Symbol:       denom,
+					SymbolRates:  median.Median,
+					LastUpdated:  median.Timestamp,
+					CallbackData: nil,
+				}}
+
+			case client.RequestDeviation:
+				deviation, found := deviations[denom]
+				if !found {
+					// skipping request symbol not found
+					r.logger.Debug().Str("denom", denom).Msg("Denom Deviation not found")
+					continue
+				}
+
+				callback = CallbackDeviation{Req: CallbackData{
+					RequestID:    req.RequestID,
+					Symbol:       denom,
+					SymbolRate:   deviation.Deviation,
+					LastUpdated:  deviation.Timestamp,
+					CallbackData: []byte(req.CallbackData),
+				}}
 			}
 
 			//TODO filter resolve times
 			tx := Execute{
-				Callback: Callback{
-					CallbackData{
-						RequestID:    req.RequestID,
-						Symbol:       denom,
-						SymbolRate:   price.Price.String(),
-						LastUpdated:  price.TimeStamp,
-						CallbackData: []byte(req.CallbackData),
-					},
-				},
+				Callback: callback,
 			}
 
 			msg, err := genMsg(r.relayerClient.RelayerAddrString, r.contractAddress, tx)

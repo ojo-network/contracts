@@ -14,7 +14,7 @@ use cosmwasm_std::WasmMsg::Execute;
 use cw2::set_contract_version;
 use cw_storage_plus::Item;
 use serde_json::error;
-use price_feed_helper::Error;
+use price_feed_helper::{CallbackRateData, Error, OracleMsg};
 use price_feed_helper::helper::oracle_submessage;
 use price_feed_helper::RequestRelay::OracleMsg::{Callback, RequestRelay};
 use price_feed_helper::RequestRelay::*;
@@ -70,19 +70,20 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    match msg {
-        ExecuteMsg::Execute(execute_msg) => match execute_msg {
-            RequestRelay(request_relay) => execute_request_relay(deps, env, info, request_relay),
-            Callback(callback) => execute_callback(deps, env, info, callback),
-        },
-    }
-}
+// pub fn execute(
+//     deps: DepsMut,
+//     env: Env,
+//     info: MessageInfo,
+//     msg: ExecuteMsg,
+// ) -> Result<Response, ContractError> {
+//     match msg {
+//         ExecuteMsg::Execute(execute_msg) => match execute_msg {
+//             RequestRelay(request_relay) => execute_request_relay(deps, env, info, request_relay),
+//
+//             CallbackRateData(CallbackRateData) => execute_callback(deps, env, info, callback),
+//         },
+//     }
+// }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {

@@ -1,9 +1,10 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{to_binary, Binary, DepsMut, Env, Event, SubMsgResponse, SubMsgResult, Uint128, Uint256, Uint64, StdResult};
+use crate::RequestRelay::RequestRateData;
 
 pub mod RequestRelay {
     use cosmwasm_schema::cw_serde;
-    use cosmwasm_std::{StdResult,Uint64,Binary};
+    use cosmwasm_std::{StdResult, Uint64, Binary, to_binary};
 
     #[cw_serde]
     pub struct RequestRateData {
@@ -13,22 +14,21 @@ pub mod RequestRelay {
     }
 
     #[cw_serde]
-    pub struct RequestDeviationData{
+    pub struct RequestDeviationData {
         pub symbol: String,
         pub resolve_time: Uint64,
         pub callback_data: Binary,
     }
 
     #[cw_serde]
-    pub struct RequestMedianData{
+    pub struct RequestMedianData {
         pub symbol: String,
         pub resolve_time: Uint64,
-        pub callback_data:Binary,
+        pub callback_data: Binary,
     }
-}
 
     #[cw_serde]
-    pub struct RateDataCallback {
+    pub struct CallbackRateData {
         pub request_id: String,
         pub symbol: String,
         pub symbol_rate: Uint64,
@@ -37,16 +37,16 @@ pub mod RequestRelay {
     }
 
     #[cw_serde]
-    pub struct RateMedianCallback {
+    pub struct CallbackRateMedian {
         pub request_id: String,
         pub symbol: String,
-        pub symbol_rate: Vec<Uint64>,
+        pub symbol_rates: Vec<Uint64>,
         pub last_updated: Uint64,
         pub callback_data: Binary,
     }
 
     #[cw_serde]
-    pub struct RateDeviationCallback {
+    pub struct CallbackRateDeviation {
         pub request_id: String,
         pub symbol: String,
         pub symbol_rate: Uint64,
@@ -55,15 +55,22 @@ pub mod RequestRelay {
     }
 
     #[cw_serde]
-    pub enum OracleMsg {
-        RequestRelay(RequestRelayData),
-        Callback(CallbackData),
+    pub enum OracleCallbackMsg {
+        CallbackRateData(CallbackRateData),
+        CallbackRateMedian(CallbackRateMedian),
+        CallbackRateDeviation(CallbackRateDeviation)
     }
 
-    impl RequestRelayData {
-        pub fn into_binary(self) -> StdResult<Binary> {
-            let msg = OracleMsg::RequestRelay(self);
-            to_binary(&msg)
+    #[cw_serde]
+    pub enum OracleRequestMsg {
+        RequestRateData(RequestRateData),
+        RequestDeviationData(RequestDeviationData),
+        RequestMedianData(RequestMedianData)
+    }
+
+    impl OracleRequestMsg{
+        fn to_binary(&self) -> StdResult<Binary> {
+            to_binary(self)
         }
     }
 }
@@ -82,7 +89,7 @@ pub mod helper {
         callback_data: Binary,
         success_id: u64,
     ) -> SubMsg {
-        let payload = RequestRelayData {
+        let payload = Re {
             symbol: symbol,
             resolve_time,
             callback_data,

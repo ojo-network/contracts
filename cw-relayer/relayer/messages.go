@@ -15,19 +15,32 @@ type (
 		CallbackData []byte `json:"callback_data"`
 	}
 
-	Callback struct {
-		Req CallbackData `json:"callback"`
+	CallbackDataMedian struct {
+		RequestID    string   `json:"request_id"`
+		Symbol       string   `json:"symbol"`
+		SymbolRates  []string `json:"symbol_rates"`
+		LastUpdated  string   `json:"last_updated"`
+		CallbackData []byte   `json:"callback_data"`
+	}
+
+	CallbackRate struct {
+		Req CallbackData `json:"callback_rate_data"`
+	}
+
+	CallbackMedian struct {
+		Req CallbackDataMedian `json:"callback_rate_median"`
+	}
+
+	CallbackDeviation struct {
+		Req CallbackData `json:"callback_rate_deviation"`
 	}
 
 	Execute struct {
-		Callback Callback `json:"execute"`
+		Callback interface{} `json:"execute"`
 	}
 
 	Ping struct {
 		Ping struct{} `json:"ping"`
-	}
-
-	Query struct {
 	}
 )
 

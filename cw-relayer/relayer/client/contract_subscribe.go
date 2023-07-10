@@ -12,6 +12,14 @@ import (
 
 const queryType = "wasm-price-feed"
 
+type EventType int
+
+const (
+	RequestRate EventType = iota
+	RequestMedian
+	RequestDeviation
+)
+
 type (
 	ContractSubscribe struct {
 		nodeURL         []string
@@ -25,6 +33,7 @@ type (
 	}
 
 	PriceRequest struct {
+		Event                EventType
 		EventContractAddress string
 		ResolveTime          string
 		RequestedSymbol      string
@@ -124,11 +133,20 @@ func (cs *ContractSubscribe) GetPriceRequest() map[string][]PriceRequest {
 func parseEvents(attrs []abcitypes.EventAttribute) (priceRequest []PriceRequest) {
 	for i := 0; i < len(attrs); i += 6 {
 		req := PriceRequest{}
-		for _, attr := range attrs[i : i+7] {
+		for _, attr := range attrs[i : i+8] {
 			val := string(attr.Value)
 			switch string(attr.Key) {
 			case "_contract_address":
 				continue
+			case "request_type":
+				switch val {
+				case "request_rate":
+					req.Event = RequestRate
+				case "request_median":
+					req.Event = RequestMedian
+				case "request_deviation":
+					req.Event = RequestDeviation
+				}
 			case "callback_data":
 				req.CallbackData = val
 			case "event_contract_address":
