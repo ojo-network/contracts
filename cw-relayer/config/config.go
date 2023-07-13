@@ -37,6 +37,8 @@ type (
 		Timeout Timeout `mapstructure:"timeout" validate:"required,gt=0,dive,required"`
 		Gas     Gas     `mapstructure:"gas" validate:"required,gt=0,dive,required"`
 
+		TxConfig TxConfig `mapstructure:"tx_config" validate:"required,gt=0,dive,required"`
+
 		MaxRetries   int64  `mapstructure:"max_retries" validate:"required"`
 		PingDuration string `mapstructure:"ping_duration" validate:"required"`
 		TickDuration string `mapstructure:"tick_duration" validate:"required"`
@@ -49,6 +51,8 @@ type (
 
 		// query rpc for ojo node
 		TickEventType string `mapstructure:"event_type"`
+
+		MaxGasUnits string `mapstructure:"max_gas_units"`
 
 		BlockHeightConfig BlockHeightConfig `mapstructure:"block_height_config" validate:"required,dive,required"`
 	}
@@ -74,6 +78,12 @@ type (
 	DataRpc struct {
 		QueryRPCS []string `mapstructure:"query_rpcs" validate:"required"`
 		EventRPCS []string `mapstructure:"event_rpcs" validate:"required"`
+	}
+
+	TxConfig struct {
+		BundleSize       int64  `mapstructure:"bundle_size" validate:"required"`
+		MaxGasLimitPerTx int64  `mapstructure:"max_gas_per_tx" validate:"required"`
+		MaxTimeout       string `mapstructure:"max_timeout" validate:"required"`
 	}
 
 	// Account defines account related configuration that is related to the Client

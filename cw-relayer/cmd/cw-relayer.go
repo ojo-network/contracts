@@ -19,6 +19,7 @@ import (
 	"github.com/ojo-network/cw-relayer/config"
 	"github.com/ojo-network/cw-relayer/relayer"
 	relayerclient "github.com/ojo-network/cw-relayer/relayer/client"
+	"github.com/ojo-network/cw-relayer/relayer/client/txbundle"
 )
 
 const (
@@ -127,6 +128,11 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to parse Ping Duration: %w", err)
 	}
 
+	maxTimeout, err := time.ParseDuration(cfg.TxConfig.MaxTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to parse Max Timeout: %w", err)
+	}
+
 	// Gather pass via env variable || std input
 	keyringPass, err := getKeyringPassword()
 	if err != nil {
@@ -157,9 +163,11 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		logger,
 		cfg.Account.Address,
 		cfg.ContractAddress,
+		cfg.Timeout.TimeoutHeight,
 		client,
 	)
 
+	logger.Info().Msg("starting ping service")
 	g.Go(func() error {
 		return uptimePing.StartPing(ctx, pingDuration)
 	})
@@ -189,9 +197,20 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	logger.Info().Msg("starting contract subscribe service")
 	g.Go(func() error {
 		return contractTick.Subscribe(ctx)
 	})
+
+	logger.Info().Msg("starting price msg service")
+	msgChan := txbundle.NewTxBundler(
+		logger,
+		cfg.TxConfig.BundleSize,
+		cfg.TxConfig.MaxGasLimitPerTx,
+		cfg.Timeout.TimeoutHeight,
+		maxTimeout,
+		client,
+	)
 
 	priceService := relayer.NewPriceService(
 		logger,
@@ -201,19 +220,21 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		tick.Tick,
 	)
 
+	logger.Info().Msg("starting price fetch service")
 	g.Go(func() error {
 		return priceService.Start(ctx)
 	})
 
 	newRelayer := relayer.New(
 		logger,
-		client,
 		contractTick,
 		priceService,
+		cfg.Account.Address,
 		cfg.ContractAddress,
 		cfg.Timeout.TimeoutHeight,
 		tickDuration,
 		contractTick.Out,
+		msgChan,
 	)
 
 	g.Go(
