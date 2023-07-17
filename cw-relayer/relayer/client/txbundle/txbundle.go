@@ -1,6 +1,7 @@
 package txbundle
 
 import (
+	"context"
 	"time"
 
 	"github.com/cosmos/cosmos-sdk/types"
@@ -14,10 +15,11 @@ type Txbundle struct {
 	bundleSize      int64
 	maxLimitPerTx   int64
 	logger          zerolog.Logger
-	msgs            chan types.Msg
+	MsgChan         chan types.Msg
 	relayerClient   client.RelayerClient
 	timeoutDuration time.Duration
 	timeoutHeight   int64
+	msgs            []types.Msg
 }
 
 func NewTxBundler(
@@ -27,35 +29,43 @@ func NewTxBundler(
 	timeoutHeight int64,
 	timeoutDuration time.Duration,
 	client client.RelayerClient,
-) chan types.Msg {
-	tx := Txbundle{
+) *Txbundle {
+	tx := &Txbundle{
 		bundleSize:      bundleSize,
 		maxLimitPerTx:   maxLimitPerTx,
 		logger:          logger.With().Str("module", "tx-bundler").Logger(),
-		msgs:            make(chan types.Msg, bundleSize),
+		MsgChan:         make(chan types.Msg, bundleSize),
 		timeoutDuration: timeoutDuration,
 		timeoutHeight:   timeoutHeight,
 		relayerClient:   client,
 	}
 
-	go tx.BundleAndSend()
-
-	return tx.msgs
+	return tx
 }
 
-func (tx *Txbundle) BundleAndSend() {
-	var msgs []types.Msg
-	for msg := range tx.msgs {
-		if msg != nil {
-			// service closed
-			return
-		}
-		msgs = append(msgs)
-	}
+func (tx *Txbundle) Bundler(ctx context.Context) error {
+	msgs := []types.Msg{}
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
 
-	//TODO: faster gas estimation solution
-	//TODO: redis store and gas bundling logic
-	if err := tx.relayerClient.BroadcastTx(tx.timeoutHeight, msgs...); err != nil {
-		tx.logger.Info().Err(err)
+		default:
+			for msg := range tx.MsgChan {
+				if msg == nil {
+					// service closed
+					return nil
+				}
+				msgs = append(msgs, msg)
+
+				//TODO: faster gas
+				//TODO: redis store and gas bundling logic
+
+				if err := tx.relayerClient.BroadcastTx(tx.timeoutHeight, msgs...); err != nil {
+					tx.logger.Info().Err(err).Send()
+				}
+				msgs = []types.Msg{}
+			}
+		}
 	}
 }

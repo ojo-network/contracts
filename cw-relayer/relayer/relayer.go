@@ -97,6 +97,7 @@ func (r *Relayer) Start(ctx context.Context) error {
 			r.logger.Info().Msg("contract events")
 			getRequests := r.cs.GetPriceRequest()
 			if len(getRequests) > 0 {
+				r.logger.Info().Int("Total requests", len(getRequests)).Msg("process requests")
 				err := r.processRequests(ctx, getRequests)
 				if err != nil {
 					r.logger.Err(err).Send()
@@ -122,25 +123,19 @@ func (r *Relayer) processRequests(ctx context.Context, requests map[string][]cli
 				if req.Event == client.RequestRate {
 					price, found := prices[denom]
 					if !found {
-						r.logger.Debug().Str("denom", denom).Msg("Denom price not found")
+						r.logger.Error().Str("denom", denom).Msg("Denom price not found")
 						continue
 					}
 
-					callback := CallbackRate{
-						CallbackData{
-							RequestID:    req.RequestID,
-							Symbol:       denom,
-							SymbolRate:   price.Price,
-							LastUpdated:  price.Timestamp,
-							CallbackData: []byte(req.CallbackData),
-						},
+					callback := CallbackData{
+						RequestID:    req.RequestID,
+						Symbol:       denom,
+						SymbolRate:   price.Price,
+						LastUpdated:  price.Timestamp,
+						CallbackData: []byte(req.CallbackData),
 					}
 
-					tx := Execute{
-						Callback: callback,
-					}
-
-					msg, err := genMsg(r.relayerAddress, r.contractAddress, tx)
+					msg, err := genMsg(r.relayerAddress, req.EventContractAddress, req.CallbackSig, callback)
 					if err != nil {
 						return err
 					}
@@ -160,7 +155,7 @@ func (r *Relayer) processRequests(ctx context.Context, requests map[string][]cli
 				if req.Event == client.RequestMedian {
 					median, found := medians[denom]
 					if !found {
-						r.logger.Debug().Str("denom", denom).Msg("Denom Medians not found")
+						r.logger.Error().Str("denom", denom).Msg("Denom Medians not found")
 						continue
 					}
 
@@ -174,11 +169,7 @@ func (r *Relayer) processRequests(ctx context.Context, requests map[string][]cli
 						},
 					}
 
-					tx := Execute{
-						Callback: callback,
-					}
-
-					msg, err := genMsg(r.relayerAddress, r.contractAddress, tx)
+					msg, err := genMsg(r.relayerAddress, req.EventContractAddress, req.CallbackSig, callback)
 					if err != nil {
 						return err
 					}
@@ -198,7 +189,7 @@ func (r *Relayer) processRequests(ctx context.Context, requests map[string][]cli
 				if req.Event == client.RequestDeviation {
 					deviation, found := deviations[denom]
 					if !found {
-						r.logger.Debug().Str("denom", denom).Msg("Denom Deviation not found")
+						r.logger.Error().Str("denom", denom).Msg("Denom Deviation not found")
 						continue
 					}
 
@@ -212,11 +203,7 @@ func (r *Relayer) processRequests(ctx context.Context, requests map[string][]cli
 						},
 					}
 
-					tx := Execute{
-						Callback: callback,
-					}
-
-					msg, err := genMsg(r.relayerAddress, r.contractAddress, tx)
+					msg, err := genMsg(r.relayerAddress, req.EventContractAddress, req.CallbackSig, callback)
 					if err != nil {
 						return err
 					}

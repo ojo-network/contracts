@@ -35,17 +35,31 @@ type (
 		Req CallbackData `json:"callback_rate_deviation"`
 	}
 
-	Execute struct {
-		Callback interface{} `json:"execute"`
-	}
-
 	Ping struct {
 		Ping struct{} `json:"relayer_ping"`
 	}
 )
 
-func genMsg(relayerAddress, contractAddress string, msg any) (*wasmtypes.MsgExecuteContract, error) {
-	msgData, err := json.Marshal(msg)
+func genMsg(relayerAddress, contractAddress, callbackSig string, msg any) (*wasmtypes.MsgExecuteContract, error) {
+	execute := make(map[string]interface{})
+	execute[callbackSig] = msg
+
+	msgData, err := json.Marshal(execute)
+	if err != nil {
+		return nil, err
+	}
+
+	return &wasmtypes.MsgExecuteContract{
+		Sender:   relayerAddress,
+		Contract: contractAddress,
+		Msg:      msgData,
+		Funds:    nil,
+	}, nil
+}
+
+func genPingMsg(relayerAddress, contractAddress string) (*wasmtypes.MsgExecuteContract, error) {
+	ping := Ping{Ping: struct{}{}}
+	msgData, err := json.Marshal(ping)
 	if err != nil {
 		return nil, err
 	}

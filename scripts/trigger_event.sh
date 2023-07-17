@@ -17,8 +17,8 @@ echo $CONTRACT
 QUERY_CONTRACT=$($BINARY query wasm list-contract-by-code "2" $NODE --output json | jq -r '.contracts[-1]')
 echo $QUERY_CONTRACT
 
-REQUEST_RELAY='{"request": {"symbol": "stake", "resolve_time": "0","callback_sig":"","callback_data":"somename"}}'
-for i in {1..2}
+REQUEST_RELAY='{"request": {"symbol": "ATOM", "resolve_time": "0","callback_sig":"","callback_data":"somename"}}'
+for i in {1..50}
 do
     $BINARY tx wasm execute $QUERY_CONTRACT "$REQUEST_RELAY" --from $DEMOWALLET --home ./data/$CHAINID_1 $TXFLAG
     $BINARY q wasm contract-state smart $QUERY_CONTRACT '"get_price"' --home ./data/$CHAINID_1

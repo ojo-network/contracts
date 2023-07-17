@@ -203,7 +203,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 	})
 
 	logger.Info().Msg("starting price msg service")
-	msgChan := txbundle.NewTxBundler(
+	txBundler := txbundle.NewTxBundler(
 		logger,
 		cfg.TxConfig.BundleSize,
 		cfg.TxConfig.MaxGasLimitPerTx,
@@ -211,6 +211,10 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		maxTimeout,
 		client,
 	)
+
+	g.Go(func() error {
+		return txBundler.Bundler(ctx)
+	})
 
 	priceService := relayer.NewPriceService(
 		logger,
@@ -234,7 +238,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		cfg.Timeout.TimeoutHeight,
 		tickDuration,
 		contractTick.Out,
-		msgChan,
+		txBundler.MsgChan,
 	)
 
 	g.Go(

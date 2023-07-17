@@ -50,8 +50,7 @@ func (c *UptimeCheck) StartPing(ctx context.Context, duration time.Duration) err
 }
 
 func (c *UptimeCheck) sendPing() error {
-	ping := Ping{Ping: struct{}{}}
-	msg, err := genMsg(c.relayerAddress, c.contractAddress, ping)
+	msg, err := genPingMsg(c.relayerAddress, c.contractAddress)
 	if err != nil {
 		return err
 	}

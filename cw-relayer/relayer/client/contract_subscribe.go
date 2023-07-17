@@ -3,11 +3,12 @@ package client
 import (
 	"context"
 	"fmt"
+	"sync"
+
 	"github.com/rs/zerolog"
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/client/http"
 	tmtypes "github.com/tendermint/tendermint/types"
-	"sync"
 )
 
 const queryType = "wasm-price-feed"
@@ -38,6 +39,7 @@ type (
 		ResolveTime          string
 		RequestedSymbol      string
 		CallbackData         string
+		CallbackSig          string
 		RequestID            string
 	}
 )
@@ -53,12 +55,12 @@ func NewContractSubscribe(
 		return nil, err
 	}
 
-	query := fmt.Sprintf("%s._contract_address='%s AND %s.relayer_address=%s'", queryType, contractAddress, queryType, relayerAddress)
-
+	query := fmt.Sprintf("%s._contract_address='%s' AND %s.relayer_address='%s'", queryType, contractAddress, queryType, relayerAddress)
 	contractSubscribe := &ContractSubscribe{
 		Logger:          logger.With().Str("relayer_client", "chain_height").Logger(),
 		query:           query,
 		contractAddress: contractAddress,
+		priceRequest:    make(map[string][]PriceRequest),
 		client:          client,
 		nodeURL:         nodeURL,
 		Out:             make(chan struct{}),
@@ -98,7 +100,11 @@ func (cs *ContractSubscribe) Subscribe(
 			case tmtypes.EventDataTx:
 				for _, e := range event.Result.Events {
 					if e.Type == queryType {
-						priceRequests := parseEvents(e.Attributes)
+						priceRequests, err := parseEvents(e.Attributes)
+						if err != nil {
+							cs.Logger.Error().Err(err).Send()
+						}
+
 						cs.setPriceRequest(priceRequests)
 					}
 				}
@@ -115,10 +121,12 @@ func (cs *ContractSubscribe) setPriceRequest(priceRequests []PriceRequest) {
 	cs.mut.Unlock()
 	prices := make(map[string][]PriceRequest)
 	for _, request := range priceRequests {
-		prices[request.RequestedSymbol] = append(prices[request.RequestedSymbol], request)
-	}
+		if _, ok := cs.priceRequest[request.RequestedSymbol]; !ok {
+			cs.priceRequest[request.RequestedSymbol] = []PriceRequest{request}
+		}
 
-	cs.priceRequest = prices
+		cs.priceRequest[request.RequestedSymbol] = append(prices[request.RequestedSymbol], request)
+	}
 }
 
 func (cs *ContractSubscribe) GetPriceRequest() map[string][]PriceRequest {
@@ -130,10 +138,10 @@ func (cs *ContractSubscribe) GetPriceRequest() map[string][]PriceRequest {
 	return priceRequests
 }
 
-func parseEvents(attrs []abcitypes.EventAttribute) (priceRequest []PriceRequest) {
-	for i := 0; i < len(attrs); i += 6 {
+func parseEvents(attrs []abcitypes.EventAttribute) (priceRequest []PriceRequest, err error) {
+	for i := 0; i < len(attrs); i += 9 {
 		req := PriceRequest{}
-		for _, attr := range attrs[i : i+8] {
+		for _, attr := range attrs[i : i+9] {
 			val := string(attr.Value)
 			switch string(attr.Key) {
 			case "_contract_address":
@@ -157,23 +165,16 @@ func parseEvents(attrs []abcitypes.EventAttribute) (priceRequest []PriceRequest)
 				req.RequestID = val
 			case "symbol":
 				req.RequestedSymbol = val
+			case "callback_signature":
+				req.CallbackSig = val
+			case "relayer_address":
+				continue
 			default:
-				panic("should never happen")
+				err = fmt.Errorf("unknown attribute: %s", attr.Key)
 			}
 		}
 		priceRequest = append(priceRequest, req)
 	}
 
 	return
-}
-
-func aggeregatePriceRequests(priceRequests []PriceRequest) map[string][]PriceRequest {
-	prices := make(map[string][]PriceRequest)
-	for _, request := range priceRequests {
-		prices[request.RequestedSymbol] = append(prices[request.RequestedSymbol], request)
-	}
-
-	//TODO: do some price aggregation and time
-
-	return prices
 }
