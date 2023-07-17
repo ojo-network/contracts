@@ -44,7 +44,7 @@ type (
 		TickDuration string `mapstructure:"tick_duration" validate:"required"`
 		NumBundle    int64  `mapstructure:"num_bundle"`
 
-		ContractAddress string `mapstructure:"contract_address"`
+		ContractAddress string `mapstructure:"contract_address" validate:"required"`
 
 		// if true, would ignore any errors when querying median or deviations
 		IgnoreMedianErrors bool `mapstructure:"ignore_median_errors"`
@@ -72,7 +72,7 @@ type (
 	}
 
 	BlockHeightConfig struct {
-		SkipError bool `mapstructure:"skip_error" validate:"required"`
+		SkipError bool `mapstructure:"skip_error"`
 	}
 
 	DataRpc struct {
@@ -98,12 +98,6 @@ type (
 	Keyring struct {
 		Backend string `mapstructure:"backend" validate:"required"`
 		Dir     string `mapstructure:"dir" validate:"required"`
-	}
-
-	RestartConfig struct {
-		AutoID    bool   `mapstructure:"auto_id"`
-		Denom     string `mapstructure:"denom"`
-		SkipError bool   `mapstructure:"skip_error"`
 	}
 
 	// RPC defines RPC configuration of both the wasmd chain and Tendermint nodes.

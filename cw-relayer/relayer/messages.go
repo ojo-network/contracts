@@ -40,7 +40,7 @@ type (
 	}
 
 	Ping struct {
-		Ping struct{} `json:"ping"`
+		Ping struct{} `json:"relayer_ping"`
 	}
 )
 

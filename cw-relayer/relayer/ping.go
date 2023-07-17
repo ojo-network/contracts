@@ -55,6 +55,7 @@ func (c *UptimeCheck) sendPing() error {
 	if err != nil {
 		return err
 	}
+
 	c.logger.Info().Time("ping check", time.Now()).Msg("ping check")
 	return c.relayerClient.BroadcastTx(c.timeoutHeight, msg)
 }

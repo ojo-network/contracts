@@ -188,9 +188,13 @@ func (oc RelayerClient) BroadcastTx(timeoutHeight int64, msgs ...sdk.Msg) error 
 			continue
 		}
 
+		lastCheckHeight = latestBlockHeight
+
 		// set last check height to latest block height
 		//lastCheckHeight = latestBlockHeight
+		fmt.Println("this is msgs", msgs)
 		resp, err := BroadcastTx(clientCtx, factory, msgs...)
+		fmt.Println("this is resp", resp, err)
 		if resp != nil && resp.Code != 0 {
 			telemetry.IncrCounter(1, "failure", "tx", "code")
 			oc.logger.Error().Msg(resp.String())

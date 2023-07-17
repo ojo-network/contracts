@@ -3,15 +3,17 @@ package relayer
 import (
 	"context"
 	"fmt"
-	"github.com/ojo-network/cw-relayer/tools"
+	"strconv"
+	"sync"
+	"time"
+
 	oracletypes "github.com/ojo-network/ojo/x/oracle/types"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"strconv"
-	"sync"
-	"time"
+
+	"github.com/ojo-network/cw-relayer/tools"
 )
 
 type PriceService struct {
@@ -61,6 +63,9 @@ func NewPriceService(
 		eventTick:       eventTick,
 		mut:             sync.Mutex{},
 		queryTimeout:    queryTimeout,
+		exchangeRates:   make(map[string]Price),
+		deviationRates:  make(map[string]Deviation),
+		medianRates:     make(map[string]Median),
 	}
 }
 

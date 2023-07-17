@@ -37,6 +37,7 @@ func NewTxBundler(
 		timeoutHeight:   timeoutHeight,
 		relayerClient:   client,
 	}
+
 	go tx.BundleAndSend()
 
 	return tx.msgs
@@ -54,7 +55,6 @@ func (tx *Txbundle) BundleAndSend() {
 
 	//TODO: faster gas estimation solution
 	//TODO: redis store and gas bundling logic
-
 	if err := tx.relayerClient.BroadcastTx(tx.timeoutHeight, msgs...); err != nil {
 		tx.logger.Info().Err(err)
 	}

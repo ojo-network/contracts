@@ -3,8 +3,7 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use std_reference::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use std_reference::state::{RefData, RefMedianData, ReferenceData};
+use ojo_price_feeds::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
@@ -16,7 +15,4 @@ fn main() {
     export_schema(&schema_for!(MigrateMsg), &out_dir);
     export_schema(&schema_for!(ExecuteMsg), &out_dir);
     export_schema(&schema_for!(QueryMsg), &out_dir);
-    export_schema(&schema_for!(RefData), &out_dir);
-    export_schema(&schema_for!(ReferenceData), &out_dir);
-    export_schema(&schema_for!(RefMedianData), &out_dir);
 }

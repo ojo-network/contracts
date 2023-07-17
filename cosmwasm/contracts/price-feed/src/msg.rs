@@ -1,8 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Binary, Uint128, Uint256, Uint64};
 
-use crate::state::{RefData, RefMedianData, ReferenceData};
-
 #[cw_serde]
 pub struct InstantiateMsg {
     pub ping_threshold: Uint64,
@@ -34,18 +32,21 @@ pub enum ExecuteMsg {
     RequestRate {
         symbol: String,
         resolve_time: Uint64,
+        callback_sig: String,
         callback_data: Binary,
     },
 
     RequestMedian {
         symbol: String,
         resolve_time: Uint64,
+        callback_sig:String,
         callback_data: Binary,
     },
 
     RequestDeviation {
         symbol: String,
         resolve_time: Uint64,
+        callback_sig: String,
         callback_data: Binary,
     },
 
@@ -75,51 +76,9 @@ pub enum QueryMsg {
         // Address to check relayer status
         relayer: String,
     },
-    #[returns(RefData)]
-    // Returns the RefData of a given symbol
-    GetRef {
-        // Symbol to query
-        symbol: String,
-    },
-    #[returns(ReferenceData)]
-    // Returns the ReferenceData of a given asset pairing
-    GetReferenceData {
-        // Symbol pair to query where:
-        // symbol_pair := (base_symbol, quote_symbol)
-        // e.g. BTC/USD ≡ ("BTC", "USD")
-        symbol_pair: (String, String),
-    },
-    #[returns(Vec < ReferenceData >)]
-    // Returns the ReferenceDatas of the given asset pairings
-    GetReferenceDataBulk {
-        // Vector of Symbol pair to query
-        // e.g. <BTC/USD ETH/USD, OJO/BTC> ≡ <("BTC", "USD"), ("ETH", "USD"), ("OJO", "BTC")>
-        symbol_pairs: Vec<(String, String)>,
-    },
-    #[returns(RefMedianData)]
-    // Returns the RefMedianData of a given symbol
-    GetMedianRef {
-        // Symbol to query
-        symbol: String,
-    },
 
-    #[returns(Vec < RefMedianData >)]
-    // Returns the RefMedianData of the given symbols
-    GetMedianRefDataBulk {
-        // Vector of Symbols to query
-        symbols: Vec<String>,
-    },
-    #[returns(RefData)]
-    // Returns the deviation RefData of a given symbol
-    GetDeviationRef {
-        // Symbol to query
-        symbol: String,
-    },
-
-    #[returns(Vec < RefData >)]
-    // Returns the deviation RefData of the given symbols
-    GetDeviationRefBulk {
-        // Vector of Symbols to query
-        symbols: Vec<String>,
-    },
+    #[returns(Uint256)]
+    LastPing{
+    relayer:String,
+    }
 }
