@@ -173,6 +173,7 @@ func parseEvents(attrs []abcitypes.EventAttribute) (priceRequest []PriceRequest,
 				err = fmt.Errorf("unknown attribute: %s", attr.Key)
 			}
 		}
+
 		priceRequest = append(priceRequest, req)
 	}
 

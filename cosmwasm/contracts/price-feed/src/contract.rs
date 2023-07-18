@@ -1,24 +1,22 @@
-use cosmwasm_schema::serde::Serialize;
+use crate::helpers::{generate_oracle_event, EventType};
+use semver::Version;
+
 use cosmwasm_std::{
-    entry_point, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo, Order,
-    Reply, Response, StdError, StdResult, SubMsg, Timestamp, Uint256, Uint64, WasmMsg,
+    entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response,
+    StdError, StdResult, Timestamp, Uint64,
 };
 use cw2::{get_contract_version, set_contract_version};
-use cw_storage_plus::{Bound, Bounder};
-use semver::Version;
-use std::ops::{Add, Deref, Index, Sub};
+use cw_storage_plus::Bound;
+
+use crate::msg::ExecuteMsg::*;
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+
+use crate::state::{
+    ADMIN, LAST_RELAYER, MEDIANSTATUS, PINGCHECK, PING_THRESHOLD, RELAYERS, TRIGGER_REQUEST,
+};
 
 use crate::errors::ContractError;
-use crate::errors::ContractError::TriggerRequestDisabled;
-use crate::helpers::{EventType, generate_oracle_event};
-use crate::msg::ExecuteMsg::{RelayerPing, RequestDeviation, RequestMedian, RequestRate};
-use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::state;
-use crate::state::{ADMIN, LAST_RELAYER, MEDIANSTATUS, PINGCHECK, RELAYERS, TRIGGER_REQUEST, PING_THRESHOLD};
-
-const E0: Uint64 = Uint64::zero();
-const E9: Uint64 = Uint64::new(1_000_000_000u64);
-const E18: Uint256 = Uint256::from_u128(1_000_000_000_000_000_000u128);
+use crate::errors::ContractError::*;
 
 // Version Info
 const CONTRACT_NAME: &str = "ojo-price-feeds";
@@ -51,13 +49,13 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let block_time = env.block.time;
     match msg {
-        ExecuteMsg::UpdateAdmin { admin } => {
+        UpdateAdmin { admin } => {
             let admin = deps.api.addr_validate(&admin)?;
             Ok(ADMIN.execute_update_admin(deps, info, Some(admin))?)
         }
-        ExecuteMsg::AddRelayers { relayers } => execute_add_relayers(deps, info, relayers),
-        ExecuteMsg::RemoveRelayers { relayers } => execute_remove_relayers(deps, info, relayers),
-        ExecuteMsg::ChangeTrigger { trigger } => {
+        AddRelayers { relayers } => execute_add_relayers(deps, info, relayers),
+        RemoveRelayers { relayers } => execute_remove_relayers(deps, info, relayers),
+        ChangeTrigger { trigger } => {
             ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
             TRIGGER_REQUEST.save(deps.storage, &trigger)?;
             Ok(Response::new().add_attribute("change_trigger", trigger.to_string()))
@@ -67,8 +65,7 @@ pub fn execute(
             resolve_time,
             callback_sig,
             callback_data,
-
-        } => execute_demand_price(
+        } => execute_request_price(
             deps,
             info,
             block_time,
@@ -83,8 +80,7 @@ pub fn execute(
             resolve_time,
             callback_sig,
             callback_data,
-
-        } => execute_demand_price(
+        } => execute_request_price(
             deps,
             info,
             block_time,
@@ -99,7 +95,7 @@ pub fn execute(
             resolve_time,
             callback_sig,
             callback_data,
-        } => execute_demand_price(
+        } => execute_request_price(
             deps,
             info,
             block_time,
@@ -119,7 +115,9 @@ pub fn execute(
             let relayer = deps.api.addr_validate(&info.sender.to_string())?;
             PINGCHECK.save(deps.storage, &relayer, &Uint64::new(block_time.seconds()))?;
 
-            Ok(Response::new().add_attribute("ping", relayer.to_string()).add_attribute("timestamp", block_time.to_string()))
+            Ok(Response::new()
+                .add_attribute("ping", relayer.to_string())
+                .add_attribute("timestamp", block_time.to_string()))
         }
     }
 }
@@ -187,7 +185,7 @@ fn execute_remove_relayers(
     Ok(Response::new().add_attribute("action", "remove_relayers"))
 }
 
-fn execute_demand_price(
+fn execute_request_price(
     deps: DepsMut,
     info: MessageInfo,
     blocktime: Timestamp,
@@ -195,12 +193,9 @@ fn execute_demand_price(
     resolve_time: Uint64,
     callback_sig: String,
     callback_data: Binary,
-    event_type: EventType
+    event_type: EventType,
 ) -> Result<Response, ContractError> {
-    let status = TRIGGER_REQUEST
-        .may_load(deps.storage)
-        .unwrap()
-        .unwrap_or_default();
+    let status = TRIGGER_REQUEST.load(deps.storage).unwrap_or_default();
     if !status {
         return Err(TriggerRequestDisabled {});
     }
@@ -211,6 +206,7 @@ fn execute_demand_price(
     request_id.push_str(blocktime.seconds().to_string().as_str());
 
     let next_relayer = select_relayer(deps.as_ref(), blocktime.seconds())?;
+
     LAST_RELAYER.save(deps.storage, &next_relayer.clone().into_string())?;
 
     let event = generate_oracle_event(
@@ -221,16 +217,16 @@ fn execute_demand_price(
         callback_data.clone(),
         request_id.clone(),
         callback_sig,
-        event_type
+        event_type,
     );
 
     Ok(Response::new()
-        .add_attribute("action", "demand_price")
+        .add_attribute("action", "request_price")
         .add_attribute("request_id", request_id)
         .add_event(event))
 }
 
-pub fn select_relayer(deps: Deps, blocktime: u64) -> Result<Addr,ContractError> {
+pub fn select_relayer(deps: Deps, blocktime: u64) -> Result<Addr, ContractError> {
     // Get the last selected relayer
 
     let last_relayer = LAST_RELAYER.may_load(deps.storage)?;
@@ -252,9 +248,7 @@ pub fn select_relayer(deps: Deps, blocktime: u64) -> Result<Addr,ContractError> 
     let mut next_relayer = None;
     while let Some(result) = iter.next() {
         let (key, _) = result?;
-        let last_ping = PINGCHECK
-            .load(deps.storage, &key)
-            .unwrap_or_default();
+        let last_ping = PINGCHECK.load(deps.storage, &key).unwrap_or_default();
         if blocktime - last_ping.u64() <= threshold.u64() {
             next_relayer = Some(key.clone());
             break;
@@ -271,10 +265,8 @@ pub fn select_relayer(deps: Deps, blocktime: u64) -> Result<Addr,ContractError> 
         );
         while let Some(result) = iter.next() {
             let (key, _) = result?;
-            let last_ping = PINGCHECK
-                .load(deps.storage, &key)
-                .unwrap_or_default();
-            if blocktime - last_ping.u64() <=threshold.u64() {
+            let last_ping = PINGCHECK.load(deps.storage, &key).unwrap_or_default();
+            if blocktime - last_ping.u64() <= threshold.u64() {
                 next_relayer = Some(key.clone());
                 break;
             }
@@ -282,7 +274,7 @@ pub fn select_relayer(deps: Deps, blocktime: u64) -> Result<Addr,ContractError> 
     }
 
     // If no available relayer was found, return an error
-    next_relayer.ok_or(ContractError::RelayerNotFound{})
+    next_relayer.ok_or(ContractError::RelayerNotFound {})
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -293,7 +285,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::IsRelayer { relayer } => {
             to_binary(&query_is_relayer(deps, &deps.api.addr_validate(&relayer)?)?)
         }
-        QueryMsg::LastPing {relayer }=> to_binary(&PINGCHECK.load(deps.storage, &deps.api.addr_validate(&relayer)?)?),
+        QueryMsg::LastPing { relayer } => {
+            to_binary(&PINGCHECK.load(deps.storage, &deps.api.addr_validate(&relayer)?)?)
+        }
         QueryMsg::PingThreshold {} => to_binary(&PING_THRESHOLD.load(deps.storage)?),
     }
 }

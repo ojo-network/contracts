@@ -1,13 +1,12 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{to_binary, Binary, DepsMut, Env, Event, SubMsgResponse, SubMsgResult, Uint128, Uint256, Uint64, StdResult};
+use cosmwasm_schema::cw_serde;
+use cosmwasm_std::{to_binary, Binary, StdResult, Uint64};
 
+#[allow(non_snake_case)]
 pub mod RequestRelay {
-    use cosmwasm_schema::cw_serde;
-    use cosmwasm_schema::schemars::JsonSchema;
-    use cosmwasm_std::{StdResult, Uint64, Binary, to_binary};
+    use super::*;
 
     #[cw_serde]
-    pub enum RequestType{
+    pub enum RequestType {
         RequestRate,
         RequestMedian,
         RequestDeviation,
@@ -17,7 +16,7 @@ pub mod RequestRelay {
     pub struct RequestRateData {
         pub symbol: String,
         pub resolve_time: Uint64,
-        pub callback_sig:String,
+        pub callback_sig: String,
         pub callback_data: Binary,
     }
 
@@ -25,7 +24,7 @@ pub mod RequestRelay {
     pub struct RequestDeviationData {
         pub symbol: String,
         pub resolve_time: Uint64,
-        pub callback_sig:String,
+        pub callback_sig: String,
         pub callback_data: Binary,
     }
 
@@ -33,7 +32,7 @@ pub mod RequestRelay {
     pub struct RequestMedianData {
         pub symbol: String,
         pub resolve_time: Uint64,
-        pub callback_sig:String,
+        pub callback_sig: String,
         pub callback_data: Binary,
     }
 
@@ -68,13 +67,7 @@ pub mod RequestRelay {
     pub enum OracleRequestMsg {
         RequestRate(RequestRateData),
         RequestDeviation(RequestDeviationData),
-        RequestMedian(RequestMedianData)
-    }
-
-    impl OracleRequestMsg{
-        fn to_binary(&self) -> StdResult<Binary> {
-            to_binary(self)
-        }
+        RequestMedian(RequestMedianData),
     }
 
     impl RequestRateData {
@@ -100,10 +93,11 @@ pub mod RequestRelay {
 }
 
 pub mod helper {
-    use crate::RequestRelay::{RequestDeviationData, RequestMedianData, RequestRateData, RequestType};
+    use crate::RequestRelay::{
+        RequestDeviationData, RequestMedianData, RequestRateData, RequestType,
+    };
     use cosmwasm_std::{
-        to_binary, Binary, CosmosMsg, DepsMut, Env, Event, Response, StdError, StdResult, SubMsg,
-        SubMsgResponse, SubMsgResult, Uint128, Uint256, Uint64, WasmMsg,
+        Binary, CosmosMsg, Event, StdError, StdResult, SubMsg, SubMsgResponse, Uint64, WasmMsg,
     };
 
     pub fn oracle_submessage(
@@ -115,7 +109,7 @@ pub mod helper {
         callback_sig: String,
         msg_type: RequestType,
     ) -> SubMsg {
-        let payload:Binary;
+        let payload: Binary;
         match msg_type {
             RequestType::RequestRate => {
                 payload = RequestRateData {
@@ -124,31 +118,30 @@ pub mod helper {
                     callback_sig,
                     callback_data,
                 }
-                    .into_binary()
-                    .unwrap();
+                .into_binary()
+                .unwrap();
             }
             RequestType::RequestMedian => {
                 payload = RequestMedianData {
-                     symbol,
+                    symbol,
                     resolve_time,
                     callback_sig,
                     callback_data,
                 }
-                    .into_binary()
-                    .unwrap();
+                .into_binary()
+                .unwrap();
             }
-            RequestType::RequestDeviation=>{
+            RequestType::RequestDeviation => {
                 payload = RequestDeviationData {
                     symbol,
                     resolve_time,
                     callback_sig,
                     callback_data,
                 }
-                    .into_binary()
-                    .unwrap();
+                .into_binary()
+                .unwrap();
             }
         }
-
 
         let msg = SubMsg::reply_on_success(
             CosmosMsg::Wasm(WasmMsg::Execute {
@@ -166,8 +159,8 @@ pub mod helper {
         let event = reply
             .events
             .iter()
-            .find(|event| event_contains_attr(event, "action", "demand_price"))
-            .ok_or_else(|| StdError::generic_err("cannot find demand price event"))?;
+            .find(|event| event_contains_attr(event, "action", "request_price"))
+            .ok_or_else(|| StdError::generic_err("cannot find request price event"))?;
 
         let request_id = event
             .attributes
@@ -190,10 +183,8 @@ pub mod helper {
 
 pub mod verify {
     use cosmwasm_schema::cw_serde;
-    use cosmwasm_std::{
-        to_binary, Deps, DepsMut, Env, MessageInfo, QueryRequest, StdResult, WasmQuery,
-    };
-    use std::fmt::Binary;
+    use cosmwasm_std::{DepsMut, Env, StdResult};
+
     #[cw_serde]
     pub enum QueryMsg {
         IsRelayer { relayer: String },
@@ -209,16 +200,17 @@ pub mod verify {
             relayer: sender.into(),
         };
 
-        deps.querier.query_wasm_smart(contract_address,&is_relayer_query_msg)
+        deps.querier
+            .query_wasm_smart(contract_address, &is_relayer_query_msg)
     }
 }
-
-pub mod Error{
+#[allow(non_snake_case)]
+pub mod HelperError {
     use thiserror::Error;
 
     #[derive(Error, Debug, PartialEq)]
-    pub enum Error {
+    pub enum RelayerError {
         #[error("Invalid Relayer address: {relayer_address}")]
-        InvalidRelayer {relayer_address:String},
+        InvalidRelayer { relayer_address: String },
     }
 }

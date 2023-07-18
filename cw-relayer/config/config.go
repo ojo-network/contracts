@@ -52,7 +52,7 @@ type (
 		// query rpc for ojo node
 		TickEventType string `mapstructure:"event_type"`
 
-		MaxGasUnits string `mapstructure:"max_gas_units"`
+		MaxGasUnits uint64 `mapstructure:"max_gas_units" validate:"required"`
 
 		BlockHeightConfig BlockHeightConfig `mapstructure:"block_height_config" validate:"required,dive,required"`
 	}
@@ -81,9 +81,12 @@ type (
 	}
 
 	TxConfig struct {
-		BundleSize       int64  `mapstructure:"bundle_size" validate:"required"`
-		MaxGasLimitPerTx int64  `mapstructure:"max_gas_per_tx" validate:"required"`
-		MaxTimeout       string `mapstructure:"max_timeout" validate:"required"`
+		BundleSize        int64  `mapstructure:"bundle_size" validate:"required"`
+		MaxGasLimitPerTx  int64  `mapstructure:"max_gas_per_tx" validate:"required"`
+		TotalGasThreshold uint64 `mapstructure:"total_gas_threshold" validate:"required"`
+		TotalTxThreshold  int    `mapstructure:"total_tx_threshold" validate:"required"`
+		EstimateAndBundle bool   `mapstructure:"estimate_and_bundle" validate:"required"`
+		MaxTimeout        string `mapstructure:"max_timeout" validate:"required"`
 	}
 
 	// Account defines account related configuration that is related to the Client

@@ -1,5 +1,5 @@
-max_retries = 100
-ping_duration = "40000000s"
+max_retries = 10
+ping_duration = "1000s"
 tick_duration = "2s"
 num_bundle = 10
 
@@ -7,7 +7,7 @@ contract_address = "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0ph
 
 ignore_median_errors = false
 tick_event_type = "ojo.oracle.v1.EventSetFxRate"
-max_gas_units = ""
+max_gas_units = 1000000000
 
 [account]
 acc_prefix = "wasm"
@@ -42,7 +42,7 @@ gas_per_tx = 100000000000
 [tx_config]
 bundle_size = 4
 max_gas_per_tx = 10000
-max_timeout = "100000s"
+max_timeout = "2s"
 
 [block_height_config]
 skip_error = false

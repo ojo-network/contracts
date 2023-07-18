@@ -203,14 +203,21 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 	})
 
 	logger.Info().Msg("starting price msg service")
-	txBundler := txbundle.NewTxBundler(
+	txBundler, err := txbundle.NewTxBundler(
 		logger,
 		cfg.TxConfig.BundleSize,
 		cfg.TxConfig.MaxGasLimitPerTx,
 		cfg.Timeout.TimeoutHeight,
 		maxTimeout,
 		client,
+		cfg.MaxGasUnits,
+		cfg.TxConfig.TotalGasThreshold,
+		cfg.TxConfig.TotalTxThreshold,
+		cfg.TxConfig.EstimateAndBundle,
 	)
+	if err != nil {
+		return err
+	}
 
 	g.Go(func() error {
 		return txBundler.Bundler(ctx)

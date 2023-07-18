@@ -1,23 +1,25 @@
-use cosmwasm_std::{attr, entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo, Reply, Response, StdError, StdResult, SubMsg, SubMsgResponse, Uint128, Uint64, WasmMsg, Uint256};
+use cosmwasm_std::{
+    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    StdResult, SubMsgResponse, Uint64,
+};
 
 use thiserror::Error;
 
-use cosmwasm_schema::{QueryResponses,cw_serde};
-use cw_storage_plus::Item;
-use cosmwasm_std::WasmMsg::Execute;
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw2::set_contract_version;
+use cw_storage_plus::Item;
 
 use price_feed_helper::helper::oracle_submessage;
-use price_feed_helper::RequestRelay::*;
 use price_feed_helper::verify::*;
-use price_feed_helper::Error::*;
+use price_feed_helper::HelperError::*;
+use price_feed_helper::RequestRelay::*;
 
 const CONTRACT_NAME: &str = "relay_contract";
 const CONTRACT_VERSION: &str = "v1.0.0";
 const CONFIG_KEY: &str = "config";
 const REQUEST_KEY: &str = "request_id";
 const PRICE_KEY: &str = "price";
-const REPLY_ID:u64 =1;
+const REPLY_ID: u64 = 1;
 
 #[cw_serde]
 pub struct InitMsg {
@@ -29,12 +31,15 @@ pub struct InitMsg {
 pub enum QueryMsg {
     #[returns(Uint64)]
     GetPrice,
+
+    #[returns(String)]
+    GetRequestId,
 }
 
 #[cw_serde]
 pub enum ExecuteMsg {
     Request(RequestRateData),
-    Callback(CallbackRateData)
+    Callback(CallbackRateData),
 }
 
 #[cw_serde]
@@ -48,7 +53,7 @@ pub const PRICE: Item<Uint64> = Item::new(PRICE_KEY);
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    mut deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
     msg: InitMsg,
@@ -72,8 +77,8 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Request(msg)=> execute_request_relay(deps, env, info, msg),
-        ExecuteMsg::Callback(msg)=>execute_callback(deps,env,info,msg),
+        ExecuteMsg::Request(msg) => execute_request_relay(deps, env, info, msg),
+        ExecuteMsg::Callback(msg) => execute_callback(deps, env, info, msg),
     }
 }
 
@@ -81,6 +86,7 @@ pub fn execute(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetPrice => to_binary(&query_request(deps)?),
+        QueryMsg::GetRequestId => to_binary(&REQUEST.load(deps.storage)?),
     }
 }
 
@@ -105,8 +111,7 @@ fn execute_request_relay(
         msg.callback_data,
         REPLY_ID,
         String::from("callback"),
-        RequestType::RequestRate
-
+        RequestType::RequestRate,
     );
 
     Ok(Response::new()
@@ -127,17 +132,12 @@ fn execute_callback(
     let prev_id = REQUEST.load(deps.storage)?;
     let request_id = msg.request_id;
 
-    let check = is_relayer(
-        &deps,
-        &env,
-        oracle_address,
-        info.sender.to_string(),
-    )
-    .unwrap_or_default();
+    let check =
+        is_relayer(&deps, &env, oracle_address, info.sender.to_string()).unwrap_or_default();
 
-    if !check{
-        return Err(ContractError::Custom(Error::InvalidRelayer {
-            relayer_address:info.sender.to_string()
+    if !check {
+        return Err(ContractError::Custom(RelayerError::InvalidRelayer {
+            relayer_address: info.sender.to_string(),
         }));
     }
 
@@ -173,5 +173,5 @@ pub enum ContractError {
     Std(#[from] StdError),
 
     #[error("{0}")]
-    Custom(#[from] Error),
+    Custom(#[from] RelayerError),
 }

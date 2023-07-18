@@ -17,7 +17,7 @@ pub enum ContractError {
     UnauthorizedRelayer { msg: String },
 
     #[error("Next Relayer not found")]
-    RelayerNotFound{},
+    RelayerNotFound {},
 
     #[error("Median is disabled")]
     MedianDisabled {},

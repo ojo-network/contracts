@@ -37,14 +37,14 @@ func NewUptimePing(
 
 func (c *UptimeCheck) StartPing(ctx context.Context, duration time.Duration) error {
 	c.logger.Info().Msg("uptime check service started ...")
-	ticker := time.NewTicker(duration)
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-ticker.C:
+		default:
 			err := c.sendPing()
 			c.logger.Err(err).Send()
+			time.Sleep(duration)
 		}
 	}
 }

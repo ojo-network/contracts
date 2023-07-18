@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Binary, Uint128, Uint256, Uint64};
+use cosmwasm_std::{Binary, Uint256, Uint64};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -39,7 +39,7 @@ pub enum ExecuteMsg {
     RequestMedian {
         symbol: String,
         resolve_time: Uint64,
-        callback_sig:String,
+        callback_sig: String,
         callback_data: Binary,
     },
 
@@ -78,7 +78,5 @@ pub enum QueryMsg {
     },
 
     #[returns(Uint256)]
-    LastPing{
-    relayer:String,
-    }
+    LastPing { relayer: String },
 }
