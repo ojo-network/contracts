@@ -2,7 +2,6 @@ package relayer
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/cosmos/cosmos-sdk/types"
@@ -23,13 +22,7 @@ type Relayer struct {
 
 	tickDuration  time.Duration
 	timeoutHeight int64
-
-	ignoreMedianErrors bool
-
 	oracleEvent   chan struct{}
-	contractEvent chan struct{}
-
-	rwmutex sync.RWMutex
 
 	cs *client.ContractSubscribe
 	ps *PriceService
@@ -54,13 +47,12 @@ func New(
 		relayerAddress:  relayerAddress,
 		contractAddress: contractAddress,
 		timeoutHeight:   timeoutHeight,
-
-		closer:       psync.NewCloser(),
-		tickDuration: tickDuration,
-		oracleEvent:  oracleEvent,
-		cs:           cs,
-		ps:           ps,
-		msg:          msg,
+		closer:          psync.NewCloser(),
+		tickDuration:    tickDuration,
+		oracleEvent:     oracleEvent,
+		cs:              cs,
+		ps:              ps,
+		msg:             msg,
 	}
 }
 
@@ -89,7 +81,7 @@ func (r *Relayer) Start(ctx context.Context) error {
 func (r *Relayer) processRequests(ctx context.Context, requests map[string][]client.PriceRequest) error {
 	denomList := make([]string, len(requests))
 	i := 0
-	for denom, _ := range requests {
+	for denom := range requests {
 		denomList[i] = denom
 		i++
 	}

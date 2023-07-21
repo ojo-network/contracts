@@ -155,9 +155,9 @@ func (rts *RelayerTestSuite) Test_processRequests() {
 		callback, err := parseAndCheck(jsonMsg["callback"])
 		rts.Require().NoError(err)
 
-		switch callback.(type) {
+		switch callback := callback.(type) {
 		case CallbackData:
-			data := callback.(CallbackData)
+			data := callback
 			request := rts.requestMap[data.Symbol][data.RequestID]
 			rate := rts.priceService.exchangeRates[data.Symbol]
 			rts.Require().Equal(data.RequestID, request.RequestID)
@@ -167,7 +167,7 @@ func (rts *RelayerTestSuite) Test_processRequests() {
 			total += 1
 
 		case CallbackDataMedian:
-			data := callback.(CallbackDataMedian)
+			data := callback
 			request := rts.requestMap[data.Symbol][data.RequestID]
 			rate := rts.priceService.medianRates[data.Symbol]
 			rts.Require().Equal(data.RequestID, request.RequestID)
