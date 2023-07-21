@@ -84,8 +84,6 @@ func New(
 }
 
 func (r *Relayer) Start(ctx context.Context) error {
-
-	// auto restart
 	ticker := time.NewTicker(r.tickDuration)
 	for {
 		select {
@@ -127,12 +125,14 @@ func (r *Relayer) processRequests(ctx context.Context, requests map[string][]cli
 						continue
 					}
 
-					callback := CallbackData{
-						RequestID:    req.RequestID,
-						Symbol:       denom,
-						SymbolRate:   price.Price,
-						LastUpdated:  price.Timestamp,
-						CallbackData: []byte(req.CallbackData),
+					callback := CallbackRate{
+						Req: CallbackData{
+							RequestID:    req.RequestID,
+							Symbol:       denom,
+							SymbolRate:   price.Price,
+							LastUpdated:  price.Timestamp,
+							CallbackData: []byte(req.CallbackData),
+						},
 					}
 
 					msg, err := genMsg(r.relayerAddress, req.EventContractAddress, req.CallbackSig, callback)
@@ -144,6 +144,7 @@ func (r *Relayer) processRequests(ctx context.Context, requests map[string][]cli
 				}
 			}
 		}
+
 		return nil
 	})
 
@@ -165,7 +166,7 @@ func (r *Relayer) processRequests(ctx context.Context, requests map[string][]cli
 							Symbol:       denom,
 							SymbolRates:  median.Median,
 							LastUpdated:  median.Timestamp,
-							CallbackData: nil,
+							CallbackData: []byte(req.CallbackData),
 						},
 					}
 
@@ -178,6 +179,7 @@ func (r *Relayer) processRequests(ctx context.Context, requests map[string][]cli
 				}
 			}
 		}
+
 		return nil
 	})
 
@@ -193,7 +195,7 @@ func (r *Relayer) processRequests(ctx context.Context, requests map[string][]cli
 						continue
 					}
 
-					callback := CallbackRate{
+					callback := CallbackDeviation{
 						Req: CallbackData{
 							RequestID:    req.RequestID,
 							Symbol:       denom,
@@ -212,6 +214,7 @@ func (r *Relayer) processRequests(ctx context.Context, requests map[string][]cli
 				}
 			}
 		}
+
 		return nil
 	})
 

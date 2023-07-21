@@ -24,8 +24,6 @@ type Txbundle struct {
 	timeoutHeight   int64
 	msgs            []types.Msg
 
-	rpcAddress        string
-	rpcTimeout        time.Duration
 	clientContext     sdkclient.Context
 	client            tx.ServiceClient
 	txFactory         gastx.Factory

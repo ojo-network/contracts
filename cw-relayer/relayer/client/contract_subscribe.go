@@ -79,7 +79,6 @@ func (cs *ContractSubscribe) Subscribe(
 		panic(err)
 	}
 
-	defer cs.client.Stop()
 	out, err := cs.client.Subscribe(context.Background(), "0", cs.query)
 	if err != nil {
 		panic(err)
@@ -93,7 +92,7 @@ func (cs *ContractSubscribe) Subscribe(
 				cs.Logger.Err(err)
 			}
 			cs.Logger.Info().Msg("closing the ChainHeight subscription")
-			return nil
+			return cs.client.Stop()
 
 		case result := <-out:
 			switch event := result.Data.(type) {
@@ -118,7 +117,7 @@ func (cs *ContractSubscribe) Subscribe(
 
 func (cs *ContractSubscribe) setPriceRequest(priceRequests []PriceRequest) {
 	cs.mut.Lock()
-	cs.mut.Unlock()
+	defer cs.mut.Unlock()
 	prices := make(map[string][]PriceRequest)
 	for _, request := range priceRequests {
 		if _, ok := cs.priceRequest[request.RequestedSymbol]; !ok {
@@ -131,7 +130,7 @@ func (cs *ContractSubscribe) setPriceRequest(priceRequests []PriceRequest) {
 
 func (cs *ContractSubscribe) GetPriceRequest() map[string][]PriceRequest {
 	cs.mut.Lock()
-	cs.mut.Unlock()
+	defer cs.mut.Unlock()
 	priceRequests := cs.priceRequest
 
 	cs.priceRequest = make(map[string][]PriceRequest)

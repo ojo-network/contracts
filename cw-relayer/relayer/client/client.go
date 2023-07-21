@@ -48,8 +48,6 @@ type (
 		GasAdjustment     float64
 		KeyringPassphrase string
 		ChainHeight       *ChainHeight
-
-		msgs chan sdk.Msg
 	}
 
 	passReader struct {
