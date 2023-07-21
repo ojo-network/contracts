@@ -2,7 +2,6 @@ package relayer
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -14,34 +13,16 @@ import (
 	"github.com/ojo-network/cw-relayer/relayer/client"
 )
 
-var (
-	// RateFactor is used to convert ojo prices to contract-compatible values.
-	RateFactor   = types.NewDec(10).Power(9)
-	noRates      = fmt.Errorf("no rates found")
-	noMedians    = fmt.Errorf("median deviations empty")
-	noDeviations = fmt.Errorf("deviation deviations empty")
-)
-
 // Relayer defines a structure that queries prices from ojo and publishes prices to wasm contract.
 type Relayer struct {
-	logger    zerolog.Logger
-	closer    *psync.Closer
-	queryRPCS []string
+	logger zerolog.Logger
+	closer *psync.Closer
 
 	relayerAddress  string
 	contractAddress string
 
-	tickDuration time.Duration
-
-	resolveDuration time.Duration
-	queryTimeout    time.Duration
-
-	// if missedCounter >= missedThreshold, force relay prices (bypasses timing restrictions)
-	missedCounter     int64
-	missedThreshold   int64
-	timeoutHeight     int64
-	medianDuration    int64
-	deviationDuration int64
+	tickDuration  time.Duration
+	timeoutHeight int64
 
 	ignoreMedianErrors bool
 

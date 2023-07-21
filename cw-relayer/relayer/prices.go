@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cosmos/cosmos-sdk/types"
 	oracletypes "github.com/ojo-network/ojo/x/oracle/types"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
@@ -14,6 +15,14 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/ojo-network/cw-relayer/tools"
+)
+
+var (
+	// RateFactor is used to convert ojo prices to contract-compatible values.
+	RateFactor     = types.NewDec(10).Power(9)
+	thresholdError = fmt.Errorf("no rates found, retry threshold exceeded")
+	noMedians      = fmt.Errorf("median deviations empty")
+	noDeviations   = fmt.Errorf("deviation deviations empty")
 )
 
 type PriceService struct {
@@ -87,7 +96,7 @@ func (p *PriceService) Start(ctx context.Context) error {
 func (p *PriceService) setDenomPrices(ctx context.Context) error {
 	if p.queryRetries > p.maxQueryRetries {
 		p.queryRetries = 0
-		return fmt.Errorf("retry threshold exceeded")
+		return thresholdError
 	}
 
 	grpcConn, err := grpc.Dial(
