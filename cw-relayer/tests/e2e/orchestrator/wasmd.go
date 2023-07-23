@@ -36,8 +36,9 @@ func (o *Orchestrator) initWasmd() error {
 			NetworkID:  o.dockerNetwork.Network.ID,
 			Env: []string{
 				fmt.Sprintf("E2E_WASMD_CHAIN_ID=%s", o.wasmChain.chainId),
-				fmt.Sprintf("E2E_WASMD_VAL_MNEMONIC=%s", o.wasmChain.val_mnemonic),
+				fmt.Sprintf("E2E_WASMD_VAL_MNEMONIC=%s", o.wasmChain.valMnemonic),
 				fmt.Sprintf("E2E_WASMD_VAL_ADDRESSS=%s", o.wasmChain.address),
+				fmt.Sprintf("$E2E_WASMD_USER_MNEMONIC=%s", o.wasmChain.userMnemonic),
 			},
 			ExtraHosts:   []string{"host.docker.internal:host-gateway"},
 			PortBindings: map[docker.Port][]docker.PortBinding{},
@@ -151,7 +152,7 @@ func (o *Orchestrator) setGrpcEndpoint() (err error) {
 	return
 }
 
-func (o *Orchestrator) setContractAddress() error {
+func (o *Orchestrator) setContractAddress(codeID uint64) error {
 	grpcConn, err := grpc.Dial(
 		o.QueryRpc,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -163,7 +164,7 @@ func (o *Orchestrator) setContractAddress() error {
 	defer grpcConn.Close()
 
 	queryClient := wasmtypes.NewQueryClient(grpcConn)
-	msg := wasmtypes.QueryContractsByCodeRequest{CodeId: 1}
+	msg := wasmtypes.QueryContractsByCodeRequest{CodeId: codeID}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()

@@ -1,6 +1,7 @@
 cosmwasm/artifacts
 cosmwasm/target
 cw-relayer/build
+cw-relayer/tests/e2e/config/*.wasm
 
 #ide files
 .idea
