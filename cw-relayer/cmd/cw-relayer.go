@@ -103,6 +103,11 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to parse RPC timeout: %w", err)
 	}
 
+	maxTxDuration, err := time.ParseDuration(cfg.TxConfig.MaxTxDuration)
+	if err != nil {
+		return fmt.Errorf("failed to parse RPC timeout: %w", err)
+	}
+
 	eventTimeout, err := time.ParseDuration(cfg.Timeout.EventTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to parse Event timeout: %w", err)
@@ -150,6 +155,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		cfg.TargetRPC.TMRPCEndpoint,
 		cfg.TargetRPC.QueryEndpoint,
 		rpcTimeout,
+		maxTxDuration,
 		cfg.Account.Address,
 		cfg.Account.AccPrefix,
 		cfg.Gas.GasAdjustment,
@@ -205,7 +211,6 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 	logger.Info().Msg("starting price msg service")
 	txBundler, err := txbundle.NewTxBundler(
 		logger,
-		cfg.TxConfig.BundleSize,
 		cfg.TxConfig.MaxGasLimitPerTx,
 		cfg.Timeout.TimeoutHeight,
 		maxTimeout,

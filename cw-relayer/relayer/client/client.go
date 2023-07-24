@@ -7,14 +7,9 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sync"
 	"time"
 
-	"golang.org/x/sync/errgroup"
-	"google.golang.org/grpc/credentials/insecure"
-
 	wasmparams "github.com/CosmWasm/wasmd/app/params"
-	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/rpc"
@@ -27,7 +22,6 @@ import (
 	"github.com/rs/zerolog"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	tmjsonclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
-	"google.golang.org/grpc"
 )
 
 type (
@@ -48,6 +42,10 @@ type (
 		GasAdjustment     float64
 		KeyringPassphrase string
 		ChainHeight       *ChainHeight
+
+		maxTxDuration time.Duration
+
+		index int
 	}
 
 	passReader struct {
@@ -55,16 +53,6 @@ type (
 		buf  *bytes.Buffer
 	}
 )
-
-type SmartQuery struct {
-	QueryType int
-	QueryMsg  wasmtypes.QuerySmartContractStateRequest
-}
-
-type QueryResponse struct {
-	QueryType     int
-	QueryResponse wasmtypes.QuerySmartContractStateResponse
-}
 
 func NewRelayerClient(
 	ctx context.Context,
@@ -76,7 +64,8 @@ func NewRelayerClient(
 	tmRPC []string,
 	queryEndpoint []string,
 	rpcTimeout time.Duration,
-	RelayerAddrString string,
+	maxTxDuration time.Duration,
+	relayerAddrString string,
 	accPrefix string,
 	gasAdjustment float64,
 	GasPrices string,
@@ -85,7 +74,7 @@ func NewRelayerClient(
 	config.SetBech32PrefixForAccount(accPrefix, accPrefix+sdk.PrefixPublic)
 	config.Seal()
 
-	RelayerAddr, err := sdk.AccAddressFromBech32(RelayerAddrString)
+	relayerAddr, err := sdk.AccAddressFromBech32(relayerAddrString)
 	if err != nil {
 		return RelayerClient{}, err
 	}
@@ -98,8 +87,9 @@ func NewRelayerClient(
 		KeyringPass:       keyringPass,
 		TMRPC:             tmRPC,
 		RPCTimeout:        rpcTimeout,
-		RelayerAddr:       RelayerAddr,
-		RelayerAddrString: RelayerAddrString,
+		RelayerAddr:       relayerAddr,
+		maxTxDuration:     maxTxDuration,
+		RelayerAddrString: relayerAddrString,
 		Encoding:          MakeEncodingConfig(),
 		GasAdjustment:     gasAdjustment,
 		GasPrices:         GasPrices,
@@ -157,6 +147,7 @@ func (r *passReader) Read(p []byte) (n int, err error) {
 // BroadcastTx attempts to broadcast a signed transaction. If it fails, a few re-attempts
 // will be made until the transaction succeeds or ultimately times out or fails.
 func (oc RelayerClient) BroadcastTx(timeoutHeight int64, msgs ...sdk.Msg) error {
+	since := time.Now()
 	nextBlockHeight, err := oc.ChainHeight.GetChainHeight()
 	if err != nil {
 		return nil
@@ -180,6 +171,10 @@ func (oc RelayerClient) BroadcastTx(timeoutHeight int64, msgs ...sdk.Msg) error 
 		latestBlockHeight, err := oc.ChainHeight.GetChainHeight()
 		if err != nil {
 			return err
+		}
+
+		if time.Since(since).Seconds() > oc.maxTxDuration.Seconds() {
+			return fmt.Errorf("max tx duration timeout while broadcasting tx")
 		}
 
 		if latestBlockHeight <= lastCheckHeight {
@@ -230,48 +225,6 @@ func (oc RelayerClient) BroadcastTx(timeoutHeight int64, msgs ...sdk.Msg) error 
 	return errors.New("broadcasting tx timed out")
 }
 
-func (oc RelayerClient) BroadcastContractQuery(ctx context.Context, timeout time.Duration, queries ...SmartQuery) ([]QueryResponse, error) {
-	grpcConn, err := grpc.Dial(
-		oc.QueryRpc[0],
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	defer grpcConn.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	g, _ := errgroup.WithContext(ctx)
-
-	queryClient := wasmtypes.NewQueryClient(grpcConn)
-
-	var responses []QueryResponse
-	var mut sync.Mutex
-	for _, query := range queries {
-		func(queryMap SmartQuery) {
-			g.Go(func() error {
-				queryResponse, err := queryClient.SmartContractState(ctx, &queryMap.QueryMsg)
-				if err != nil {
-					return err
-				}
-
-				mut.Lock()
-				responses = append(responses, QueryResponse{QueryType: queryMap.QueryType, QueryResponse: *queryResponse})
-				mut.Unlock()
-
-				return nil
-			})
-		}(query)
-	}
-
-	err = g.Wait()
-	return responses, err
-}
-
 // CreateClientContext creates an SDK client Context instance used for transaction
 // generation, signing and broadcasting.
 func (oc RelayerClient) CreateClientContext() (client.Context, error) {
@@ -287,14 +240,15 @@ func (oc RelayerClient) CreateClientContext() (client.Context, error) {
 		return client.Context{}, err
 	}
 
-	httpClient, err := tmjsonclient.DefaultHTTPClient(oc.TMRPC[0])
+	rpc := oc.getRPC()
+	httpClient, err := tmjsonclient.DefaultHTTPClient(rpc)
 	if err != nil {
 		return client.Context{}, err
 	}
 
 	httpClient.Timeout = oc.RPCTimeout
 
-	tmRPC, err := rpchttp.NewWithClient(oc.TMRPC[0], "/websocket", httpClient)
+	tmRPC, err := rpchttp.NewWithClient(rpc, "/websocket", httpClient)
 	if err != nil {
 		return client.Context{}, err
 	}
@@ -314,7 +268,7 @@ func (oc RelayerClient) CreateClientContext() (client.Context, error) {
 		Codec:             oc.Encoding.Marshaler,
 		LegacyAmino:       oc.Encoding.Amino,
 		Input:             os.Stdin,
-		NodeURI:           oc.TMRPC[0],
+		NodeURI:           rpc,
 		Client:            tmRPC,
 		Keyring:           kr,
 		FromAddress:       oc.RelayerAddr,
@@ -360,4 +314,11 @@ func GetChainTimestamp(clientCtx client.Context) (time.Time, error) {
 
 	blockTime := status.SyncInfo.LatestBlockTime
 	return blockTime, nil
+}
+
+func (oc RelayerClient) getRPC() (rpc string) {
+	rpc = oc.TMRPC[oc.index]
+	oc.index = (oc.index + 1) % len(oc.TMRPC)
+
+	return
 }

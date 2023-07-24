@@ -78,7 +78,7 @@ func (o *Orchestrator) initWasmConfigs() (dir string, err error) {
 		return
 	}
 
-	configPath := filepath.Join(dir, "config.toml")
+	configPath := filepath.Join(dir, "relayer-config.toml")
 	config := tmconfig.DefaultConfig()
 	config.P2P.ListenAddress = "tcp://0.0.0.0:26656"
 	config.RPC.ListenAddress = fmt.Sprintf("tcp://0.0.0.0:%s", WASMD_TRPC_PORT)

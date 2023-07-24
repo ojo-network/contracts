@@ -14,8 +14,6 @@ import (
 )
 
 type Txbundle struct {
-	//pendingTx
-	bundleSize      int64
 	maxLimitPerTx   int64
 	logger          zerolog.Logger
 	MsgChan         chan types.Msg
@@ -36,7 +34,6 @@ type Txbundle struct {
 
 func NewTxBundler(
 	logger zerolog.Logger,
-	bundleSize,
 	maxLimitPerTx,
 	timeoutHeight int64,
 	timeoutDuration time.Duration,
@@ -47,7 +44,6 @@ func NewTxBundler(
 	estimateAndBundle bool,
 ) (*Txbundle, error) {
 	txbundle := &Txbundle{
-		bundleSize:        bundleSize,
 		maxLimitPerTx:     maxLimitPerTx,
 		logger:            logger.With().Str("module", "tx-bundler").Logger(),
 		MsgChan:           make(chan types.Msg, 1000000),
@@ -92,68 +88,69 @@ func (b *Txbundle) Bundler(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
+			close(b.MsgChan)
 			return nil
 		case <-ticker.C:
 			if len(b.msgs) > 0 {
-				b.logger.Info().Msg("timeout exceeded for gas or limit threshold")
+				b.logger.Info().Msg("timeout exceeded for bundling tx, broadcasting")
 				err := b.broadcast()
 				if err != nil {
 					b.logger.Err(err).Send()
 				}
 			}
-		default:
-			for msg := range b.MsgChan {
-				if msg == nil {
-					// service closed
-					return nil
+
+		case msg, ok := <-b.MsgChan:
+			if !ok {
+				// service closed
+				return nil
+			}
+
+			if b.estimateAndBundle {
+				num, seq, err := b.txFactory.AccountRetriever().GetAccountNumberSequence(b.clientContext, b.clientContext.GetFromAddress())
+				if err != nil {
+					return err
 				}
-				if b.estimateAndBundle {
-					num, seq, err := b.txFactory.AccountRetriever().GetAccountNumberSequence(b.clientContext, b.clientContext.GetFromAddress())
-					if err != nil {
-						return err
-					}
 
-					b.txFactory = b.txFactory.WithAccountNumber(num)
-					b.txFactory = b.txFactory.WithSequence(seq)
+				b.txFactory = b.txFactory.WithAccountNumber(num)
+				b.txFactory = b.txFactory.WithSequence(seq)
 
-					utx, err := b.txFactory.BuildSimTx(msg)
-					if err != nil {
-						return err
-					}
+				utx, err := b.txFactory.BuildSimTx(msg)
+				if err != nil {
+					return err
+				}
 
-					simRes, err := b.client.Simulate(context.Background(), &tx.SimulateRequest{TxBytes: utx})
+				simRes, err := b.client.Simulate(context.Background(), &tx.SimulateRequest{TxBytes: utx})
+				if err != nil {
+					b.logger.Err(err).Send()
+					continue
+				}
+
+				gasUsed := simRes.GetGasInfo().GasUsed
+				if gasUsed > b.maxGasLimitperTx {
+					// dropping tx due to max gas
+					continue
+				}
+
+				// send prev msgs if the gasUsed here exceeds the total gas threshold
+				if b.currentThreshold+gasUsed > b.totalGasThreshold {
+					err := b.broadcast()
 					if err != nil {
 						b.logger.Err(err).Send()
-						continue
 					}
 
-					gasUsed := simRes.GetGasInfo().GasUsed
-					if gasUsed > b.maxGasLimitperTx {
-						// dropping tx due to max gas
-						continue
+					b.msgs = []types.Msg{}
+				}
+
+				b.msgs = append(b.msgs, msg)
+			} else {
+				b.msgs = append(b.msgs, msg)
+				if len(b.msgs) >= b.totalTxThreshold {
+					err := b.broadcast()
+					if err != nil {
+						b.logger.Err(err).Send()
 					}
 
-					// send prev msgs if the gasUsed here exceeds the total gas threshold
-					if b.currentThreshold+gasUsed > b.totalGasThreshold {
-						err := b.broadcast()
-						if err != nil {
-							b.logger.Err(err).Send()
-						}
-
-						b.msgs = []types.Msg{}
-					}
-
-					b.msgs = append(b.msgs, msg)
-				} else {
-					b.msgs = append(b.msgs, msg)
-					if len(b.msgs) >= b.totalTxThreshold {
-						err := b.broadcast()
-						if err != nil {
-							b.logger.Err(err).Send()
-						}
-
-						b.msgs = []types.Msg{}
-					}
+					b.msgs = []types.Msg{}
 				}
 			}
 		}

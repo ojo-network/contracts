@@ -43,12 +43,12 @@ func TestValidate(t *testing.T) {
 				GasLimitPerTx: 200000,
 			},
 			TxConfig: config.TxConfig{
-				BundleSize:        10,
 				MaxGasLimitPerTx:  500000,
 				TotalGasThreshold: 2000000,
 				TotalTxThreshold:  100,
 				EstimateAndBundle: true,
 				MaxTimeout:        "10s",
+				MaxTxDuration:     "10000s",
 			},
 			MaxRetries:         3,
 			PingDuration:       "5s",
@@ -129,8 +129,8 @@ gas_prices = "0.025ustake"
 gas_per_tx = 200000
 
 [tx_config]
-bundle_size = 10
 max_gas_per_tx = 500000
+max_tx_duration="500s"
 total_gas_threshold = 2000000
 total_tx_threshold = 100
 estimate_and_bundle = true

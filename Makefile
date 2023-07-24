@@ -49,6 +49,15 @@ compile-contract:
 compile-contract-arm:
 	cosmwasm/scripts/build_artifacts_arm.sh
 
+build-relayer:
+	cd cw-relayer && ${MAKE} build
+
+lint-relayer:
+	cd cw-relayer &&  golangci-lint run ./...
+
+format-contract:
+	cd cosmwasm && cargo fmt
+
 start-relayer:
 	cd cw-relayer && ${MAKE} start
 

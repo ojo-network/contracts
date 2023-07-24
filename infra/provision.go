@@ -26,7 +26,7 @@ const (
 
 var (
 	relayerInstallPath = fmt.Sprintf("%s/%s", relayerpath, "cw-relayer")
-	relayerConfigPath  = fmt.Sprintf("%s/relayer-config.toml", relayerpath)
+	relayerConfigPath  = fmt.Sprintf("%s/relayer-relayer-config.toml", relayerpath)
 	contractPath       = pulumi.Sprintf("%s/%s", relayerpath, "cosmwasm-artifacts.tar.gz")
 )
 

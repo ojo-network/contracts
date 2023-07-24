@@ -322,8 +322,8 @@ mod tests {
     }
 
     mod query {
-        use cosmwasm_std::testing::{mock_dependencies, mock_env};
         use cosmwasm_std::from_binary;
+        use cosmwasm_std::testing::{mock_dependencies, mock_env};
 
         use crate::msg::QueryMsg::{LastPing, PingThreshold};
 
@@ -350,9 +350,7 @@ mod tests {
             setup_relayers(deps.as_mut(), "owner", vec![relayer.clone()]);
 
             // Test if is_relayer results are correct
-            assert!(
-                query_is_relayer(deps.as_ref(), &Addr::unchecked(relayer.clone())).unwrap()
-            );
+            assert!(query_is_relayer(deps.as_ref(), &Addr::unchecked(relayer.clone())).unwrap());
             assert_eq!(
                 query_is_relayer(deps.as_ref(), &Addr::unchecked("not_a_relayer")).unwrap(),
                 false
@@ -362,15 +360,15 @@ mod tests {
         #[test]
         fn attempt_query_ping_threshold() {
             let mut deps = mock_dependencies();
-            let env= mock_env();
-            let init_msg= default_init_msg();
+            let env = mock_env();
+            let init_msg = default_init_msg();
             setup(deps.as_mut(), "owner");
 
-            let res = query(deps.as_ref(),env,PingThreshold {});
+            let res = query(deps.as_ref(), env, PingThreshold {});
             assert!(res.is_ok());
 
-            let threshold:Uint64=from_binary(&res.unwrap()).unwrap();
-            assert_eq!(threshold, init_msg.ping_threshold);  
+            let threshold: Uint64 = from_binary(&res.unwrap()).unwrap();
+            assert_eq!(threshold, init_msg.ping_threshold);
         }
 
         #[test]
@@ -379,16 +377,21 @@ mod tests {
             let relayer = String::from("relayer");
             let env = mock_env();
 
-
             let blocktime = env.block.time;
             setup_relayers(deps.as_mut(), "owner", vec![relayer.clone()]);
-            execute_ping(deps.as_mut(),vec![relayer.clone()]);
+            execute_ping(deps.as_mut(), vec![relayer.clone()]);
 
             // Test if is_relayer results are correct
-            let ping=query(deps.as_ref(),env,LastPing { relayer: relayer.clone().to_string()});
+            let ping = query(
+                deps.as_ref(),
+                env,
+                LastPing {
+                    relayer: relayer.clone().to_string(),
+                },
+            );
             assert!(ping.is_ok());
 
-            let pingtime:Uint64=from_binary(&ping.unwrap()).unwrap();
+            let pingtime: Uint64 = from_binary(&ping.unwrap()).unwrap();
             assert_eq!(pingtime.u64(), blocktime.seconds());
         }
     }
