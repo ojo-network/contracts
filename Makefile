@@ -63,7 +63,7 @@ start-relayer:
 
 test-e2e:
 	@echo "Running e2e tests"
-	${MAKE} compile-contract
+	#${MAKE} compile-contract
 	cp -f cosmwasm/artifacts/ojo_price_feeds.wasm cw-relayer/tests/e2e/config/ojo_price_feeds.wasm
 	cp -f cosmwasm/artifacts/price_query.wasm cw-relayer/tests/e2e/config/price_query.wasm
 	cd cw-relayer && ${MAKE} test-e2e

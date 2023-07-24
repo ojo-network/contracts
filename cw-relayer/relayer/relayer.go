@@ -68,7 +68,7 @@ func (r *Relayer) Start(ctx context.Context) error {
 			r.logger.Info().Msg("contract events")
 			getRequests := r.cs.GetPriceRequest()
 			if len(getRequests) > 0 {
-				r.logger.Info().Int("Total requests", len(getRequests)).Msg("process requests")
+				r.logger.Info().Int("total requests", len(getRequests)).Msg("process requests")
 				err := r.processRequests(ctx, getRequests)
 				if err != nil {
 					r.logger.Err(err).Send()

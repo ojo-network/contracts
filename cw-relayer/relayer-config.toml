@@ -41,6 +41,8 @@ gas_per_tx = 100000000000
 
 [tx_config]
 total_tx_threshold=5
+total_gas_threshold= 10000000
+max_tx_duration = "100s"
 max_gas_per_tx = 10000
 max_timeout = "2s"
 

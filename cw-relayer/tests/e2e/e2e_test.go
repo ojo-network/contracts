@@ -32,9 +32,9 @@ func (s *IntegrationTestSuite) TestCallback() {
 	defer grpcConn.Close()
 
 	queryClient := wasmtypes.NewQueryClient(grpcConn)
-	msg := GetPrice{Request: struct{}{}}
+	//msg := GetPrice{Request: struct{}{}}
 
-	data, err := json.Marshal(msg)
+	data, err := json.Marshal("get_price")
 	s.Require().NoError(err)
 
 	query := wasmtypes.QuerySmartContractStateRequest{
@@ -42,6 +42,21 @@ func (s *IntegrationTestSuite) TestCallback() {
 		QueryData: data,
 	}
 
+	for i := 0; i < 100; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		resp, err := queryClient.SmartContractState(ctx, &query)
+		fmt.Println(err)
+
+		fmt.Println(resp.String())
+
+		if len(resp.String()) == 0 {
+
+			fmt.Println(resp.String())
+			fmt.Println(err)
+		}
+	}
 	s.Require().Eventually(func() bool {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
@@ -50,6 +65,8 @@ func (s *IntegrationTestSuite) TestCallback() {
 		if err != nil {
 			return false
 		}
+
+		fmt.Println(resp.String())
 
 		if len(resp.String()) == 0 {
 

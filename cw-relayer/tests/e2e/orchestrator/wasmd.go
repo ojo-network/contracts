@@ -38,7 +38,7 @@ func (o *Orchestrator) initWasmd() error {
 				fmt.Sprintf("E2E_WASMD_CHAIN_ID=%s", o.wasmChain.chainId),
 				fmt.Sprintf("E2E_WASMD_VAL_MNEMONIC=%s", o.wasmChain.valMnemonic),
 				fmt.Sprintf("E2E_WASMD_VAL_ADDRESSS=%s", o.wasmChain.address),
-				fmt.Sprintf("$E2E_WASMD_USER_MNEMONIC=%s", o.wasmChain.userMnemonic),
+				fmt.Sprintf("E2E_WASMD_USER_MNEMONIC=%s", o.wasmChain.userMnemonic),
 			},
 			ExtraHosts:   []string{"host.docker.internal:host-gateway"},
 			PortBindings: map[docker.Port][]docker.PortBinding{},
@@ -78,7 +78,7 @@ func (o *Orchestrator) initWasmConfigs() (dir string, err error) {
 		return
 	}
 
-	configPath := filepath.Join(dir, "relayer-config.toml")
+	configPath := filepath.Join(dir, "config.toml")
 	config := tmconfig.DefaultConfig()
 	config.P2P.ListenAddress = "tcp://0.0.0.0:26656"
 	config.RPC.ListenAddress = fmt.Sprintf("tcp://0.0.0.0:%s", WASMD_TRPC_PORT)
@@ -152,13 +152,13 @@ func (o *Orchestrator) setGrpcEndpoint() (err error) {
 	return
 }
 
-func (o *Orchestrator) setContractAddress(codeID uint64) error {
+func (o *Orchestrator) getContractAddress(codeID uint64) (string, error) {
 	grpcConn, err := grpc.Dial(
 		o.QueryRpc,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	defer grpcConn.Close()
@@ -171,15 +171,14 @@ func (o *Orchestrator) setContractAddress(codeID uint64) error {
 
 	resp, err := queryClient.ContractsByCode(ctx, &msg)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	if len(resp.Contracts[0]) == 0 {
-		return fmt.Errorf("contract not found")
+	if len(resp.Contracts) == 0 {
+		return "", fmt.Errorf("contract not found")
 	}
 
-	o.ContractAddress = resp.Contracts[0]
-	return nil
+	return resp.Contracts[0], nil
 }
 
 func (o *Orchestrator) deployAndInitContract() error {

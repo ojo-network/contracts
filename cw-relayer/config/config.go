@@ -84,7 +84,7 @@ type (
 		MaxGasLimitPerTx  int64  `mapstructure:"max_gas_per_tx" validate:"required"`
 		TotalGasThreshold uint64 `mapstructure:"total_gas_threshold" validate:"required"`
 		TotalTxThreshold  int    `mapstructure:"total_tx_threshold" validate:"required"`
-		EstimateAndBundle bool   `mapstructure:"estimate_and_bundle" validate:"required"`
+		EstimateAndBundle bool   `mapstructure:"estimate_and_bundle"`
 		MaxTimeout        string `mapstructure:"max_timeout" validate:"required"`
 		MaxTxDuration     string `mapstructure:"max_tx_duration" validate:"required"`
 	}

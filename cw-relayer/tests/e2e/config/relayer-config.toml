@@ -46,8 +46,11 @@ gas_prices = "0.2stake"
 gas_per_tx = 100000000000
 
 [tx_config]
-bundle_size = 4
 max_gas_per_tx = 10000
+total_gas_threshold = 1000000000
+total_tx_threshold = 1
+estimate_and_bundle = false
+max_tx_duration = "100s"
 max_timeout = "2s"
 
 [block_height_config]

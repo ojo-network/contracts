@@ -69,13 +69,13 @@ func (o *Orchestrator) InitDockerResources(t *testing.T) error {
 	}
 
 	t.Log("-> fetching oracle wasm contract address")
-	err = o.setContractAddress(1)
+	o.ContractAddress, err = o.getContractAddress(1)
 	if err != nil {
 		return err
 	}
 
 	t.Log("-> fetching query wasm contract address")
-	err = o.setContractAddress(2)
+	o.QueryContractAddress, err = o.getContractAddress(2)
 	if err != nil {
 		return err
 	}

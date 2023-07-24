@@ -137,8 +137,6 @@ func (b *Txbundle) Bundler(ctx context.Context) error {
 					if err != nil {
 						b.logger.Err(err).Send()
 					}
-
-					b.msgs = []types.Msg{}
 				}
 
 				b.msgs = append(b.msgs, msg)
@@ -149,8 +147,6 @@ func (b *Txbundle) Bundler(ctx context.Context) error {
 					if err != nil {
 						b.logger.Err(err).Send()
 					}
-
-					b.msgs = []types.Msg{}
 				}
 			}
 		}
@@ -158,8 +154,10 @@ func (b *Txbundle) Bundler(ctx context.Context) error {
 }
 
 func (b *Txbundle) broadcast() error {
-	b.logger.Info().Msg("broadcasting txs")
+	b.logger.Info().Int("total tx", len(b.msgs)).Msg("broadcasting txs")
 	err := b.relayerClient.BroadcastTx(b.timeoutHeight, b.msgs...)
+
+	b.msgs = []types.Msg{}
 	if err != nil {
 		return err
 	}

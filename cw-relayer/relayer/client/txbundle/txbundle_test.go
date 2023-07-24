@@ -45,7 +45,9 @@ func TestTxbundle_Bundler_Without_Estimate(t *testing.T) {
 	tx.totalTxThreshold = 100
 	tx.MsgChan = make(chan sdk.Msg, 1000)
 
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	g, _ := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		return tx.Bundler(ctx)
