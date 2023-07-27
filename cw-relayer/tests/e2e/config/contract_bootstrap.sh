@@ -24,18 +24,13 @@ wasmd tx wasm instantiate 1 '{"ping_threshold":"10800"}'  --label test --admin $
 CONTRACT=$($BINARY query wasm list-contract-by-code "1" $NODE --output json | jq -r '.contracts[-1]')
 echo $CONTRACT
 
+
+CHANGE_TRIGGER='{"change_trigger": {"trigger": true}}'
+$BINARY tx wasm execute $CONTRACT "$CHANGE_TRIGGER" --from $wallet --home $HOME $TXFLAG
+
 # deploy price query sample contract
 wasmd tx wasm instantiate 2  '{"contract_address":"'$CONTRACT'"}'  --label test --admin $wallet --from $wallet --home $HOME $TXFLAG
 
 # start requesting prices
 QUERY_CONTRACT=$($BINARY query wasm list-contract-by-code "2" $NODE --output json | jq -r '.contracts[-1]')
 echo $QUERY_CONTRACT
-
-
-REQUEST_RELAY='{"request": {"symbol": "ATOM", "resolve_time": "0","callback_sig":"","callback_data":"somename"}}'
-for i in {1..100000}
-do
-    $BINARY tx wasm execute $QUERY_CONTRACT "$REQUEST_RELAY" --from user --home $HOME $TXFLAG > ./query-contract-test.log 2>&1 &
-done
-
-

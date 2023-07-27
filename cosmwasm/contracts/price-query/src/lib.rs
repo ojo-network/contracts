@@ -7,7 +7,7 @@ use thiserror::Error;
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw2::set_contract_version;
-use cw_storage_plus::Item;
+use cw_storage_plus::{Item, Map};
 
 use price_feed_helper::helper::oracle_submessage;
 use price_feed_helper::verify::*;
@@ -30,7 +30,9 @@ pub struct InitMsg {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(Uint64)]
-    GetPrice,
+    GetPrice{
+        symbol:String,
+    },
 
     #[returns(String)]
     GetRequestId,
@@ -49,7 +51,7 @@ pub struct State {
 
 pub const CONFIG: Item<State> = Item::new(CONFIG_KEY);
 pub const REQUEST: Item<String> = Item::new(REQUEST_KEY);
-pub const PRICE: Item<Uint64> = Item::new(PRICE_KEY);
+pub const PRICE: Map<String,Uint64> = Map::new(PRICE_KEY);
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -85,13 +87,13 @@ pub fn execute(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetPrice => to_binary(&query_request(deps)?),
+        QueryMsg::GetPrice{symbol} => to_binary(&query_request(deps,symbol)?),
         QueryMsg::GetRequestId => to_binary(&REQUEST.load(deps.storage)?),
     }
 }
 
-fn query_request(deps: Deps) -> StdResult<Uint64> {
-    let price = PRICE.may_load(deps.storage)?.unwrap_or(Uint64::zero());
+fn query_request(deps: Deps,symbol: String) -> StdResult<Uint64> {
+    let price = PRICE.may_load(deps.storage,symbol)?.unwrap_or(Uint64::zero());
     Ok(price)
 }
 
@@ -141,7 +143,7 @@ fn execute_callback(
         }));
     }
 
-    PRICE.save(deps.storage, &msg.symbol_rate)?;
+    PRICE.save(deps.storage, msg.symbol.clone(), &msg.symbol_rate)?;
 
     Ok(Response::new()
         .add_attribute("action", "callback")

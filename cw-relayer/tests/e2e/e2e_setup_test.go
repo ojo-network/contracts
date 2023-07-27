@@ -37,6 +37,6 @@ func (s *IntegrationTestSuite) SetupSuite() {
 
 func (s *IntegrationTestSuite) TearDownSuite() {
 	s.T().Log("---> tearing down")
-	//err := s.orchestrator.TearDownDockerResources()
-	//s.Require().NoError(err)
+	err := s.orchestrator.TearDownDockerResources()
+	s.Require().NoError(err)
 }

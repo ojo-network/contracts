@@ -200,6 +200,18 @@ func (o *Orchestrator) addRelayerToContract(contractAddress, valAddress string) 
 	return o.execWasmCmd(msg)
 }
 
+func (o *Orchestrator) RequestPrices(oracleAddress, denom string) error {
+	addMsg := fmt.Sprintf("{\"request\":{\"symbol\":\"%s\",\"resolve_time\":\"0\",\"callback_sig\":\"callback\",\"callback_data\":\"test\"}}", denom)
+	msg := []string{
+		"wasmd", "tx", "wasm", "execute", oracleAddress, addMsg,
+		"--from=user", "-b=block", "--gas-prices=0.25stake", "--keyring-backend=test", "--gas=auto", "--gas-adjustment=1.3", "-y",
+		fmt.Sprintf("--chain-id=%s", o.wasmChain.chainId),
+		"--home=/.wasmd",
+	}
+
+	return o.execWasmCmd(msg)
+}
+
 func (o *Orchestrator) startRelayer(contractAddress string) error {
 	return o.execWasmCmd(
 		[]string{

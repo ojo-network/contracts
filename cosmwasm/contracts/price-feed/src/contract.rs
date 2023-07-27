@@ -228,7 +228,6 @@ fn execute_request_price(
 
 pub fn select_relayer(deps: Deps, blocktime: u64) -> Result<Addr, ContractError> {
     // Get the last selected relayer
-
     let last_relayer = LAST_RELAYER.may_load(deps.storage)?;
     let addr = match &last_relayer {
         Some(addr_str) => deps.api.addr_validate(addr_str)?,

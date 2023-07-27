@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/rs/zerolog"
 
 	"github.com/ojo-network/cw-relayer/relayer/client"
@@ -15,6 +16,7 @@ type UptimeCheck struct {
 	contractAddress string
 	relayerAddress  string
 	relayerClient   client.RelayerClient
+	pingChan        chan types.Msg
 }
 
 func NewUptimePing(
@@ -23,6 +25,7 @@ func NewUptimePing(
 	contractAddress string,
 	timeoutHeight int64,
 	relayer client.RelayerClient,
+	pingChan chan types.Msg,
 ) *UptimeCheck {
 	check := &UptimeCheck{
 		contractAddress: contractAddress,
@@ -30,6 +33,7 @@ func NewUptimePing(
 		timeoutHeight:   timeoutHeight,
 		logger:          logger.With().Str("module", "uptime ping check").Logger(),
 		relayerClient:   relayer,
+		pingChan:        pingChan,
 	}
 
 	return check
@@ -56,5 +60,7 @@ func (c *UptimeCheck) sendPing() error {
 	}
 
 	c.logger.Info().Time("ping check", time.Now()).Msg("ping check")
-	return c.relayerClient.BroadcastTx(c.timeoutHeight, msg)
+	c.pingChan <- msg
+
+	return nil
 }

@@ -23,18 +23,6 @@ type (
 		CallbackData []byte   `json:"callback_data"`
 	}
 
-	CallbackRate struct {
-		Req CallbackData `json:"callback_rate_data"`
-	}
-
-	CallbackMedian struct {
-		Req CallbackDataMedian `json:"callback_rate_median"`
-	}
-
-	CallbackDeviation struct {
-		Req CallbackData `json:"callback_rate_deviation"`
-	}
-
 	Ping struct {
 		Ping struct{} `json:"relayer_ping"`
 	}

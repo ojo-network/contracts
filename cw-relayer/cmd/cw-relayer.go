@@ -165,19 +165,6 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	uptimePing := relayer.NewUptimePing(
-		logger,
-		cfg.Account.Address,
-		cfg.ContractAddress,
-		cfg.Timeout.TimeoutHeight,
-		client,
-	)
-
-	logger.Info().Msg("starting ping service")
-	g.Go(func() error {
-		return uptimePing.StartPing(ctx, pingDuration)
-	})
-
 	// subscribe to new block heights
 	tick, err := relayerclient.NewBlockHeightSubscription(
 		ctx,
@@ -226,6 +213,20 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 
 	g.Go(func() error {
 		return txBundler.Bundler(ctx)
+	})
+
+	uptimePing := relayer.NewUptimePing(
+		logger,
+		cfg.Account.Address,
+		cfg.ContractAddress,
+		cfg.Timeout.TimeoutHeight,
+		client,
+		txBundler.PingChan,
+	)
+
+	logger.Info().Msg("starting ping service")
+	g.Go(func() error {
+		return uptimePing.StartPing(ctx, pingDuration)
 	})
 
 	priceService := relayer.NewPriceService(

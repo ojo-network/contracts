@@ -156,7 +156,7 @@ func (p *PriceService) setDenomPrices(ctx context.Context) error {
 						Timestamp: strconv.Itoa(int(time.Now().Unix())),
 					}
 				} else {
-					p.logger.Err(fmt.Errorf("multiple deviations found"))
+					p.logger.Warn().Msg("multiple deviations found")
 				}
 			}
 

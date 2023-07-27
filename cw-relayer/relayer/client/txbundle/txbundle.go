@@ -30,6 +30,7 @@ type Txbundle struct {
 	estimateAndBundle bool
 	totalTxThreshold  int
 	currentThreshold  uint64
+	PingChan          chan types.Msg
 }
 
 func NewTxBundler(
@@ -47,6 +48,7 @@ func NewTxBundler(
 		maxLimitPerTx:     maxLimitPerTx,
 		logger:            logger.With().Str("module", "tx-bundler").Logger(),
 		MsgChan:           make(chan types.Msg, 1000000),
+		PingChan:          make(chan types.Msg, 1),
 		timeoutDuration:   timeoutDuration,
 		timeoutHeight:     timeoutHeight,
 		relayerClient:     relayerClient,
@@ -97,6 +99,15 @@ func (b *Txbundle) Bundler(ctx context.Context) error {
 				if err != nil {
 					b.logger.Err(err).Send()
 				}
+			}
+		case msg, ok := <-b.PingChan:
+			if !ok {
+				b.logger.Warn().Msg("ping channel closed")
+			}
+
+			err := b.relayerClient.BroadcastTx(b.timeoutHeight, msg)
+			if err != nil {
+				b.logger.Err(err).Send()
 			}
 
 		case msg, ok := <-b.MsgChan:

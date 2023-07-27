@@ -98,14 +98,12 @@ func (r *Relayer) processRequests(ctx context.Context, requests map[string][]cli
 						continue
 					}
 
-					callback := CallbackRate{
-						Req: CallbackData{
-							RequestID:    req.RequestID,
-							Symbol:       denom,
-							SymbolRate:   price.Price,
-							LastUpdated:  price.Timestamp,
-							CallbackData: []byte(req.CallbackData),
-						},
+					callback := CallbackData{
+						RequestID:    req.RequestID,
+						Symbol:       denom,
+						SymbolRate:   price.Price,
+						LastUpdated:  price.Timestamp,
+						CallbackData: []byte(req.CallbackData),
 					}
 
 					msg, err := genMsg(r.relayerAddress, req.EventContractAddress, req.CallbackSig, callback)
@@ -133,14 +131,12 @@ func (r *Relayer) processRequests(ctx context.Context, requests map[string][]cli
 						continue
 					}
 
-					callback := CallbackMedian{
-						Req: CallbackDataMedian{
-							RequestID:    req.RequestID,
-							Symbol:       denom,
-							SymbolRates:  median.Median,
-							LastUpdated:  median.Timestamp,
-							CallbackData: []byte(req.CallbackData),
-						},
+					callback := CallbackDataMedian{
+						RequestID:    req.RequestID,
+						Symbol:       denom,
+						SymbolRates:  median.Median,
+						LastUpdated:  median.Timestamp,
+						CallbackData: []byte(req.CallbackData),
 					}
 
 					msg, err := genMsg(r.relayerAddress, req.EventContractAddress, req.CallbackSig, callback)
@@ -168,14 +164,12 @@ func (r *Relayer) processRequests(ctx context.Context, requests map[string][]cli
 						continue
 					}
 
-					callback := CallbackDeviation{
-						Req: CallbackData{
-							RequestID:    req.RequestID,
-							Symbol:       denom,
-							SymbolRate:   deviation.Deviation,
-							LastUpdated:  deviation.Timestamp,
-							CallbackData: []byte(req.CallbackData),
-						},
+					callback := CallbackData{
+						RequestID:    req.RequestID,
+						Symbol:       denom,
+						SymbolRate:   deviation.Deviation,
+						LastUpdated:  deviation.Timestamp,
+						CallbackData: []byte(req.CallbackData),
 					}
 
 					msg, err := genMsg(r.relayerAddress, req.EventContractAddress, req.CallbackSig, callback)

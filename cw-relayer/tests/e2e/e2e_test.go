@@ -13,7 +13,11 @@ import (
 
 type (
 	GetPrice struct {
-		Request struct{} `json:"get_price"`
+		Denom Symbol `json:"get_price"`
+	}
+
+	Symbol struct {
+		Symbol string `json:"symbol"`
 	}
 )
 
@@ -32,15 +36,18 @@ func (s *IntegrationTestSuite) TestCallback() {
 	defer grpcConn.Close()
 
 	queryClient := wasmtypes.NewQueryClient(grpcConn)
-	//msg := GetPrice{Request: struct{}{}}
+	msg := GetPrice{Denom: Symbol{Symbol: "TEST-0"}}
 
-	data, err := json.Marshal("get_price")
+	data, err := json.Marshal(msg)
 	s.Require().NoError(err)
 
 	query := wasmtypes.QuerySmartContractStateRequest{
 		Address:   s.orchestrator.QueryContractAddress,
 		QueryData: data,
 	}
+
+	err = s.orchestrator.RequestPrices(s.orchestrator.QueryContractAddress, "TEST-0")
+	s.T().Log(err)
 
 	for i := 0; i < 100; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -57,23 +64,4 @@ func (s *IntegrationTestSuite) TestCallback() {
 			fmt.Println(err)
 		}
 	}
-	s.Require().Eventually(func() bool {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-
-		resp, err := queryClient.SmartContractState(ctx, &query)
-		if err != nil {
-			return false
-		}
-
-		fmt.Println(resp.String())
-
-		if len(resp.String()) == 0 {
-
-			fmt.Println(resp.String())
-			fmt.Println(err)
-		}
-
-		return false
-	}, 1*time.Minute, 10*time.Second)
 }

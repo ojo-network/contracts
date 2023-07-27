@@ -1,9 +1,8 @@
+contract_address = "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0phg4d"
+
 max_retries = 10
 ping_duration = "1000s"
 tick_duration = "2s"
-num_bundle = 10
-
-contract_address = "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0phg4d"
 
 ignore_median_errors = false
 tick_event_type = "ojo.oracle.v1.EventSetFxRate"
