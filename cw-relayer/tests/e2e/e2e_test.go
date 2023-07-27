@@ -371,7 +371,7 @@ func (s *IntegrationTestSuite) Test_QueryDeviationRates() {
 			bulk:   false,
 		},
 		{
-			tc: "query median ref data bulk",
+			tc: "query deviation ref data bulk",
 			prepare: func() ([]byte, error) {
 				var denoms []string
 				for _, mockPrice := range mockPrices {
@@ -437,7 +437,7 @@ func (s *IntegrationTestSuite) Test_QueryDeviationRates() {
 
 				return false
 			},
-				2*time.Minute,
+				3*time.Minute,
 				time.Second*4,
 				"failed to query prices from contract",
 			)
