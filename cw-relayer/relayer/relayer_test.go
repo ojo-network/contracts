@@ -82,16 +82,6 @@ func (rts *RelayerTestSuite) Test_generateRelayMsg() {
 			forceRelay: true,
 			msgType:    RelayRate,
 		},
-		{
-			tc:         "Relay deviations",
-			forceRelay: false,
-			msgType:    RelayHistoricalDeviation,
-		},
-		{
-			tc:         "Force Relay deviations",
-			forceRelay: true,
-			msgType:    RelayHistoricalDeviation,
-		},
 	}
 
 	for _, tc := range testCases {
@@ -104,11 +94,9 @@ func (rts *RelayerTestSuite) Test_generateRelayMsg() {
 				err = json.Unmarshal(msg, &expectedMsg)
 				rts.Require().NoError(err)
 
-				var msgKey string
+				msgKey := tc.msgType.String()
 				if tc.forceRelay {
 					msgKey = fmt.Sprintf("force_%s", tc.msgType.String())
-				} else {
-					msgKey = tc.msgType.String()
 				}
 
 				rates := expectedMsg[msgKey].SymbolRates
@@ -139,27 +127,53 @@ func (rts *RelayerTestSuite) Test_generateMedianRelayMsg() {
 		}
 	}
 
-	relayMsg, err := genRateMsgData(false, RelayHistoricalMedian, 0, 0, exchangeRates)
-	rts.Require().NoError(err)
+	testCases := []struct {
+		tc         string
+		forceRelay bool
+		msgType    MsgType
+	}{
+		{
+			tc:         "Median Relay msg",
+			forceRelay: false,
+			msgType:    RelayHistoricalMedian,
+		},
+		{
+			tc:         "Median Force Relay msg",
+			forceRelay: true,
+			msgType:    RelayHistoricalMedian,
+		},
+		{
+			tc:         "Deviation Relay msg",
+			forceRelay: false,
+			msgType:    RelayHistoricalDeviation,
+		},
+		{
+			tc:         "Deviation Force Relay msg",
+			forceRelay: false,
+			msgType:    RelayHistoricalDeviation,
+		},
+	}
 
-	forceRelayMsg, err := genRateMsgData(true, RelayHistoricalMedian, 0, 0, exchangeRates)
-	rts.Require().NoError(err)
+	for _, tc := range testCases {
+		rts.Run(tc.tc, func() {
+			msg, err := genRateMsgData(tc.forceRelay, tc.msgType, 0, 0, exchangeRates)
+			rts.Require().NoError(err)
 
-	for i, msg := range [][]byte{relayMsg, forceRelayMsg} {
-		var expectedMsg map[string]Msg
-		err = json.Unmarshal(msg, &expectedMsg)
-		rts.Require().NoError(err)
+			var expectedMsg map[string]Msg
+			err = json.Unmarshal(msg, &expectedMsg)
+			rts.Require().NoError(err)
 
-		key := RelayHistoricalMedian.String()
-		if i/1 == 1 {
-			key = fmt.Sprintf("force_%s", key)
-		}
+			key := tc.msgType.String()
+			if tc.forceRelay {
+				key = fmt.Sprintf("force_%s", key)
+			}
 
-		rates := expectedMsg[key].SymbolRates
-		rts.Require().Len(rates, 3)
+			rates := expectedMsg[key].SymbolRates
+			rts.Require().Len(rates, 3)
 
-		for _, rate := range rates {
-			rts.Require().Equal(rate[1], rateMap[rate[0].(string)])
-		}
+			for _, rate := range rates {
+				rts.Require().Equal(rate[1], rateMap[rate[0].(string)])
+			}
+		})
 	}
 }

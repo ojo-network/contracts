@@ -1,8 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint64;
 
-use crate::state::{RefData, RefMedianData,RefDeviationData, ReferenceData};
-
 #[cw_serde]
 pub struct InstantiateMsg {}
 
