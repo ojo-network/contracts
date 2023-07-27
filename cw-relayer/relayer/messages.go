@@ -130,42 +130,42 @@ func genRateMsgData(forceRelay bool, msgType MsgType, requestID uint64, resolveT
 		RequestID:   requestID,
 	}
 
-	if msgType != RelayHistoricalMedian {
+	if msgType == RelayRate {
 		for _, rate := range rates {
 			msg.SymbolRates = append(msg.SymbolRates, [2]interface{}{rate.Denom, rate.Amount.Mul(RateFactor).TruncateInt().String()})
 		}
-	}
 
-	switch msgType {
-	case RelayRate:
 		if forceRelay {
 			msgData, err = json.Marshal(MsgForceRelay{Relay: msg})
 		} else {
 			msgData, err = json.Marshal(MsgRelay{Relay: msg})
 		}
 
-	case RelayHistoricalMedian:
-		// collect denom's medians
-		medianRates := map[string][]string{}
+		return
+	} else {
+		symbolRates := map[string][]string{}
 		for _, rate := range rates {
-			medianRates[rate.Denom] = append(medianRates[rate.Denom], rate.Amount.Mul(RateFactor).TruncateInt().String())
+			symbolRates[rate.Denom] = append(symbolRates[rate.Denom], rate.Amount.Mul(RateFactor).TruncateInt().String())
 		}
 
-		for denom, medians := range medianRates {
+		for denom, medians := range symbolRates {
 			msg.SymbolRates = append(msg.SymbolRates, [2]interface{}{denom, medians})
 		}
 
-		if forceRelay {
-			msgData, err = json.Marshal(MsgForceRelayHistoricalMedian{Relay: msg})
-		} else {
-			msgData, err = json.Marshal(MsgRelayHistoricalMedian{Relay: msg})
-		}
+		switch msgType {
+		case RelayHistoricalMedian:
+			if forceRelay {
+				msgData, err = json.Marshal(MsgForceRelayHistoricalMedian{Relay: msg})
+			} else {
+				msgData, err = json.Marshal(MsgRelayHistoricalMedian{Relay: msg})
+			}
 
-	case RelayHistoricalDeviation:
-		if forceRelay {
-			msgData, err = json.Marshal(MsgForceRelayHistoricalDeviation{Relay: msg})
-		} else {
-			msgData, err = json.Marshal(MsgRelayHistoricalDeviation{Relay: msg})
+		case RelayHistoricalDeviation:
+			if forceRelay {
+				msgData, err = json.Marshal(MsgForceRelayHistoricalDeviation{Relay: msg})
+			} else {
+				msgData, err = json.Marshal(MsgRelayHistoricalDeviation{Relay: msg})
+			}
 		}
 	}
 

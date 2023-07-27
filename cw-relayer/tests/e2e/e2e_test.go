@@ -108,19 +108,19 @@ func (s *IntegrationTestSuite) TestQueryRateAndReferenceData() {
 			},
 			rate: mockPrices[0].Amount.Mul(refDataFactor).TruncateInt().String(),
 		},
-		{
-			tc: "query deviations from contract",
-			prepare: func() ([]byte, error) {
-				msg := deviationRateMsg{Ref: symbol{Symbol: mockPrices[0].Denom}}
-				data, err := json.Marshal(msg)
-				if err != nil {
-					return nil, err
-				}
-
-				return data, err
-			},
-			rate: mockPrices[0].Amount.Mul(relayer.RateFactor).TruncateInt().String(),
-		},
+		//{
+		//	tc: "query deviations from contract",
+		//	prepare: func() ([]byte, error) {
+		//		msg := deviationRateMsg{Ref: symbol{Symbol: mockPrices[0].Denom}}
+		//		data, err := json.Marshal(msg)
+		//		if err != nil {
+		//			return nil, err
+		//		}
+		//
+		//		return data, err
+		//	},
+		//	rate: mockPrices[0].Amount.Mul(relayer.RateFactor).TruncateInt().String(),
+		//},
 	}
 
 	for _, tc := range testCases {

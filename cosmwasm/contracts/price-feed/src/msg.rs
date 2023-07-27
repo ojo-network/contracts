@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint64;
 
-use crate::state::{RefData, RefMedianData, ReferenceData};
+use crate::state::{RefData, RefMedianData,RefDeviationData, ReferenceData};
 
 #[cw_serde]
 pub struct InstantiateMsg {}
@@ -59,7 +59,7 @@ pub enum ExecuteMsg {
     },
     // Relays a vector of symbols and their corresponding rates
     RelayHistoricalDeviation {
-        symbol_rates: Vec<(String, Uint64)>,
+        symbol_rates: Vec<(String, Vec<Uint64>)>,
         resolve_time: Uint64,
         // Request ID of the results on Ojo
         request_id: Uint64,
@@ -78,7 +78,7 @@ pub enum ExecuteMsg {
     },
     // Relays a vector of symbols and their corresponding deviations
     ForceRelayHistoricalDeviation {
-        symbol_rates: Vec<(String, Uint64)>,
+        symbol_rates: Vec<(String, Vec<Uint64>)>,
         resolve_time: Uint64,
         // Request ID of the results on Ojo
         request_id: Uint64,
@@ -133,14 +133,14 @@ pub enum QueryMsg {
         // Vector of Symbols to query
         symbols: Vec<String>,
     },
-    #[returns(RefData)]
+    #[returns(RefDeviationData)]
     // Returns the deviation RefData of a given symbol
     GetDeviationRef {
         // Symbol to query
         symbol: String,
     },
 
-    #[returns(Vec < RefData >)]
+    #[returns(Vec < RefDeviationData >)]
     // Returns the deviation RefData of the given symbols
     GetDeviationRefBulk {
         // Vector of Symbols to query
