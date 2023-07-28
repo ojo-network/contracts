@@ -21,7 +21,7 @@ func (m SecretMsg) Serialize() []byte {
 	return append(m.CodeHash, m.Msg...)
 }
 
-func (msg MsgExecuteContract) ValidateBasic() error {
+func (msg *MsgExecuteContract) ValidateBasic() error {
 	if err := sdk.VerifyAddressFormat(msg.Sender); err != nil {
 		return err
 	}
@@ -30,12 +30,12 @@ func (msg MsgExecuteContract) ValidateBasic() error {
 	}
 
 	if !msg.SentFunds.IsValid() {
-		return sdkerrors.Wrap(sdkerrors.ErrInvalidCoins, "sentFunds")
+		return sdkerrors.Wrap(sdkerrors.ErrInvalidCoins, "sentFunds") //nolint
 	}
 
 	return nil
 }
 
-func (msg MsgExecuteContract) GetSigners() []sdk.AccAddress {
+func (msg *MsgExecuteContract) GetSigners() []sdk.AccAddress {
 	return []sdk.AccAddress{msg.Sender}
 }

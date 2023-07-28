@@ -1076,16 +1076,14 @@ mod tests {
                 .map(|r| Uint64::new(*r))
                 .collect::<Vec<Uint64>>();
 
-
             let symbol_rates: Vec<(String, Vec<Uint64>)> = symbols
                 .iter()
                 .zip(std::iter::repeat(deviations.clone()))
                 .map(|(s, r)| (s.to_owned(), r))
                 .collect();
 
-
             let msg = ForceRelayHistoricalDeviation {
-                symbol_rates:symbol_rates.clone(),
+                symbol_rates: symbol_rates.clone(),
                 resolve_time: Uint64::from(100u64),
                 request_id: Uint64::from(2u64),
             };
@@ -1099,13 +1097,11 @@ mod tests {
                 .map(|r| Uint64::new(*r))
                 .collect::<Vec<Uint64>>();
 
-
             let forced_deviation_symbol_rates: Vec<(String, Vec<Uint64>)> = symbols
                 .iter()
                 .zip(std::iter::repeat(forced_deviations.clone()))
                 .map(|(s, r)| (s.to_owned(), r))
                 .collect();
-
 
             let msg = ForceRelayHistoricalDeviation {
                 symbol_rates: forced_deviation_symbol_rates.clone(),
@@ -1118,7 +1114,10 @@ mod tests {
             let reference_datas =
                 query_deviation_ref_bulk(deps.as_ref(), &symbols.clone()).unwrap();
 
-            for (expected, actual) in forced_deviation_symbol_rates.iter().zip(reference_datas.iter()) {
+            for (expected, actual) in forced_deviation_symbol_rates
+                .iter()
+                .zip(reference_datas.iter())
+            {
                 assert_eq!(expected.1, actual.rates)
             }
         }

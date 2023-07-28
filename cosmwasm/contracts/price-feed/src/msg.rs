@@ -3,7 +3,7 @@ use cosmwasm_std::Uint64;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::state::{RefData, RefMedianData, ReferenceData};
+use crate::state::{RefData, RefMedianData, ReferenceData,RefDeviationData};
 
 #[cw_serde]
 pub struct InstantiateMsg {}
@@ -135,14 +135,14 @@ pub enum QueryMsg {
         // Vector of Symbols to query
         symbols: Vec<String>,
     },
-    #[returns(RefData)]
+    #[returns(RefDeviationData)]
     // Returns the deviation RefData of a given symbol
     GetDeviationRef {
         // Symbol to query
         symbol: String,
     },
 
-    #[returns(Vec < RefData >)]
+    #[returns(Vec < RefDeviationData >)]
     // Returns the deviation RefData of the given symbols
     GetDeviationRefBulk {
         // Vector of Symbols to query

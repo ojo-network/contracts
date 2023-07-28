@@ -236,7 +236,7 @@ func (oc RelayerClient) BroadcastContractQuery(
 	timeout time.Duration,
 	queries ...SmartQuery,
 ) ([]QueryResponse, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	g, _ := errgroup.WithContext(ctx)
