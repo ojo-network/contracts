@@ -1,2 +1,5 @@
 cosmwasm/*
 cw-relayer/build
+
+# ide files
+.idea

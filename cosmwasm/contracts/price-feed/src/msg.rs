@@ -61,7 +61,7 @@ pub enum ExecuteMsg {
     },
     // Relays a vector of symbols and their corresponding rates
     RelayHistoricalDeviation {
-        symbol_rates: Vec<(String, Uint64)>,
+        symbol_rates: Vec<(String, Vec<Uint64>)>,
         resolve_time: Uint64,
         // Request ID of the results on Ojo
         request_id: Uint64,
@@ -80,7 +80,7 @@ pub enum ExecuteMsg {
     },
     // Relays a vector of symbols and their corresponding deviations
     ForceRelayHistoricalDeviation {
-        symbol_rates: Vec<(String, Uint64)>,
+        symbol_rates: Vec<(String, Vec<Uint64>)>,
         resolve_time: Uint64,
         // Request ID of the results on Ojo
         request_id: Uint64,

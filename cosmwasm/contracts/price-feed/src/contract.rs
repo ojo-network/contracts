@@ -1,6 +1,9 @@
 use crate::errors::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg,QueryMsg};
-use crate::state::{RefData, RefStore, ReferenceData, WhitelistedRelayers, ADMIN, RELAYERS, RefMedianData, RefMedianStore, MEDIANSTATUS, RefDeviationStore};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::state::{
+    RefData, RefDeviationData, RefDeviationStore, RefMedianData, RefMedianStore, RefStore,
+    ReferenceData, WhitelistedRelayers, ADMIN, MEDIANSTATUS, RELAYERS,
+};
 use cosmwasm_std::{
     entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
     StdResult, Uint256, Uint64,
@@ -21,7 +24,7 @@ pub fn instantiate(
     let admin = info.sender;
 
     ADMIN.save(deps.storage, &admin.clone())?;
-    MEDIANSTATUS.save(deps.storage,&true)?;
+    MEDIANSTATUS.save(deps.storage, &true)?;
 
     Ok(Response::default())
 }
@@ -254,7 +257,7 @@ fn execute_force_relay_historical_median(
 fn execute_relay_historical_deviation(
     deps: DepsMut,
     info: MessageInfo,
-    symbol_rates: Vec<(String, Uint64)>,
+    symbol_rates: Vec<(String, Vec<Uint64>)>,
     resolve_time: Uint64,
     request_id: Uint64,
 ) -> Result<Response, ContractError> {
@@ -267,7 +270,7 @@ fn execute_relay_historical_deviation(
     }
 
     // Saves price data
-    for (symbol, rate) in symbol_rates {
+    for (symbol, rates) in symbol_rates {
         if let Some(existing_refdata) = RefDeviationStore::load(deps.storage, &symbol) {
             if existing_refdata.resolve_time >= resolve_time {
                 continue;
@@ -277,7 +280,7 @@ fn execute_relay_historical_deviation(
         RefDeviationStore::save(
             deps.storage,
             &symbol,
-            &RefData::new(rate, resolve_time, request_id),
+            &RefDeviationData::new(rates, resolve_time, request_id),
         )?
     }
 
@@ -287,7 +290,7 @@ fn execute_relay_historical_deviation(
 fn execute_force_relay_historical_deviation(
     deps: DepsMut,
     info: MessageInfo,
-    symbol_rates: Vec<(String, Uint64)>,
+    symbol_rates: Vec<(String, Vec<Uint64>)>,
     resolve_time: Uint64,
     request_id: Uint64,
 ) -> Result<Response, ContractError> {
@@ -300,11 +303,11 @@ fn execute_force_relay_historical_deviation(
     }
 
     // Saves price data
-    for (symbol, rate) in symbol_rates {
+    for (symbol, rates) in symbol_rates {
         RefDeviationStore::save(
             deps.storage,
             &symbol,
-            &RefData::new(rate, resolve_time, request_id),
+            &RefDeviationData::new(rates, resolve_time, request_id),
         )?
     }
 
@@ -387,13 +390,13 @@ fn assert_admin(config_admin: &Addr, account: &Addr) -> Result<(), ContractError
 // can only support USD
 fn query_median_ref(deps: Deps, symbol: &str) -> StdResult<RefMedianData> {
     if !MEDIANSTATUS.load(deps.storage)? {
-        return Err(StdError::generic_err ("MEDIAN DISABLED"));
+        return Err(StdError::generic_err("MEDIAN DISABLED"));
     }
 
     if symbol == "USD" {
         Ok(RefMedianData::new(vec![E9], Uint64::MAX, Uint64::zero()))
     } else {
-       let data = RefMedianStore::load(deps.storage, symbol);
+        let data = RefMedianStore::load(deps.storage, symbol);
         data.ok_or(StdError::not_found("std_reference::state::RefData"))
     }
 }
@@ -405,9 +408,9 @@ fn query_median_ref_data_bulk(deps: Deps, symbols: &[String]) -> StdResult<Vec<R
         .collect()
 }
 
-fn query_deviation_ref(deps: Deps, symbol: &str) -> StdResult<RefData> {
+fn query_deviation_ref(deps: Deps, symbol: &str) -> StdResult<RefDeviationData> {
     if symbol == "USD" {
-        Ok(RefData::new(E0, Uint64::MAX, Uint64::zero()))
+        Ok(RefDeviationData::new(vec![E0], Uint64::MAX, Uint64::zero()))
     } else {
         let data = RefDeviationStore::load(deps.storage, symbol);
         data.ok_or(StdError::not_found("std_reference::state::RefData"))
@@ -502,7 +505,10 @@ mod tests {
 
         // use cw_controllers::AdminError;
 
-        use crate::msg::ExecuteMsg::{AddRelayers, ForceRelay, Relay,RelayHistoricalMedian,RelayHistoricalDeviation, RemoveRelayers, UpdateAdmin, ForceRelayHistoricalMedian,ForceRelayHistoricalDeviation};
+        use crate::msg::ExecuteMsg::{
+            AddRelayers, ForceRelay, ForceRelayHistoricalDeviation, ForceRelayHistoricalMedian,
+            Relay, RelayHistoricalDeviation, RelayHistoricalMedian, RemoveRelayers, UpdateAdmin,
+        };
 
         use super::*;
 
@@ -942,10 +948,7 @@ mod tests {
             // Check if relay was successful
             let err = query_median_ref_data_bulk(deps.as_ref(), &symbols.clone()).unwrap_err();
 
-            assert_eq!(
-                err,
-                StdError::generic_err ("MEDIAN DISABLED")
-            );
+            assert_eq!(err, StdError::generic_err("MEDIAN DISABLED"));
         }
 
         #[test]

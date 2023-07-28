@@ -31,12 +31,11 @@ pub static REFDATA: Keymap<String, RefData> = Keymap::new(REFDATA_KEY);
 
 // Used to store Deviation data
 pub const DEVIATIONDATA_KEY: &[u8] = b"deviationdata";
-pub static DEVIATIONDATA: Keymap<String, RefData> = Keymap::new(DEVIATIONDATA_KEY);
+pub static DEVIATIONDATA: Keymap<String, RefDeviationData> = Keymap::new(DEVIATIONDATA_KEY);
 
 // Stores Median status
-pub const MEDIANSTATUS_KEY: &[u8]= b"medianstatus";
-pub static MEDIANSTATUS: Item<bool>= Item::new(MEDIANSTATUS_KEY);
-
+pub const MEDIANSTATUS_KEY: &[u8] = b"medianstatus";
+pub static MEDIANSTATUS: Item<bool> = Item::new(MEDIANSTATUS_KEY);
 
 // Used to store Median data
 pub const MEDIANDATA_KEY: &[u8] = b"mediandata";
@@ -62,6 +61,26 @@ impl RefData {
     }
 }
 
+#[derive(Serialize, Debug, Deserialize, Clone, PartialEq, Eq, Default, schemars::JsonSchema)]
+pub struct RefDeviationData {
+    // Rate of an asset relative to USD
+    pub rates: Vec<Uint64>,
+    // The resolve time of the request ID
+    pub resolve_time: Uint64,
+    // The request ID where the rate was derived from
+    pub request_id: Uint64,
+}
+
+impl RefDeviationData {
+    pub fn new(rates: Vec<Uint64>, resolve_time: Uint64, request_id: Uint64) -> Self {
+        RefDeviationData {
+            rates,
+            resolve_time,
+            request_id,
+        }
+    }
+}
+
 pub struct RefStore {}
 impl RefStore {
     pub fn load(store: &dyn Storage, symbol: &str) -> Option<RefData> {
@@ -76,15 +95,14 @@ impl RefStore {
 // store deviation data
 pub struct RefDeviationStore {}
 impl RefDeviationStore {
-    pub fn load(store: &dyn Storage, symbol: &str) -> Option<RefData> {
+    pub fn load(store: &dyn Storage, symbol: &str) -> Option<RefDeviationData> {
         DEVIATIONDATA.get(store, &String::from(symbol.clone()))
     }
 
-    pub fn save(store: &mut dyn Storage, symbol: &str, data: &RefData) -> StdResult<()> {
+    pub fn save(store: &mut dyn Storage, symbol: &str, data: &RefDeviationData) -> StdResult<()> {
         DEVIATIONDATA.insert(store, &String::from(symbol.clone()), data)
     }
 }
-
 
 #[derive(Serialize, Debug, Deserialize, Clone, PartialEq, Eq, Default, schemars::JsonSchema)]
 pub struct RefMedianData {
@@ -96,7 +114,7 @@ pub struct RefMedianData {
     pub request_id: Uint64,
 }
 
-impl RefMedianData{
+impl RefMedianData {
     pub fn new(rates: Vec<Uint64>, resolve_time: Uint64, request_id: Uint64) -> Self {
         RefMedianData {
             rates,
@@ -107,7 +125,7 @@ impl RefMedianData{
 }
 
 // stores median data
-pub struct RefMedianStore{}
+pub struct RefMedianStore {}
 impl RefMedianStore {
     pub fn load(store: &dyn Storage, symbol: &str) -> Option<RefMedianData> {
         MEDIANDATA.get(store, &String::from(symbol.clone()))
