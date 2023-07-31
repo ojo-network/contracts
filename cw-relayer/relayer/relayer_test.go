@@ -88,7 +88,7 @@ func (rts *RelayerTestSuite) SetupMockPriceService() *PriceService {
 		}
 
 		mockService.deviationRates[denom] = Deviation{
-			Deviation: strconv.Itoa(price),
+			Deviation: []string{strconv.Itoa(price)},
 			Timestamp: rts.timestamp,
 		}
 
@@ -166,7 +166,7 @@ func (rts *RelayerTestSuite) Test_processRequests() {
 			rts.Require().Equal(data.LastUpdated, rate.Timestamp)
 			total += 1
 
-		case CallbackDataMedian:
+		case CallbackDataHistorical:
 			data := callback
 			request := rts.requestMap[data.Symbol][data.RequestID]
 			rate := rts.priceService.medianRates[data.Symbol]
@@ -205,7 +205,7 @@ func parseAndCheck(msg map[string]interface{}) (interface{}, error) {
 
 			return callback, nil
 		} else {
-			var callback CallbackDataMedian
+			var callback CallbackDataHistorical
 			err = json.Unmarshal(data, &callback)
 			if err != nil {
 				return nil, err
