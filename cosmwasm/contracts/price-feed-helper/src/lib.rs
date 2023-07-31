@@ -58,7 +58,7 @@ pub mod RequestRelay {
     pub struct CallbackRateDeviation {
         pub request_id: String,
         pub symbol: String,
-        pub symbol_rate: Uint64,
+        pub symbol_rates: Vec<Uint64>,
         pub last_updated: Uint64,
         pub callback_data: Binary,
     }

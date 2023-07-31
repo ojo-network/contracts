@@ -49,7 +49,7 @@ type Price struct {
 }
 
 type Deviation struct {
-	Deviation string
+	Deviation []string
 	Timestamp string
 }
 
@@ -156,13 +156,14 @@ func (p *PriceService) setDenomPrices(ctx context.Context) error {
 			for _, priceStamp := range deviationsQueryResponse.MedianDeviations {
 				denom := priceStamp.ExchangeRate.Denom
 				amount := priceStamp.ExchangeRate.Amount.Mul(RateFactor).TruncateInt()
-				if _, found := deviations[denom]; !found {
+				if deviation, found := deviations[denom]; !found {
 					deviations[denom] = Deviation{
-						Deviation: amount.String(),
+						Deviation: []string{amount.String()},
 						Timestamp: strconv.Itoa(int(time.Now().Unix())),
 					}
 				} else {
-					p.logger.Warn().Msg("multiple deviations found")
+					deviation.Deviation = append(deviation.Deviation, amount.String())
+					deviations[denom] = deviation
 				}
 			}
 

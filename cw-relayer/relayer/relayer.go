@@ -65,7 +65,6 @@ func (r *Relayer) Start(ctx context.Context) error {
 			r.closer.Close()
 
 		case <-ticker.C:
-			r.logger.Info().Msg("contract events")
 			getRequests := r.cs.GetPriceRequest()
 			if len(getRequests) > 0 {
 				r.logger.Info().Int("total requests", len(getRequests)).Msg("process requests")
@@ -131,7 +130,7 @@ func (r *Relayer) processRequests(ctx context.Context, requests map[string][]cli
 						continue
 					}
 
-					callback := CallbackDataMedian{
+					callback := CallbackDataHistorical{
 						RequestID:    req.RequestID,
 						Symbol:       denom,
 						SymbolRates:  median.Median,
@@ -164,10 +163,10 @@ func (r *Relayer) processRequests(ctx context.Context, requests map[string][]cli
 						continue
 					}
 
-					callback := CallbackData{
+					callback := CallbackDataHistorical{
 						RequestID:    req.RequestID,
 						Symbol:       denom,
-						SymbolRate:   deviation.Deviation,
+						SymbolRates:  deviation.Deviation,
 						LastUpdated:  deviation.Timestamp,
 						CallbackData: []byte(req.CallbackData),
 					}

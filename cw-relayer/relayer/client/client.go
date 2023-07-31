@@ -147,7 +147,7 @@ func (r *passReader) Read(p []byte) (n int, err error) {
 // BroadcastTx attempts to broadcast a signed transaction. If it fails, a few re-attempts
 // will be made until the transaction succeeds or ultimately times out or fails.
 func (oc RelayerClient) BroadcastTx(timeoutHeight int64, msgs ...sdk.Msg) error {
-	//since := time.Now()
+	since := time.Now()
 	nextBlockHeight, err := oc.ChainHeight.GetChainHeight()
 	if err != nil {
 		return nil
@@ -173,9 +173,9 @@ func (oc RelayerClient) BroadcastTx(timeoutHeight int64, msgs ...sdk.Msg) error 
 			return err
 		}
 
-		//if time.Since(since).Seconds() > oc.maxTxDuration.Seconds() {
-		//	return fmt.Errorf("max tx duration timeout while broadcasting tx")
-		//}
+		if time.Since(since).Seconds() > oc.maxTxDuration.Seconds() {
+			return fmt.Errorf("max tx duration timeout while broadcasting tx")
+		}
 
 		if latestBlockHeight <= lastCheckHeight {
 			continue

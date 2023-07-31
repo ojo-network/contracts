@@ -15,7 +15,7 @@ type (
 		CallbackData []byte `json:"callback_data"`
 	}
 
-	CallbackDataMedian struct {
+	CallbackDataHistorical struct {
 		RequestID    string   `json:"request_id"`
 		Symbol       string   `json:"symbol"`
 		SymbolRates  []string `json:"symbol_rates"`

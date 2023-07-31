@@ -8,6 +8,8 @@ import (
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	"github.com/ojo-network/cw-relayer/tests/e2e/orchestrator"
 )
 
 type (
@@ -68,7 +70,7 @@ func (s *IntegrationTestSuite) TestCallback() {
 
 	s.Require().Eventually(
 		func() bool {
-			err = s.orchestrator.RequestPrices(s.orchestrator.QueryContractAddress, "TEST-0")
+			err = s.orchestrator.RequestMsg(orchestrator.Price, s.orchestrator.QueryContractAddress, "TEST-0")
 			if err != nil {
 				return false
 			}
