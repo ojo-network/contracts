@@ -5,7 +5,7 @@ type Chain struct {
 	chainId      string
 	valMnemonic  string
 	userMnemonic string
-	address      string
+	Address      string
 }
 
 // NewChain returns instance of Chain with set chain id, a random validator mnemonic and address.
@@ -22,6 +22,6 @@ func NewChain(chainId string) *Chain {
 		chainId:      chainId,
 		valMnemonic:  mnemonic,
 		userMnemonic: userMnemonic,
-		address:      address.String(),
+		Address:      address.String(),
 	}
 }

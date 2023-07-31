@@ -1,7 +1,7 @@
 contract_address = "$CONTRACT_ADDRESS"
 
 max_retries = 10
-ping_duration = "1000s"
+ping_duration = "10s"
 tick_duration = "2s"
 
 ignore_median_errors = false

@@ -53,7 +53,6 @@ func TestValidate(t *testing.T) {
 			MaxRetries:         3,
 			PingDuration:       "5s",
 			TickDuration:       "1s",
-			NumBundle:          10,
 			ContractAddress:    "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0phg4d",
 			IgnoreMedianErrors: true,
 			TickEventType:      "NewBlock",

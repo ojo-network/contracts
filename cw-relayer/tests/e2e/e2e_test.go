@@ -3,7 +3,6 @@ package e2e
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
@@ -13,18 +12,29 @@ import (
 
 type (
 	GetPrice struct {
-		Denom Symbol `json:"get_price"`
+		SymbolRequested Symbol `json:"get_price"`
 	}
 
 	Symbol struct {
 		Symbol string `json:"symbol"`
 	}
+
+	LastPing struct {
+		Relayer Relayer `json:"last_ping"`
+	}
+
+	Relayer struct {
+		Relayer string `json:"relayer"`
+	}
 )
 
-var (
-// used to convert rate from reference data queries to USD
-// refDataFactor = types.NewDec(10).Power(18)
-)
+func (s *IntegrationTestSuite) generateQuery(symbol string) wasmtypes.QuerySmartContractStateRequest {
+	data, _ := json.Marshal(GetPrice{SymbolRequested: Symbol{Symbol: symbol}})
+	return wasmtypes.QuerySmartContractStateRequest{
+		Address:   s.orchestrator.QueryContractAddress,
+		QueryData: data,
+	}
+}
 
 func (s *IntegrationTestSuite) TestCallback() {
 	grpcConn, err := grpc.Dial(
@@ -36,32 +46,55 @@ func (s *IntegrationTestSuite) TestCallback() {
 	defer grpcConn.Close()
 
 	queryClient := wasmtypes.NewQueryClient(grpcConn)
-	msg := GetPrice{Denom: Symbol{Symbol: "TEST-0"}}
 
-	data, err := json.Marshal(msg)
+	// fetch last ping for the relayer
+	lastPingData, err := json.Marshal(LastPing{Relayer: Relayer{Relayer: s.orchestrator.WasmChain.Address}})
 	s.Require().NoError(err)
 
-	query := wasmtypes.QuerySmartContractStateRequest{
-		Address:   s.orchestrator.QueryContractAddress,
-		QueryData: data,
-	}
+	s.Require().Eventually(
+		func() bool {
+			pingQuery := wasmtypes.QuerySmartContractStateRequest{Address: s.orchestrator.ContractAddress, QueryData: lastPingData}
+			resp, err := queryClient.SmartContractState(context.Background(), &pingQuery)
+			if err != nil {
+				return false
+			}
 
-	err = s.orchestrator.RequestPrices(s.orchestrator.QueryContractAddress, "TEST-0")
-	s.T().Log(err)
+			if len(resp.String()) > 0 {
+				return true
+			}
 
-	for i := 0; i < 100; i++ {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
+			return false
+		}, 2*time.Minute, 20*time.Second)
 
-		resp, err := queryClient.SmartContractState(ctx, &query)
-		fmt.Println(err)
+	s.Require().Eventually(
+		func() bool {
+			err = s.orchestrator.RequestPrices(s.orchestrator.QueryContractAddress, "TEST-0")
+			if err != nil {
+				return false
+			}
 
-		fmt.Println(resp.String())
+			query := s.generateQuery("TEST-0")
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
 
-		if len(resp.String()) == 0 {
+			resp, err := queryClient.SmartContractState(ctx, &query)
+			if err != nil || len(resp.String()) == 0 {
+				return false
+			}
 
-			fmt.Println(resp.String())
-			fmt.Println(err)
-		}
-	}
+			var rate string
+			err = json.Unmarshal(resp.Data, &rate)
+			if err != nil {
+				return false
+			}
+
+			if rate != "0" {
+				return true
+			}
+
+			return false
+
+		},
+		7*time.Minute, 20*time.Second,
+		"relayer request and callback failed")
 }

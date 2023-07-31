@@ -27,7 +27,7 @@ func (o *Orchestrator) initWasmd() error {
 		return err
 	}
 
-	o.wasmChain = NewChain("test-wasm")
+	o.WasmChain = NewChain("test-wasm")
 
 	o.wasmdResource, err = o.dockerPool.RunWithOptions(
 		&dockertest.RunOptions{
@@ -35,10 +35,10 @@ func (o *Orchestrator) initWasmd() error {
 			Repository: WASMD_IMAGE_REPO,
 			NetworkID:  o.dockerNetwork.Network.ID,
 			Env: []string{
-				fmt.Sprintf("E2E_WASMD_CHAIN_ID=%s", o.wasmChain.chainId),
-				fmt.Sprintf("E2E_WASMD_VAL_MNEMONIC=%s", o.wasmChain.valMnemonic),
-				fmt.Sprintf("E2E_WASMD_VAL_ADDRESSS=%s", o.wasmChain.address),
-				fmt.Sprintf("E2E_WASMD_USER_MNEMONIC=%s", o.wasmChain.userMnemonic),
+				fmt.Sprintf("E2E_WASMD_CHAIN_ID=%s", o.WasmChain.chainId),
+				fmt.Sprintf("E2E_WASMD_VAL_MNEMONIC=%s", o.WasmChain.valMnemonic),
+				fmt.Sprintf("E2E_WASMD_VAL_ADDRESSS=%s", o.WasmChain.Address),
+				fmt.Sprintf("E2E_WASMD_USER_MNEMONIC=%s", o.WasmChain.userMnemonic),
 			},
 			ExtraHosts:   []string{"host.docker.internal:host-gateway"},
 			PortBindings: map[docker.Port][]docker.PortBinding{},
@@ -134,7 +134,7 @@ func (o *Orchestrator) execWasmCmd(command []string) (err error) {
 		if strings.Contains(errOutput, "gas estimate") {
 			return nil
 		}
-		err = fmt.Errorf("error executing command %s", strings.Join(command, " "))
+		err = fmt.Errorf("error executing command %s with error %s", strings.Join(command, " "), errOutput)
 	}
 
 	return err
@@ -193,19 +193,19 @@ func (o *Orchestrator) addRelayerToContract(contractAddress, valAddress string) 
 	msg := []string{
 		"wasmd", "tx", "wasm", "execute", contractAddress, addMsg,
 		"--from=val", "-b=block", "--gas-prices=0.25stake", "--keyring-backend=test", "--gas=auto", "--gas-adjustment=1.3", "-y",
-		fmt.Sprintf("--chain-id=%s", o.wasmChain.chainId),
-		fmt.Sprintf("--home=/data/%s", o.wasmChain.chainId),
+		fmt.Sprintf("--chain-id=%s", o.WasmChain.chainId),
+		fmt.Sprintf("--home=/data/%s", o.WasmChain.chainId),
 	}
 
 	return o.execWasmCmd(msg)
 }
 
 func (o *Orchestrator) RequestPrices(oracleAddress, denom string) error {
-	addMsg := fmt.Sprintf("{\"request\":{\"symbol\":\"%s\",\"resolve_time\":\"0\",\"callback_sig\":\"callback\",\"callback_data\":\"test\"}}", denom)
+	addMsg := fmt.Sprintf("{\"request\":{\"symbol\":\"%s\",\"resolve_time\":\"0\",\"callback_sig\":\"\",\"callback_data\":\"test\"}}", denom)
 	msg := []string{
 		"wasmd", "tx", "wasm", "execute", oracleAddress, addMsg,
 		"--from=user", "-b=block", "--gas-prices=0.25stake", "--keyring-backend=test", "--gas=auto", "--gas-adjustment=1.3", "-y",
-		fmt.Sprintf("--chain-id=%s", o.wasmChain.chainId),
+		fmt.Sprintf("--chain-id=%s", o.WasmChain.chainId),
 		"--home=/.wasmd",
 	}
 

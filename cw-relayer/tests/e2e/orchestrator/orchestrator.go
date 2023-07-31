@@ -25,7 +25,7 @@ type Orchestrator struct {
 
 	wasmdResource *dockertest.Resource
 	wasmRPC       *rpchttp.HTTP
-	wasmChain     *Chain
+	WasmChain     *Chain
 
 	QueryRpc             string
 	ContractAddress      string
@@ -81,7 +81,7 @@ func (o *Orchestrator) InitDockerResources(t *testing.T) error {
 	}
 
 	t.Log("-> adding Relayer to contract")
-	err = o.addRelayerToContract(o.ContractAddress, o.wasmChain.address)
+	err = o.addRelayerToContract(o.ContractAddress, o.WasmChain.Address)
 	if err != nil {
 		return err
 	}

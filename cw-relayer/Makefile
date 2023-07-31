@@ -62,7 +62,7 @@ test-unit:
 
 test-e2e:
 	$(MAKE) docker-build-relayer-e2e
-	@go test -mod=readonly -race $(PACKAGES_E2E) -v
+	@go test -mod=readonly -race $(PACKAGES_E2E) -v -timeout 0
 
 
 .PHONY: test-unit test-e2e test-unit

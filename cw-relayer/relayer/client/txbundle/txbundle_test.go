@@ -19,14 +19,17 @@ import (
 func generateMockMessages(n int) []sdk.Msg {
 	msgs := make([]sdk.Msg, n)
 	for i := 0; i < n; i++ {
-		msgData, _ := json.Marshal(relayer.CallbackRate{Req: relayer.CallbackData{
+		msg := relayer.CallbackData{
 			RequestID:    strconv.Itoa(i),
 			Symbol:       fmt.Sprintf("TEST-%v", i),
 			SymbolRate:   strconv.Itoa(i * 100),
 			LastUpdated:  strconv.Itoa(time.Now().Second()),
 			CallbackData: []byte("testcallback"),
-		}})
+		}
+		execute := make(map[string]interface{})
+		execute["callback"] = msg
 
+		msgData, _ := json.Marshal(execute)
 		msgs[i] = &wasmtypes.MsgExecuteContract{
 			Sender:   "sender",
 			Contract: "contact",

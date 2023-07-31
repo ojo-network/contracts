@@ -121,9 +121,15 @@ func (p *PriceService) setDenomPrices(ctx context.Context) error {
 
 	queryResponse, err := queryClient.ExchangeRates(ctx, &oracletypes.QueryExchangeRates{})
 	// assuming an issue with rpc if exchange rates are empty
+
 	if err != nil || queryResponse.ExchangeRates.Empty() {
 		p.logger.Debug().Msg("error querying exchange rates")
 		p.increment()
+		if p.queryRetries > p.maxQueryRetries {
+			p.queryRetries = 0
+			return err
+		}
+
 		return p.setDenomPrices(ctx)
 	}
 
