@@ -15,3 +15,7 @@ each msg above has a forced version which ignores the resolve duration present i
 #### Median Duration
 - median duration determines how frequently median prices are posted to the contract
 - if median duration is set to 0, then median prices are not posted to the contract
+
+### Links to other supported implementations
+- [Secret Network](https://github.com/ojo-network/contracts/tree/secret)
+- [Evm](https://github.com/ojo-network/contracts/tree/evm)

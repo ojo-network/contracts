@@ -186,15 +186,15 @@ pub struct RefMedianData {
 
 ### DeviationData
 
-`RefData` is the struct that is returned when querying with `GetDeviationRef` or `GetDeviationRefBulk` where the
-bulk variant returns `Vec<RefData>`
+`RefDeviationData` is the struct that is returned when querying with `GetDeviationRef` or `GetDeviationRefBulk` where the
+bulk variant returns `Vec<RefDeviationData>`
 
-`RefData` is defined as:
+`RefDeviationData` is defined as:
 
 ```rust
-pub struct RefData {
-  // Rate of an asset relative to USD (deviation of assets when used with deviation queries)
-  pub rate: Uint64,
+pub struct RefDeviationData {
+  // Deviation Rates of an asset relative to USD
+  pub rates: Vec<Uint64>,
   // The resolve time of the request ID
   pub resolve_time: Uint64,
   // The request ID where the rate was derived from
