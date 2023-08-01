@@ -1252,13 +1252,10 @@ mod tests {
     }
 
     mod query {
+        use crate::msg::QueryMsg::{GetRef, GetReferenceData, GetReferenceDataBulk};
+        use cosmwasm_std::from_binary;
         use std::iter::zip;
         use std::ops::Mul;
-
-        use cosmwasm_std::from_binary;
-        use cosmwasm_std::OverflowOperation::Add;
-
-        use crate::msg::QueryMsg::{GetRef, GetReferenceData, GetReferenceDataBulk};
 
         use super::*;
 

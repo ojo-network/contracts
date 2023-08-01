@@ -1,9 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint64;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-use crate::state::{RefData, RefMedianData, ReferenceData,RefDeviationData};
+use crate::state::{RefData, RefDeviationData, RefMedianData, ReferenceData};
 
 #[cw_serde]
 pub struct InstantiateMsg {}

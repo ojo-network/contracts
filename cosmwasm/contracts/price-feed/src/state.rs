@@ -1,6 +1,6 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, StdResult, Storage, Uint256, Uint64};
-use secret_toolkit::serialization::{Bincode2, Json};
+use secret_toolkit::serialization::Bincode2;
 use secret_toolkit::storage::{Item, Keymap, Keyset, KeysetBuilder, WithoutIter};
 use serde::{Deserialize, Serialize};
 
