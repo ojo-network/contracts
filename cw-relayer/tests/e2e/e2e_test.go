@@ -13,14 +13,6 @@ import (
 )
 
 type (
-	GetPrice struct {
-		SymbolRequested Symbol `json:"get_price"`
-	}
-
-	Symbol struct {
-		Symbol string `json:"symbol"`
-	}
-
 	LastPing struct {
 		Relayer Relayer `json:"last_ping"`
 	}
@@ -29,14 +21,6 @@ type (
 		Relayer string `json:"relayer"`
 	}
 )
-
-func (s *IntegrationTestSuite) generateQuery(symbol string) wasmtypes.QuerySmartContractStateRequest {
-	data, _ := json.Marshal(GetPrice{SymbolRequested: Symbol{Symbol: symbol}})
-	return wasmtypes.QuerySmartContractStateRequest{
-		Address:   s.orchestrator.QueryContractAddress,
-		QueryData: data,
-	}
-}
 
 func (s *IntegrationTestSuite) TestCallback() {
 	grpcConn, err := grpc.Dial(
@@ -70,16 +54,16 @@ func (s *IntegrationTestSuite) TestCallback() {
 
 	s.Require().Eventually(
 		func() bool {
-			err = s.orchestrator.RequestMsg(orchestrator.Price, s.orchestrator.QueryContractAddress, "TEST-0")
+			err = s.orchestrator.RequestMsg(orchestrator.Price, "TEST-0")
 			if err != nil {
 				return false
 			}
 
-			query := s.generateQuery("TEST-0")
+			query := s.orchestrator.GenerateQuery(orchestrator.Price, "TEST-0")
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
 
-			resp, err := queryClient.SmartContractState(ctx, &query)
+			resp, err := queryClient.SmartContractState(ctx, query)
 			if err != nil || len(resp.String()) == 0 {
 				return false
 			}
@@ -98,5 +82,69 @@ func (s *IntegrationTestSuite) TestCallback() {
 
 		},
 		7*time.Minute, 20*time.Second,
-		"relayer request and callback failed")
+		"rate request and callback failed")
+
+	s.Require().Eventually(
+		func() bool {
+			err = s.orchestrator.RequestMsg(orchestrator.Median, "TEST-0")
+			if err != nil {
+				return false
+			}
+
+			query := s.orchestrator.GenerateQuery(orchestrator.Median, "TEST-0")
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			resp, err := queryClient.SmartContractState(ctx, query)
+			if err != nil || len(resp.String()) == 0 {
+				return false
+			}
+
+			var rate []string
+			err = json.Unmarshal(resp.Data, &rate)
+			if err != nil {
+				return false
+			}
+
+			if len(rate) != 0 && rate[0] != "0" {
+				return true
+			}
+
+			return false
+
+		},
+		7*time.Minute, 20*time.Second,
+		"median request and callback failed")
+
+	s.Require().Eventually(
+		func() bool {
+			err = s.orchestrator.RequestMsg(orchestrator.Deviation, "TEST-0")
+			if err != nil {
+				return false
+			}
+
+			query := s.orchestrator.GenerateQuery(orchestrator.Deviation, "TEST-0")
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			resp, err := queryClient.SmartContractState(ctx, query)
+			if err != nil || len(resp.String()) == 0 {
+				return false
+			}
+
+			var rate []string
+			err = json.Unmarshal(resp.Data, &rate)
+			if err != nil {
+				return false
+			}
+
+			if len(rate) != 0 && rate[0] != "0" {
+				return true
+			}
+
+			return false
+
+		},
+		7*time.Minute, 20*time.Second,
+		"deviation request and callback failed")
 }
