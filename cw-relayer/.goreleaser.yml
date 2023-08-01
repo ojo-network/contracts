@@ -1,0 +1,50 @@
+project_name: secret-cw-relayer
+
+env:
+  - CGO_ENABLED=1
+
+before:
+  hooks:
+    - go mod download
+
+builds:
+  - main: ./
+    id: "secret-cw-relayer"
+    binary: secret-cw-relayer
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.commit={{.Commit}} -X main.date={{ .CommitDate }} -X github.com/ojo-network/contracts/cmd.Version={{ replace .Version "cw-relayer/" "cw-relayer-" }} -X github.com/ojo-network/contracts/cmd.Commit={{ .Commit }}
+    goos:
+      - linux
+    goarch:
+      - amd64
+
+archives:
+  - id: bin
+    format: binary
+    name_template: "{{ .Binary }}-v{{ .Version }}-{{ .Os }}-{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}-glibc-{{.Env.GLIBC_VERSION}}"
+
+  - id: tarball
+    format: tar.gz
+    wrap_in_directory: true
+    format_overrides:
+      - goos: windows
+        format: zip
+    name_template: '{{ .Binary }}-v{{ .Version }}-{{ .Os }}-{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}-glibc-{{.Env.GLIBC_VERSION}}'
+    files:
+      - README.md
+
+release:
+  disable: false
+
+snapshot:
+  name_template: SNAPSHOT-{{ .Commit }}
+
+checksum:
+  name_template: 'SHA256SUMS-{{ replace .Version "version/" "cw-relayer-version-" }}-glibc-{{.Env.GLIBC_VERSION}}.txt'
+  algorithm: sha256
+
+changelog:
+  skip: false
