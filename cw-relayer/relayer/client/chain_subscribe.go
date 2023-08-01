@@ -38,7 +38,7 @@ func NewBlockHeightSubscription(
 ) (*EventSubscribe, error) {
 	newEvent := &EventSubscribe{
 		logger:         logger.With().Str("event", tickEventType).Logger(),
-		Tick:           make(chan struct{}),
+		Tick:           make(chan struct{}, 100),
 		timeout:        timeout,
 		maxTickTimeout: maxTickTimeout,
 		rpcAddress:     rpcAddress,

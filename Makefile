@@ -35,4 +35,7 @@ test-unit-contract:
 compile-contract:
 	cosmwasm/scripts/build_artifacts.sh
 
-.PHONY: test-e2e
+compile-contract-arm:
+	cosmwasm/scripts/build_artifacts_arm.sh
+
+.PHONY: test-e2e compile-contract-arm compile-contract

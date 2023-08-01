@@ -25,6 +25,8 @@ median_request_id = 1
 request_id = 1
 deviation_request_id = 1
 median_duration = 1
+deviation_duration = 1
+ignore_median_errors= false
 
 
 gas_prices = "0.15uscrt"
