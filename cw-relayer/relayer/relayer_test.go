@@ -88,7 +88,7 @@ func (rts *RelayerTestSuite) SetupMockPriceService() *PriceService {
 		}
 
 		mockService.deviationRates[denom] = Deviation{
-			Deviation: []string{strconv.Itoa(price)},
+			Deviation: []string{strconv.Itoa(median)},
 			Timestamp: rts.timestamp,
 		}
 
@@ -127,7 +127,7 @@ func TestServiceTestSuite(t *testing.T) {
 	suite.Run(t, new(RelayerTestSuite))
 }
 
-func (rts *RelayerTestSuite) TestStop() {
+func (rts *RelayerTestSuite) TearDownTest() {
 	rts.Eventually(
 		func() bool {
 			rts.relayer.Stop()
@@ -142,78 +142,81 @@ func (rts *RelayerTestSuite) TestStop() {
 
 func (rts *RelayerTestSuite) Test_processRequests() {
 	total := 0
-	go rts.relayer.processRequests(context.Background(), rts.clientRequest) //nolint
-	for msg := range rts.msg {
-		msg := msg
-		wasmMsg, _ := msg.(*wasmtypes.MsgExecuteContract)
-		rts.Require().Equal(wasmMsg.Contract, rts.contractAddress)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-		var jsonMsg map[string]map[string]interface{}
-		err := json.Unmarshal(wasmMsg.Msg, &jsonMsg)
-		rts.Require().NoError(err)
+	go rts.relayer.processRequests(ctx, rts.clientRequest) //nolint
+	for {
+		select {
+		case msg, ok := <-rts.msg:
+			if !ok {
+				rts.Fail("channel closed")
+				return
+			}
 
-		callback, err := parseAndCheck(jsonMsg["callback"])
-		rts.Require().NoError(err)
+			wasmMsg, _ := msg.(*wasmtypes.MsgExecuteContract)
+			rts.Require().Equal(wasmMsg.Contract, rts.contractAddress)
 
-		switch callback := callback.(type) {
-		case CallbackData:
-			data := callback
-			request := rts.requestMap[data.Symbol][data.RequestID]
-			rate := rts.priceService.exchangeRates[data.Symbol]
-			rts.Require().Equal(data.RequestID, request.RequestID)
-			rts.Require().Equal(string(data.CallbackData), request.CallbackData)
-			rts.Require().Equal(data.SymbolRate, rate.Price)
-			rts.Require().Equal(data.LastUpdated, rate.Timestamp)
+			var jsonMsg map[string]map[string]interface{}
+			err := json.Unmarshal(wasmMsg.Msg, &jsonMsg)
+			rts.Require().NoError(err)
+
+			callback, err := parseAndCheck(jsonMsg["callback"])
+			rts.Require().NoError(err)
+
+			switch data := callback.(type) {
+			case CallbackData:
+				request := rts.requestMap[data.Symbol][data.RequestID]
+				rate := rts.priceService.exchangeRates[data.Symbol]
+				rts.Require().Equal(data.RequestID, request.RequestID)
+				rts.Require().Equal(string(data.CallbackData), request.CallbackData)
+				rts.Require().Equal(data.SymbolRate, rate.Price)
+				rts.Require().Equal(data.LastUpdated, rate.Timestamp)
+
+			case CallbackDataHistorical:
+				request := rts.requestMap[data.Symbol][data.RequestID]
+
+				// median and deviation rates are same
+				rate := rts.priceService.medianRates[data.Symbol]
+				rts.Require().Equal(data.RequestID, request.RequestID)
+				rts.Require().Equal(string(data.CallbackData), request.CallbackData)
+				rts.Require().Equal(data.SymbolRates, rate.Median)
+				rts.Require().Equal(data.LastUpdated, rate.Timestamp)
+			}
+
 			total += 1
+			if total == len(rts.denomList)*3 {
+				return
+			}
 
-		case CallbackDataHistorical:
-			data := callback
-			request := rts.requestMap[data.Symbol][data.RequestID]
-			rate := rts.priceService.medianRates[data.Symbol]
-			rts.Require().Equal(data.RequestID, request.RequestID)
-			rts.Require().Equal(string(data.CallbackData), request.CallbackData)
-			rts.Require().Equal(data.SymbolRates, rate.Median)
-			rts.Require().Equal(data.LastUpdated, rate.Timestamp)
-			total += 1
-		}
-
-		if total == len(rts.clientRequest) {
+		case <-ctx.Done():
+			rts.Fail("context timeout")
 			return
 		}
 	}
 }
 
 func parseAndCheck(msg map[string]interface{}) (interface{}, error) {
-	keys := []string{"callback_rate_deviation", "callback_rate_data", "callback_rate_median"}
-	for i, key := range keys {
-		msg, found := msg[key]
-		if !found {
-			continue
-		}
+	data, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
 
-		data, err := json.Marshal(msg)
+	if _, ok := msg["symbol_rate"]; ok {
+		var callback CallbackData
+		err = json.Unmarshal(data, &callback)
 		if err != nil {
 			return nil, err
 		}
 
-		if i <= 1 {
-			var callback CallbackData
-			err = json.Unmarshal(data, &callback)
-			if err != nil {
-				return nil, err
-			}
-
-			return callback, nil
-		} else {
-			var callback CallbackDataHistorical
-			err = json.Unmarshal(data, &callback)
-			if err != nil {
-				return nil, err
-			}
-
-			return callback, nil
+		return callback, nil
+	} else {
+		var callback CallbackDataHistorical
+		err = json.Unmarshal(data, &callback)
+		if err != nil {
+			return nil, err
 		}
-	}
 
-	return nil, nil
+		return callback, nil
+	}
 }
