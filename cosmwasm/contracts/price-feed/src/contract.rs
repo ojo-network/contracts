@@ -223,6 +223,7 @@ fn execute_request_price(
     Ok(Response::new()
         .add_attribute("action", "request_price")
         .add_attribute("request_id", request_id)
+        .add_attribute("symbol", symbol)
         .add_event(event))
 }
 

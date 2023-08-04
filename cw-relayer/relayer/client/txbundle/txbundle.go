@@ -47,7 +47,7 @@ func NewTxBundler(
 	txbundle := &Txbundle{
 		maxLimitPerTx:     maxLimitPerTx,
 		logger:            logger.With().Str("module", "tx-bundler").Logger(),
-		MsgChan:           make(chan types.Msg, 1000000),
+		MsgChan:           make(chan types.Msg, totalTxThreshold*2),
 		PingChan:          make(chan types.Msg, 1),
 		timeoutDuration:   timeoutDuration,
 		timeoutHeight:     timeoutHeight,

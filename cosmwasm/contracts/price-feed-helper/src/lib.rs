@@ -100,6 +100,11 @@ pub mod helper {
         Binary, CosmosMsg, Event, StdError, StdResult, SubMsg, SubMsgResponse, Uint64, WasmMsg,
     };
 
+    pub struct OracleReply{
+        pub request_id: String,
+        pub symbol: String,
+    }
+
     pub fn oracle_submessage(
         oracle_address: String,
         symbol: String,
@@ -155,7 +160,7 @@ pub mod helper {
         return msg;
     }
 
-    pub fn oracle_request_id_from_reply(reply: &SubMsgResponse) -> StdResult<String> {
+    pub fn id_and_symbol_from_reply(reply: &SubMsgResponse) -> StdResult<OracleReply> {
         let event = reply
             .events
             .iter()
@@ -170,7 +175,16 @@ pub mod helper {
             .ok_or_else(|| StdError::generic_err("cannot find `request_id` attribute"))?
             .value;
 
-        Ok(request_id)
+        let symbol = event
+            .attributes
+            .iter()
+            .cloned()
+            .find(|attr| attr.key == "symbol")
+            .ok_or_else(|| StdError::generic_err("cannot find `symbol` attribute"))?
+            .value;
+
+        Ok(OracleReply { request_id, symbol })
+
     }
 
     fn event_contains_attr(event: &Event, key: &str, value: &str) -> bool {

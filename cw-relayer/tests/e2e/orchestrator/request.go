@@ -7,6 +7,12 @@ import (
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 )
 
+const (
+	Price RequestType = iota
+	Median
+	Deviation
+)
+
 type (
 	RequestType int
 	GetPrice    struct {
@@ -18,12 +24,6 @@ type (
 	}
 )
 
-const (
-	Price RequestType = iota
-	Median
-	Deviation
-)
-
 func (r RequestType) String() string {
 	switch r {
 	case Price:
@@ -32,6 +32,32 @@ func (r RequestType) String() string {
 		return "request_median"
 	case Deviation:
 		return "request_deviation"
+	}
+
+	return ""
+}
+
+func (r RequestType) PriceQueryString() string {
+	switch r {
+	case Price:
+		return "get_price"
+	case Median:
+		return "get_median"
+	case Deviation:
+		return "get_deviation"
+	}
+
+	return ""
+}
+
+func (r RequestType) RequestIDQueryString() string {
+	switch r {
+	case Price:
+		return "get_rate_request_id"
+	case Median:
+		return "get_median_request_id"
+	case Deviation:
+		return "get_deviation_request_id"
 	}
 
 	return ""
@@ -49,16 +75,23 @@ func (o *Orchestrator) RequestMsg(request RequestType, denom string) error {
 	return o.execWasmCmd(msg)
 }
 
-func (o *Orchestrator) GenerateQuery(request RequestType, symbol string) *wasmtypes.QuerySmartContractStateRequest {
+func (o *Orchestrator) GeneratePriceQuery(request RequestType, symbol string) *wasmtypes.QuerySmartContractStateRequest {
 	data := Symbol{Symbol: symbol}
-	msg := make(map[string]interface{})
-	switch request {
-	case Price:
-		msg["get_price"] = data
-	case Median:
-		msg["get_median"] = data
-	case Deviation:
-		msg["get_deviation"] = data
+	msg := map[string]interface{}{
+		request.PriceQueryString(): data,
+	}
+
+	jsonMsg, _ := json.Marshal(msg)
+	return &wasmtypes.QuerySmartContractStateRequest{
+		Address:   o.QueryContractAddress,
+		QueryData: jsonMsg,
+	}
+}
+
+func (o *Orchestrator) GenerateRequestIDQuery(request RequestType, symbol string) *wasmtypes.QuerySmartContractStateRequest {
+	data := Symbol{Symbol: symbol}
+	msg := map[string]interface{}{
+		request.RequestIDQueryString(): data,
 	}
 
 	jsonMsg, _ := json.Marshal(msg)

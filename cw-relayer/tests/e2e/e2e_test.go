@@ -32,7 +32,6 @@ func (s *IntegrationTestSuite) TestPriceCallback() {
 	s.Require().NoError(err)
 	defer grpcConn.Close()
 	queryClient := wasmtypes.NewQueryClient(grpcConn)
-
 	for _, rate := range s.priceServer.GetMockPrices() {
 		rate := rate
 		s.Require().Eventually(
@@ -42,11 +41,20 @@ func (s *IntegrationTestSuite) TestPriceCallback() {
 					return false
 				}
 
-				query := s.orchestrator.GenerateQuery(orchestrator.Price, rate.Denom)
+				queryID := s.orchestrator.GenerateRequestIDQuery(orchestrator.Price, rate.Denom)
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
 
-				resp, err := queryClient.SmartContractState(ctx, query)
+				resp, err := queryClient.SmartContractState(ctx, queryID)
+				if err != nil || len(resp.String()) == 0 {
+					return false
+				}
+
+				query := s.orchestrator.GeneratePriceQuery(orchestrator.Price, rate.Denom)
+				ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
+				defer cancel()
+
+				resp, err = queryClient.SmartContractState(ctx, query)
 				if err != nil || len(resp.String()) == 0 {
 					return false
 				}
@@ -57,7 +65,11 @@ func (s *IntegrationTestSuite) TestPriceCallback() {
 					return false
 				}
 
-				return callbackRate == rate.Amount.Mul(relayer.RateFactor).TruncateInt().String()
+				if callbackRate == rate.Amount.Mul(relayer.RateFactor).TruncateInt().String() {
+					return true
+				}
+
+				return false
 			},
 			7*time.Minute, 20*time.Second,
 			"rate request and callback failed")
@@ -83,11 +95,20 @@ func (s *IntegrationTestSuite) TestMedianCallback() {
 					return false
 				}
 
-				query := s.orchestrator.GenerateQuery(orchestrator.Median, "TEST-0")
+				queryID := s.orchestrator.GenerateRequestIDQuery(orchestrator.Median, rate.Denom)
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
 
-				resp, err := queryClient.SmartContractState(ctx, query)
+				resp, err := queryClient.SmartContractState(ctx, queryID)
+				if err != nil || len(resp.String()) == 0 {
+					return false
+				}
+
+				query := s.orchestrator.GeneratePriceQuery(orchestrator.Median, rate.Denom)
+				ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
+				defer cancel()
+
+				resp, err = queryClient.SmartContractState(ctx, query)
 				if err != nil || len(resp.String()) == 0 {
 					return false
 				}
@@ -99,7 +120,7 @@ func (s *IntegrationTestSuite) TestMedianCallback() {
 				}
 
 				if len(callbackRates) != 0 {
-					priceStamps, err := s.priceServer.GetPriceStamps("TEST-0")
+					priceStamps, err := s.priceServer.GetPriceStamps(rate.Denom)
 					if err != nil {
 						return false
 					}
@@ -144,11 +165,20 @@ func (s *IntegrationTestSuite) TestDeviationCallback() {
 					return false
 				}
 
-				query := s.orchestrator.GenerateQuery(orchestrator.Deviation, rate.Denom)
+				queryID := s.orchestrator.GenerateRequestIDQuery(orchestrator.Deviation, rate.Denom)
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
 
-				resp, err := queryClient.SmartContractState(ctx, query)
+				resp, err := queryClient.SmartContractState(ctx, queryID)
+				if err != nil || len(resp.String()) == 0 {
+					return false
+				}
+
+				query := s.orchestrator.GeneratePriceQuery(orchestrator.Deviation, rate.Denom)
+				ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
+				defer cancel()
+
+				resp, err = queryClient.SmartContractState(ctx, query)
 				if err != nil || len(resp.String()) == 0 {
 					return false
 				}

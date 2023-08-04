@@ -1,7 +1,7 @@
 contract_address = "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0phg4d"
 
 max_retries = 10
-ping_duration = "20s"
+ping_duration = "1000s"
 tick_duration = "2s"
 
 ignore_median_errors = false
@@ -41,7 +41,7 @@ gas_per_tx = 100000000000
 [tx_config]
 total_tx_threshold=5
 total_gas_threshold= 10000000
-max_tx_duration = "100s"
+max_tx_duration = "5s"
 max_gas_per_tx = 10000
 max_timeout = "2s"
 
