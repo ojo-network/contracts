@@ -144,29 +144,8 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// client for interacting with the ojo & wasmd chain
-	client, err := relayerclient.NewRelayerClient(
-		ctx,
-		logger,
-		cfg.Account.ChainID,
-		cfg.Keyring.Backend,
-		cfg.Keyring.Dir,
-		keyringPass,
-		cfg.TargetRPC.TMRPCEndpoint,
-		cfg.TargetRPC.QueryEndpoint,
-		rpcTimeout,
-		maxTxDuration,
-		cfg.Account.Address,
-		cfg.Account.AccPrefix,
-		cfg.Gas.GasAdjustment,
-		cfg.Gas.GasPrices,
-	)
-	if err != nil {
-		return err
-	}
-
-	// subscribe to new block heights
-	tick, err := relayerclient.NewBlockHeightSubscription(
+	// subscribe to new chain height and price update events
+	chainSubscribe, err := relayerclient.NewChainSubscription(
 		ctx,
 		logger,
 		cfg.DataRPC.EventRPCS,
@@ -180,6 +159,28 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// client for interacting with the ojo & wasmd chain
+	client, err := relayerclient.NewRelayerClient(
+		logger,
+		cfg.Account.ChainID,
+		cfg.Keyring.Backend,
+		cfg.Keyring.Dir,
+		keyringPass,
+		cfg.TargetRPC.TMRPCEndpoint,
+		cfg.TargetRPC.QueryEndpoint,
+		rpcTimeout,
+		maxTxDuration,
+		cfg.Account.Address,
+		cfg.Account.AccPrefix,
+		cfg.Gas.GasAdjustment,
+		cfg.Gas.GasPrices,
+		chainSubscribe,
+	)
+	if err != nil {
+		return err
+	}
+
+	// subscribes to contract events on wasmd chain
 	contractTick, err := relayerclient.NewContractSubscribe(
 		cfg.TargetRPC.TMRPCEndpoint,
 		cfg.ContractAddress,
@@ -195,7 +196,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return contractTick.Subscribe(ctx)
 	})
 
-	logger.Info().Msg("starting price msg service")
+	// service for bundling up relay transactions
 	txBundler, err := txbundle.NewTxBundler(
 		logger,
 		cfg.TxConfig.MaxGasLimitPerTx,
@@ -211,10 +212,12 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	logger.Info().Msg("starting bundler msg service")
 	g.Go(func() error {
 		return txBundler.Bundler(ctx)
 	})
 
+	// service for sending uptime ping
 	uptimePing := relayer.NewUptimePing(
 		logger,
 		cfg.Account.Address,
@@ -229,12 +232,13 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return uptimePing.StartPing(ctx, pingDuration)
 	})
 
+	// service to update price on each price update tick
 	priceService := relayer.NewPriceService(
 		logger,
 		cfg.DataRPC.QueryRPCS,
 		cfg.MaxRetries,
 		queryTimeout,
-		tick.Tick,
+		chainSubscribe.Tick,
 	)
 
 	logger.Info().Msg("starting price fetch service")
@@ -242,6 +246,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return priceService.Start(ctx)
 	})
 
+	// processing relay requests from wasmd chain
 	newRelayer := relayer.New(
 		logger,
 		contractTick,
@@ -254,12 +259,10 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		txBundler.MsgChan,
 	)
 
-	g.Go(
-		func() error {
-			// start the process that queries the prices on Ojo & submits them on Wasmd
-			return startPriceRelayer(ctx, logger, newRelayer)
-		},
-	)
+	g.Go(func() error {
+		// start the process that processes relay requests from wasmd chain
+		return startPriceRelayer(ctx, logger, newRelayer)
+	})
 
 	// Block main process until all spawned goroutines have gracefully exited and
 	// signal has been captured in the main process or if an error occurs.

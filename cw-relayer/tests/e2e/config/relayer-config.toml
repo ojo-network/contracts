@@ -33,7 +33,7 @@ query_rpcs = ["host.docker.internal:9090"]
 event_rpcs = ["https://rpc.agamotto-val-stage-0.ojo.network:443"]
 
 [timeout]
-event_timeout = "1000ms"
+event_timeout = "3000ms"
 max_tick_timeout = "500s"
 query_timeout = "3000ms"
 timeout_height = 10

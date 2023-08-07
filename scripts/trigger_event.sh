@@ -21,5 +21,4 @@ REQUEST_RELAY='{"request_rate": {"symbol": "ATOM","callback_data":"callbacktest"
 for i in {1..50}
 do
     $BINARY tx wasm execute $QUERY_CONTRACT "$REQUEST_RELAY" --from $DEMOWALLET --home ./data/$CHAINID_1 $TXFLAG
-    $BINARY q wasm contract-state smart $QUERY_CONTRACT '{"get_price":{"symbol":"ATOM"}}' --home ./data/$CHAINID_1
 done

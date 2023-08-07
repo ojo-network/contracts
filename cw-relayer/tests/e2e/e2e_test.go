@@ -34,13 +34,11 @@ func (s *IntegrationTestSuite) TestPriceCallback() {
 	queryClient := wasmtypes.NewQueryClient(grpcConn)
 	for _, rate := range s.priceServer.GetMockPrices() {
 		rate := rate
+		err := s.orchestrator.RequestMsg(orchestrator.Price, rate.Denom)
+		s.Require().NoError(err)
+
 		s.Require().Eventually(
 			func() bool {
-				err := s.orchestrator.RequestMsg(orchestrator.Price, rate.Denom)
-				if err != nil {
-					return false
-				}
-
 				queryID := s.orchestrator.GenerateRequestIDQuery(orchestrator.Price, rate.Denom)
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
@@ -88,13 +86,11 @@ func (s *IntegrationTestSuite) TestMedianCallback() {
 
 	for _, rate := range s.priceServer.GetMockPrices() {
 		rate := rate
+		err = s.orchestrator.RequestMsg(orchestrator.Median, rate.Denom)
+		s.Require().NoError(err)
+
 		s.Require().Eventually(
 			func() bool {
-				err = s.orchestrator.RequestMsg(orchestrator.Median, rate.Denom)
-				if err != nil {
-					return false
-				}
-
 				queryID := s.orchestrator.GenerateRequestIDQuery(orchestrator.Median, rate.Denom)
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
@@ -158,13 +154,11 @@ func (s *IntegrationTestSuite) TestDeviationCallback() {
 
 	for _, rate := range s.priceServer.GetMockPrices() {
 		rate := rate
+		err = s.orchestrator.RequestMsg(orchestrator.Deviation, rate.Denom)
+		s.Require().NoError(err)
+
 		s.Require().Eventually(
 			func() bool {
-				err = s.orchestrator.RequestMsg(orchestrator.Deviation, rate.Denom)
-				if err != nil {
-					return false
-				}
-
 				queryID := s.orchestrator.GenerateRequestIDQuery(orchestrator.Deviation, rate.Denom)
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
