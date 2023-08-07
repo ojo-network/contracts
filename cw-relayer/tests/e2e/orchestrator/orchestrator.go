@@ -25,10 +25,11 @@ type Orchestrator struct {
 
 	wasmdResource *dockertest.Resource
 	wasmRPC       *rpchttp.HTTP
-	wasmChain     *Chain
+	WasmChain     *Chain
 
-	QueryRpc        string
-	ContractAddress string
+	QueryRpc             string
+	ContractAddress      string
+	QueryContractAddress string
 }
 
 func (o *Orchestrator) InitDockerResources(t *testing.T) error {
@@ -61,20 +62,26 @@ func (o *Orchestrator) InitDockerResources(t *testing.T) error {
 		"wasmd node failed to produce blocks",
 	)
 
-	t.Log("-> initializing wasm contract")
+	t.Log("-> initializing wasm contracts")
 	err = o.deployAndInitContract()
 	if err != nil {
 		return err
 	}
 
-	t.Log("-> fetching wasm contract address")
-	err = o.setContractAddress()
+	t.Log("-> fetching oracle wasm contract address")
+	o.ContractAddress, err = o.getContractAddress(1)
+	if err != nil {
+		return err
+	}
+
+	t.Log("-> fetching query wasm contract address")
+	o.QueryContractAddress, err = o.getContractAddress(2)
 	if err != nil {
 		return err
 	}
 
 	t.Log("-> adding Relayer to contract")
-	err = o.addRelayerToContract(o.ContractAddress, o.wasmChain.address)
+	err = o.addRelayerToContract(o.ContractAddress, o.WasmChain.Address)
 	if err != nil {
 		return err
 	}

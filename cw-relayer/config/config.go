@@ -14,7 +14,6 @@ const (
 	defaultQueryRPC        = "0.0.0.0:9091"
 	defaultTimeoutHeight   = 5
 	defaultTimeout         = 1 * time.Minute
-	defaultResolveDuration = 2 * time.Second
 	defaultRetries         = 1
 	defaultTickEventType   = "ojo.oracle.v1.EventSetFxRate"
 )
@@ -29,42 +28,64 @@ var (
 type (
 	// Config defines all necessary cw-relayer configuration parameters.
 	Config struct {
-		Account Account       `mapstructure:"account" validate:"required,gt=0,dive,required"`
-		Keyring Keyring       `mapstructure:"keyring" validate:"required,gt=0,dive,required"`
-		RPC     RPC           `mapstructure:"rpc" validate:"required,gt=0,dive,required"`
-		Restart RestartConfig `mapstructure:"restart" validate:"required"`
+		Account Account `mapstructure:"account" validate:"required,gt=0,dive,required"`
+		Keyring Keyring `mapstructure:"keyring" validate:"required,gt=0,dive,required"`
 
-		ProviderTimeout string `mapstructure:"provider_timeout"`
-		ContractAddress string `mapstructure:"contract_address"`
-		TimeoutHeight   int64  `mapstructure:"timeout_height"`
-		EventTimeout    string `mapstructure:"event_timeout"`
-		MaxTickTimeout  string `mapstructure:"max_tick_timeout"`
-		QueryTimeout    string `mapstructure:"query_timeout"`
-		MaxRetries      int64  `mapstructure:"max_retries"`
+		TargetRPC RPC     `mapstructure:"target_rpc" validate:"required,gt=0,dive,required"`
+		DataRPC   DataRpc `mapstructure:"data_rpc" validate:"required,gt=0,dive,required"`
 
-		MedianRequestID    uint64 `mapstructure:"median_request_id"`
-		RequestID          uint64 `mapstructure:"request_id"`
-		DeviationRequestID uint64 `mapstructure:"deviation_request_id"`
+		Timeout Timeout `mapstructure:"timeout" validate:"required,gt=0,dive,required"`
+		Gas     Gas     `mapstructure:"gas" validate:"required,gt=0,dive,required"`
 
-		// force relay prices and reset epoch time in contracts if err in broadcasting tx
-		MissedThreshold   int64  `mapstructure:"missed_threshold"`
-		MedianDuration    int64  `mapstructure:"median_duration"`
-		DeviationDuration int64  `mapstructure:"deviation_duration"`
-		ResolveDuration   string `mapstructure:"resolve_duration"`
+		TxConfig TxConfig `mapstructure:"tx_config" validate:"required,gt=0,dive,required"`
 
-		// skip price update events
-		SkipNumEvents int64 `mapstructure:"skip_num_events"`
+		MaxRetries   int64  `mapstructure:"max_retries" validate:"required"`
+		PingDuration string `mapstructure:"ping_duration" validate:"required"`
+		TickDuration string `mapstructure:"tick_duration" validate:"required"`
+
+		ContractAddress string `mapstructure:"contract_address" validate:"required"`
 
 		// if true, would ignore any errors when querying median or deviations
 		IgnoreMedianErrors bool `mapstructure:"ignore_median_errors"`
 
+		// query rpc for ojo node
+		TickEventType string `mapstructure:"event_type"`
+
+		MaxGasUnits uint64 `mapstructure:"max_gas_units" validate:"required"`
+
+		BlockHeightConfig BlockHeightConfig `mapstructure:"block_height_config" validate:"required,dive,required"`
+	}
+
+	Timeout struct {
+		EventTimeout    string `mapstructure:"event_timeout" validate:"required"`
+		MaxTickTimeout  string `mapstructure:"max_tick_timeout" validate:"required"`
+		QueryTimeout    string `mapstructure:"query_timeout" validate:"required"`
+		TimeoutHeight   int64  `mapstructure:"timeout_height" validate:"required"`
+		ProviderTimeout string `mapstructure:"provider_timeout" validate:"required"`
+	}
+
+	Gas struct {
 		GasAdjustment float64 `mapstructure:"gas_adjustment" validate:"required"`
 		GasPrices     string  `mapstructure:"gas_prices" validate:"required"`
+		GasLimitPerTx float64 `mapstructure:"gas_per_tx" validate:"required"`
+	}
 
-		// query rpc for ojo node
-		QueryRPCS     []string `mapstructure:"query_rpcs" validate:"required"`
-		EventRPCS     []string `mapstructure:"event_rpcs" validate:"required"`
-		TickEventType string   `mapstructure:"event_type"`
+	BlockHeightConfig struct {
+		SkipError bool `mapstructure:"skip_error"`
+	}
+
+	DataRpc struct {
+		QueryRPCS []string `mapstructure:"query_rpcs" validate:"required"`
+		EventRPCS []string `mapstructure:"event_rpcs" validate:"required"`
+	}
+
+	TxConfig struct {
+		MaxGasLimitPerTx  int64  `mapstructure:"max_gas_per_tx"`
+		TotalGasThreshold uint64 `mapstructure:"total_gas_threshold"`
+		TotalTxThreshold  int    `mapstructure:"total_tx_threshold" validate:"required"`
+		EstimateAndBundle bool   `mapstructure:"estimate_and_bundle"`
+		MaxTimeout        string `mapstructure:"max_timeout" validate:"required"`
+		MaxTxDuration     string `mapstructure:"max_tx_duration" validate:"required"`
 	}
 
 	// Account defines account related configuration that is related to the Client
@@ -81,17 +102,11 @@ type (
 		Dir     string `mapstructure:"dir" validate:"required"`
 	}
 
-	RestartConfig struct {
-		AutoID    bool   `mapstructure:"auto_id"`
-		Denom     string `mapstructure:"denom"`
-		SkipError bool   `mapstructure:"skip_error"`
-	}
-
 	// RPC defines RPC configuration of both the wasmd chain and Tendermint nodes.
 	RPC struct {
-		TMRPCEndpoint string `mapstructure:"tmrpc_endpoint" validate:"required"`
-		RPCTimeout    string `mapstructure:"rpc_timeout" validate:"required"`
-		QueryEndpoint string `mapstructure:"query_endpoint" validate:"required"`
+		TMRPCEndpoint []string `mapstructure:"tmrpc_endpoint" validate:"required"`
+		RPCTimeout    string   `mapstructure:"rpc_timeout" validate:"required"`
+		QueryEndpoint []string `mapstructure:"query_endpoint" validate:"required"`
 	}
 )
 
@@ -120,36 +135,32 @@ func ParseConfig(configPath string) (Config, error) {
 		return cfg, fmt.Errorf("failed to decode config: %w", err)
 	}
 
-	if len(cfg.ProviderTimeout) == 0 {
-		cfg.ProviderTimeout = defaultProviderTimeout.String()
+	if len(cfg.Timeout.ProviderTimeout) == 0 {
+		cfg.Timeout.ProviderTimeout = defaultProviderTimeout.String()
 	}
 
-	if len(cfg.QueryRPCS) == 0 {
-		cfg.QueryRPCS = []string{defaultQueryRPC}
+	if len(cfg.DataRPC.QueryRPCS) == 0 {
+		cfg.DataRPC.QueryRPCS = []string{defaultQueryRPC}
 	}
 
 	if len(cfg.ContractAddress) == 0 {
 		return cfg, fmt.Errorf("contract address cannot be nil")
 	}
 
-	if cfg.TimeoutHeight == 0 {
-		cfg.TimeoutHeight = defaultTimeoutHeight
+	if cfg.Timeout.TimeoutHeight == 0 {
+		cfg.Timeout.TimeoutHeight = defaultTimeoutHeight
 	}
 
-	if len(cfg.EventTimeout) == 0 {
-		cfg.EventTimeout = defaultTimeout.String()
+	if len(cfg.Timeout.EventTimeout) == 0 {
+		cfg.Timeout.EventTimeout = defaultTimeout.String()
 	}
 
-	if len(cfg.MaxTickTimeout) == 0 {
-		cfg.MaxTickTimeout = defaultTimeout.String()
+	if len(cfg.Timeout.MaxTickTimeout) == 0 {
+		cfg.Timeout.MaxTickTimeout = defaultTimeout.String()
 	}
 
-	if len(cfg.QueryTimeout) == 0 {
-		cfg.QueryTimeout = defaultTimeout.String()
-	}
-
-	if len(cfg.ResolveDuration) == 0 {
-		cfg.ResolveDuration = defaultResolveDuration.String()
+	if len(cfg.Timeout.QueryTimeout) == 0 {
+		cfg.Timeout.QueryTimeout = defaultTimeout.String()
 	}
 
 	if len(cfg.TickEventType) == 0 {

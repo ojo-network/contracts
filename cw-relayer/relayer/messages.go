@@ -4,170 +4,63 @@ import (
 	"encoding/json"
 
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
-	"github.com/cosmos/cosmos-sdk/types"
-
-	"github.com/ojo-network/cw-relayer/relayer/client"
 )
-
-type MsgType int
-
-const (
-	RelayRate MsgType = iota + 1
-	RelayHistoricalMedian
-	RelayHistoricalDeviation
-	QueryRateMsg
-	QueryMedianRateMsg
-	QueryDeviationRateMsg
-)
-
-func (m MsgType) String() string {
-	return [...]string{"relay", "relay_historical_median", "relay_historical_deviation"}[m-1]
-}
 
 type (
-	MsgRelay struct {
-		Relay Msg `json:"relay"`
+	// CallbackData for price relay support
+	CallbackData struct {
+		RequestID    string `json:"request_id"`
+		Symbol       string `json:"symbol"`
+		SymbolRate   string `json:"symbol_rate"`
+		LastUpdated  string `json:"last_updated"`
+		CallbackData []byte `json:"callback_data"`
 	}
 
-	MsgForceRelay struct {
-		Relay Msg `json:"force_relay"`
+	// CallbackDataHistorical for Median and Deviation relay support
+	CallbackDataHistorical struct {
+		RequestID    string   `json:"request_id"`
+		Symbol       string   `json:"symbol"`
+		SymbolRates  []string `json:"symbol_rates"`
+		LastUpdated  string   `json:"last_updated"`
+		CallbackData []byte   `json:"callback_data"`
 	}
 
-	MsgRelayHistoricalMedian struct {
-		Relay Msg `json:"relay_historical_median"`
-	}
-
-	MsgForceRelayHistoricalMedian struct {
-		Relay Msg `json:"force_relay_historical_median"`
-	}
-
-	MsgRelayHistoricalDeviation struct {
-		Relay Msg `json:"relay_historical_deviation"`
-	}
-
-	MsgForceRelayHistoricalDeviation struct {
-		Relay Msg `json:"force_relay_historical_deviation"`
-	}
-
-	Msg struct {
-		SymbolRates [][2]interface{} `json:"symbol_rates,omitempty"`
-		ResolveTime int64            `json:"resolve_time,string"`
-		RequestID   uint64           `json:"request_id,string"`
-	}
-
-	// for restart queries
-	rateMsg struct {
-		Ref symbol `json:"get_ref"`
-	}
-
-	medianRateMsg struct {
-		Ref symbol `json:"get_median_ref"`
-	}
-
-	deviationRateMsg struct {
-		Ref symbol `json:"get_deviation_ref"`
-	}
-
-	symbol struct {
-		Symbol string `json:"symbol"`
+	// Ping msg type relayer uptime ping
+	Ping struct {
+		Ping struct{} `json:"relayer_ping"`
 	}
 )
 
-func genRestartQueries(contractAddress, Denom string) ([]client.SmartQuery, error) {
-	rateData, err := json.Marshal(rateMsg{Ref: symbol{Symbol: Denom}})
+// genMsg generates a wasmtype MsgExecuteContract msg with a particular callback signature according to a contract request
+func genMsg(relayerAddress, contractAddress, callbackSig string, msg any) (*wasmtypes.MsgExecuteContract, error) {
+	execute := make(map[string]interface{})
+	execute[callbackSig] = msg
+
+	msgData, err := json.Marshal(execute)
 	if err != nil {
 		return nil, err
 	}
 
-	medianData, err := json.Marshal(medianRateMsg{Ref: symbol{Denom}})
-	if err != nil {
-		return nil, err
-	}
-
-	deviationData, err := json.Marshal(deviationRateMsg{Ref: symbol{Denom}})
-	if err != nil {
-		return nil, err
-	}
-
-	return []client.SmartQuery{
-		{
-			QueryType: int(QueryRateMsg),
-			QueryMsg: wasmtypes.QuerySmartContractStateRequest{
-				Address:   contractAddress,
-				QueryData: rateData,
-			},
-		},
-		{
-			QueryType: int(QueryMedianRateMsg),
-			QueryMsg: wasmtypes.QuerySmartContractStateRequest{
-				Address:   contractAddress,
-				QueryData: medianData,
-			},
-		},
-		{
-			QueryType: int(QueryDeviationRateMsg),
-			QueryMsg: wasmtypes.QuerySmartContractStateRequest{
-				Address:   contractAddress,
-				QueryData: deviationData,
-			},
-		},
+	return &wasmtypes.MsgExecuteContract{
+		Sender:   relayerAddress,
+		Contract: contractAddress,
+		Msg:      msgData,
+		Funds:    nil,
 	}, nil
 }
 
-func (r *Relayer) genWasmMsg(msgData []byte) *wasmtypes.MsgExecuteContract {
+// genPingMsg generates a wasmtype MsgExecuteContract msg for relayer ping
+func genPingMsg(relayerAddress, contractAddress string) (*wasmtypes.MsgExecuteContract, error) {
+	ping := Ping{Ping: struct{}{}}
+	msgData, err := json.Marshal(ping)
+	if err != nil {
+		return nil, err
+	}
+
 	return &wasmtypes.MsgExecuteContract{
-		Sender:   r.relayerClient.RelayerAddrString,
-		Contract: r.contractAddress,
+		Sender:   relayerAddress,
+		Contract: contractAddress,
 		Msg:      msgData,
 		Funds:    nil,
-	}
-}
-
-func genRateMsgData(forceRelay bool, msgType MsgType, requestID uint64, resolveTime int64, rates types.DecCoins) (msgData []byte, err error) {
-	msg := Msg{
-		SymbolRates: nil,
-		ResolveTime: resolveTime,
-		RequestID:   requestID,
-	}
-
-	if msgType != RelayHistoricalMedian {
-		for _, rate := range rates {
-			msg.SymbolRates = append(msg.SymbolRates, [2]interface{}{rate.Denom, rate.Amount.Mul(RateFactor).TruncateInt().String()})
-		}
-	}
-
-	switch msgType {
-	case RelayRate:
-		if forceRelay {
-			msgData, err = json.Marshal(MsgForceRelay{Relay: msg})
-		} else {
-			msgData, err = json.Marshal(MsgRelay{Relay: msg})
-		}
-
-	case RelayHistoricalMedian:
-		// collect denom's medians
-		medianRates := map[string][]string{}
-		for _, rate := range rates {
-			medianRates[rate.Denom] = append(medianRates[rate.Denom], rate.Amount.Mul(RateFactor).TruncateInt().String())
-		}
-
-		for denom, medians := range medianRates {
-			msg.SymbolRates = append(msg.SymbolRates, [2]interface{}{denom, medians})
-		}
-
-		if forceRelay {
-			msgData, err = json.Marshal(MsgForceRelayHistoricalMedian{Relay: msg})
-		} else {
-			msgData, err = json.Marshal(MsgRelayHistoricalMedian{Relay: msg})
-		}
-
-	case RelayHistoricalDeviation:
-		if forceRelay {
-			msgData, err = json.Marshal(MsgForceRelayHistoricalDeviation{Relay: msg})
-		} else {
-			msgData, err = json.Marshal(MsgRelayHistoricalDeviation{Relay: msg})
-		}
-	}
-
-	return
+	}, nil
 }

@@ -7,7 +7,7 @@ import (
 )
 
 // BroadcastTx attempts to generate, sign and broadcast a transaction with the
-// given set of messages. It will also simulate gas requirements if necessary.
+// given set of messages. It will also txbundle gas requirements if necessary.
 // It will return an error upon failure.
 //
 // Note, BroadcastTx is copied from the SDK except it removes a few unnecessary

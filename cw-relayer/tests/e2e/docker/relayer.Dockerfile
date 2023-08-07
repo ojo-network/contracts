@@ -20,7 +20,7 @@ RUN apk add --no-cache \
 # Download go dependencies
 WORKDIR /cw-relayer
 COPY go.mod go.sum ./
-
+#
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/root/go/pkg/mod \
     go mod download
@@ -57,7 +57,7 @@ RUN apk add bash \
     jq
 
 COPY --from=builder /cw-relayer/build/cw-relayer /usr/bin/cw-relayer
-COPY --from=cosmwasm/wasmd:v0.30.0 /usr/bin/wasmd /usr/bin/wasmd
+COPY --from=cosmwasm/wasmd:v0.33.0 /usr/bin/wasmd /usr/bin/wasmd
 
 ENV HOME /
 WORKDIR $HOME

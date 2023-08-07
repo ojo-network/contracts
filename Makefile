@@ -15,6 +15,17 @@ deploy:
 	@echo "Deploying ref contract"
 	./scripts/deploy_contract.sh
 
+trigger-event:
+	@echo "Deploying ref contract"
+	./scripts/trigger_event.sh
+
+restart:
+	${MAKE} kill-dev
+	${MAKE} localnet
+	sleep 5
+	${MAKE} deploy
+
+
 kill-dev:
 	@echo "Killing wasmd and removing previous data"
 	-@rm -rf ./data
@@ -38,15 +49,25 @@ compile-contract:
 compile-contract-arm:
 	cosmwasm/scripts/build_artifacts_arm.sh
 
+build-relayer:
+	cd cw-relayer && ${MAKE} build
+
+lint-relayer:
+	cd cw-relayer &&  golangci-lint run ./...
+
+format-contract:
+	cd cosmwasm && cargo fmt
+
 start-relayer:
 	cd cw-relayer && ${MAKE} start
 
 test-e2e:
 	@echo "Running e2e tests"
 	${MAKE} compile-contract
-	cp -f cosmwasm/artifacts/std_reference.wasm cw-relayer/tests/e2e/config/std_reference.wasm
+	cp -f cosmwasm/artifacts/ojo_price_feeds.wasm cw-relayer/tests/e2e/config/ojo_price_feeds.wasm
+	cp -f cosmwasm/artifacts/price_query.wasm cw-relayer/tests/e2e/config/price_query.wasm
 	cd cw-relayer && ${MAKE} test-e2e
-	rm cw-relayer/tests/e2e/config/std_reference.wasm
+	rm cw-relayer/tests/e2e/config/*.wasm
 
 test-e2e-arm:
 	@echo "Running e2e tests"

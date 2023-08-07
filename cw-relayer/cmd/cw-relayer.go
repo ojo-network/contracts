@@ -19,6 +19,7 @@ import (
 	"github.com/ojo-network/cw-relayer/config"
 	"github.com/ojo-network/cw-relayer/relayer"
 	relayerclient "github.com/ojo-network/cw-relayer/relayer/client"
+	"github.com/ojo-network/cw-relayer/relayer/client/txbundle"
 )
 
 const (
@@ -97,29 +98,44 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 	// listen for and trap any OS signal to gracefully shutdown and exit
 	trapSignal(cancel, logger)
 
-	rpcTimeout, err := time.ParseDuration(cfg.RPC.RPCTimeout)
+	rpcTimeout, err := time.ParseDuration(cfg.TargetRPC.RPCTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to parse RPC timeout: %w", err)
 	}
 
-	eventTimeout, err := time.ParseDuration(cfg.EventTimeout)
+	maxTxDuration, err := time.ParseDuration(cfg.TxConfig.MaxTxDuration)
+	if err != nil {
+		return fmt.Errorf("failed to parse RPC timeout: %w", err)
+	}
+
+	eventTimeout, err := time.ParseDuration(cfg.Timeout.EventTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to parse Event timeout: %w", err)
 	}
 
-	maxTickTimeout, err := time.ParseDuration(cfg.MaxTickTimeout)
+	tickDuration, err := time.ParseDuration(cfg.TickDuration)
+	if err != nil {
+		return fmt.Errorf("failed to parse Tick duration: %w", err)
+	}
+
+	maxTickTimeout, err := time.ParseDuration(cfg.Timeout.MaxTickTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to parse Event timeout: %w", err)
 	}
 
-	queryTimeout, err := time.ParseDuration(cfg.QueryTimeout)
+	queryTimeout, err := time.ParseDuration(cfg.Timeout.QueryTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to parse Query timeout: %w", err)
 	}
 
-	resolveDuration, err := time.ParseDuration(cfg.ResolveDuration)
+	pingDuration, err := time.ParseDuration(cfg.PingDuration)
 	if err != nil {
-		return fmt.Errorf("failed to parse Resolve Duration: %w", err)
+		return fmt.Errorf("failed to parse Ping Duration: %w", err)
+	}
+
+	maxTimeout, err := time.ParseDuration(cfg.TxConfig.MaxTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to parse Max Timeout: %w", err)
 	}
 
 	// Gather pass via env variable || std input
@@ -128,68 +144,125 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// subscribe to new chain height and price update events
+	chainSubscribe, err := relayerclient.NewChainSubscription(
+		ctx,
+		logger,
+		cfg.DataRPC.EventRPCS,
+		eventTimeout,
+		maxTickTimeout,
+		cfg.TickEventType,
+		cfg.BlockHeightConfig.SkipError,
+		cfg.MaxRetries,
+	)
+	if err != nil {
+		return err
+	}
+
 	// client for interacting with the ojo & wasmd chain
 	client, err := relayerclient.NewRelayerClient(
-		ctx,
 		logger,
 		cfg.Account.ChainID,
 		cfg.Keyring.Backend,
 		cfg.Keyring.Dir,
 		keyringPass,
-		cfg.RPC.TMRPCEndpoint,
-		cfg.RPC.QueryEndpoint,
+		cfg.TargetRPC.TMRPCEndpoint,
+		cfg.TargetRPC.QueryEndpoint,
 		rpcTimeout,
+		maxTxDuration,
 		cfg.Account.Address,
 		cfg.Account.AccPrefix,
-		cfg.GasAdjustment,
-		cfg.GasPrices,
+		cfg.Gas.GasAdjustment,
+		cfg.Gas.GasPrices,
+		chainSubscribe,
 	)
 	if err != nil {
 		return err
 	}
 
-	// subscribe to new block heights
-	tick, err := relayerclient.NewBlockHeightSubscription(
-		ctx,
-		cfg.EventRPCS,
-		eventTimeout,
-		maxTickTimeout,
-		cfg.TickEventType,
+	// subscribes to contract events on wasmd chain
+	contractTick, err := relayerclient.NewContractSubscribe(
+		cfg.TargetRPC.TMRPCEndpoint,
+		cfg.ContractAddress,
+		cfg.Account.Address,
 		logger,
-		cfg.Restart.SkipError,
-		cfg.MaxRetries,
 	)
 	if err != nil {
 		return err
 	}
 
+	logger.Info().Msg("starting contract subscribe service")
+	g.Go(func() error {
+		return contractTick.Subscribe(ctx)
+	})
+
+	// service for bundling up relay transactions
+	txBundler, err := txbundle.NewTxBundler(
+		logger,
+		cfg.TxConfig.MaxGasLimitPerTx,
+		cfg.Timeout.TimeoutHeight,
+		maxTimeout,
+		client,
+		cfg.MaxGasUnits,
+		cfg.TxConfig.TotalGasThreshold,
+		cfg.TxConfig.TotalTxThreshold,
+		cfg.TxConfig.EstimateAndBundle,
+	)
+	if err != nil {
+		return err
+	}
+
+	logger.Info().Msg("starting bundler msg service")
+	g.Go(func() error {
+		return txBundler.Bundler(ctx)
+	})
+
+	// service for sending uptime ping
+	uptimePing := relayer.NewUptimePing(
+		logger,
+		cfg.Account.Address,
+		cfg.ContractAddress,
+		cfg.Timeout.TimeoutHeight,
+		client,
+		txBundler.PingChan,
+	)
+
+	logger.Info().Msg("starting ping service")
+	g.Go(func() error {
+		return uptimePing.StartPing(ctx, pingDuration)
+	})
+
+	// service to update price on each price update tick
+	priceService := relayer.NewPriceService(
+		logger,
+		cfg.DataRPC.QueryRPCS,
+		cfg.MaxRetries,
+		queryTimeout,
+		chainSubscribe.Tick,
+	)
+
+	logger.Info().Msg("starting price fetch service")
+	g.Go(func() error {
+		return priceService.Start(ctx)
+	})
+
+	// processing relay requests from wasmd chain
 	newRelayer := relayer.New(
 		logger,
-		client,
+		contractTick,
+		priceService,
+		cfg.Account.Address,
 		cfg.ContractAddress,
-		cfg.TimeoutHeight,
-		cfg.MissedThreshold,
-		cfg.MaxRetries,
-		cfg.MedianDuration,
-		cfg.DeviationDuration,
-		cfg.SkipNumEvents,
-		cfg.IgnoreMedianErrors,
-		resolveDuration,
-		queryTimeout,
-		cfg.RequestID,
-		cfg.MedianRequestID,
-		cfg.DeviationRequestID,
-		relayer.AutoRestartConfig{AutoRestart: cfg.Restart.AutoID, Denom: cfg.Restart.Denom, SkipError: cfg.Restart.SkipError},
-		tick.Tick,
-		cfg.QueryRPCS,
+		cfg.Timeout.TimeoutHeight,
+		tickDuration,
+		contractTick.Out,
+		txBundler.MsgChan,
 	)
 
-	g.Go(
-		func() error {
-			// start the process that queries the prices on Ojo & submits them on Wasmd
-			return startPriceRelayer(ctx, logger, newRelayer)
-		},
-	)
+	g.Go(func() error {
+		// start the process that processes relay requests from wasmd chain
+		return startPriceRelayer(ctx, logger, newRelayer)
+	})
 
 	// Block main process until all spawned goroutines have gracefully exited and
 	// signal has been captured in the main process or if an error occurs.

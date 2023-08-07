@@ -43,7 +43,7 @@ install: go.sum
 
 start:
 	@make build
-	echo -ne '\n' | build/cw-relayer config.toml
+	echo -ne '\n' | build/cw-relayer relayer-config.toml
 
 docker-build-relayer-e2e:
 	@DOCKER_BUILDKIT=1 docker build -t cw-relayer -f tests/e2e/docker/relayer.Dockerfile .
@@ -62,7 +62,7 @@ test-unit:
 
 test-e2e:
 	$(MAKE) docker-build-relayer-e2e
-	@go test -mod=readonly -race $(PACKAGES_E2E) -v
+	@go test -mod=readonly -race $(PACKAGES_E2E) -v -timeout 0
 
 
 .PHONY: test-unit test-e2e test-unit

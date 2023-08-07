@@ -2,22 +2,15 @@ package client
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"sync"
 	"time"
 
-	"golang.org/x/sync/errgroup"
-	"google.golang.org/grpc/credentials/insecure"
-
 	wasmparams "github.com/CosmWasm/wasmd/app/params"
-	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
-	"github.com/cosmos/cosmos-sdk/client/rpc"
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/telemetry"
@@ -27,8 +20,9 @@ import (
 	"github.com/rs/zerolog"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	tmjsonclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
-	"google.golang.org/grpc"
 )
+
+const appName = "Relayer"
 
 type (
 	// RelayerClient defines a structure that interfaces with the smart-contract-enabled chain.
@@ -38,8 +32,8 @@ type (
 		KeyringBackend    string
 		KeyringDir        string
 		KeyringPass       string
-		TMRPC             string
-		QueryRpc          string
+		TMRPC             []string
+		QueryRpc          []string
 		RPCTimeout        time.Duration
 		RelayerAddr       sdk.AccAddress
 		RelayerAddrString string
@@ -47,7 +41,11 @@ type (
 		GasPrices         string
 		GasAdjustment     float64
 		KeyringPassphrase string
-		ChainHeight       *ChainHeight
+		chainSubscribe    *ChainSubscribe
+
+		maxTxDuration time.Duration
+
+		index int
 	}
 
 	passReader struct {
@@ -56,36 +54,27 @@ type (
 	}
 )
 
-type SmartQuery struct {
-	QueryType int
-	QueryMsg  wasmtypes.QuerySmartContractStateRequest
-}
-
-type QueryResponse struct {
-	QueryType     int
-	QueryResponse wasmtypes.QuerySmartContractStateResponse
-}
-
 func NewRelayerClient(
-	ctx context.Context,
 	logger zerolog.Logger,
 	chainID string,
 	keyringBackend string,
 	keyringDir string,
 	keyringPass string,
-	tmRPC string,
-	queryEndpoint string,
+	tmRPC []string,
+	queryEndpoint []string,
 	rpcTimeout time.Duration,
-	RelayerAddrString string,
+	maxTxDuration time.Duration,
+	relayerAddrString string,
 	accPrefix string,
 	gasAdjustment float64,
 	GasPrices string,
+	chainSubscription *ChainSubscribe,
 ) (RelayerClient, error) {
 	config := sdk.GetConfig()
 	config.SetBech32PrefixForAccount(accPrefix, accPrefix+sdk.PrefixPublic)
 	config.Seal()
 
-	RelayerAddr, err := sdk.AccAddressFromBech32(RelayerAddrString)
+	relayerAddr, err := sdk.AccAddressFromBech32(relayerAddrString)
 	if err != nil {
 		return RelayerClient{}, err
 	}
@@ -98,40 +87,16 @@ func NewRelayerClient(
 		KeyringPass:       keyringPass,
 		TMRPC:             tmRPC,
 		RPCTimeout:        rpcTimeout,
-		RelayerAddr:       RelayerAddr,
-		RelayerAddrString: RelayerAddrString,
+		RelayerAddr:       relayerAddr,
+		maxTxDuration:     maxTxDuration,
+		RelayerAddrString: relayerAddrString,
 		Encoding:          MakeEncodingConfig(),
 		GasAdjustment:     gasAdjustment,
 		GasPrices:         GasPrices,
 		QueryRpc:          queryEndpoint,
 	}
 
-	clientCtx, err := relayerClient.CreateClientContext()
-	if err != nil {
-		return RelayerClient{}, err
-	}
-
-	blockHeight, err := rpc.GetChainHeight(clientCtx)
-	if err != nil {
-		return RelayerClient{}, err
-	}
-
-	blockTime, err := GetChainTimestamp(clientCtx)
-	if err != nil {
-		return RelayerClient{}, err
-	}
-
-	chainHeight, err := NewChainHeight(
-		ctx,
-		clientCtx.Client,
-		relayerClient.logger,
-		blockHeight,
-		blockTime,
-	)
-	if err != nil {
-		return RelayerClient{}, err
-	}
-	relayerClient.ChainHeight = chainHeight
+	relayerClient.chainSubscribe = chainSubscription
 
 	return relayerClient, nil
 }
@@ -156,7 +121,13 @@ func (r *passReader) Read(p []byte) (n int, err error) {
 
 // BroadcastTx attempts to broadcast a signed transaction. If it fails, a few re-attempts
 // will be made until the transaction succeeds or ultimately times out or fails.
-func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight int64, msgs ...sdk.Msg) error {
+func (oc RelayerClient) BroadcastTx(timeoutHeight int64, msgs ...sdk.Msg) error {
+	since := time.Now()
+	nextBlockHeight, err := oc.chainSubscribe.GetChainHeight()
+	if err != nil {
+		return nil
+	}
+
 	maxBlockHeight := nextBlockHeight + timeoutHeight
 	lastCheckHeight := nextBlockHeight - 1
 
@@ -165,16 +136,20 @@ func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight int64, msgs .
 		return err
 	}
 
-	factory, err := oc.CreateTxFactory()
+	factory, err := oc.CreateTxFactory(&clientCtx)
 	if err != nil {
 		return err
 	}
 
 	// re-try tx until timeout
 	for lastCheckHeight < maxBlockHeight {
-		latestBlockHeight, err := oc.ChainHeight.GetChainHeight()
+		latestBlockHeight, err := oc.chainSubscribe.GetChainHeight()
 		if err != nil {
 			return err
+		}
+
+		if time.Since(since).Seconds() > oc.maxTxDuration.Seconds() {
+			return fmt.Errorf("max tx duration timeout while broadcasting tx")
 		}
 
 		if latestBlockHeight <= lastCheckHeight {
@@ -183,7 +158,6 @@ func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight int64, msgs .
 
 		// set last check height to latest block height
 		lastCheckHeight = latestBlockHeight
-
 		resp, err := BroadcastTx(clientCtx, factory, msgs...)
 		if resp != nil && resp.Code != 0 {
 			telemetry.IncrCounter(1, "failure", "tx", "code")
@@ -226,48 +200,6 @@ func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight int64, msgs .
 	return errors.New("broadcasting tx timed out")
 }
 
-func (oc RelayerClient) BroadcastContractQuery(ctx context.Context, timeout time.Duration, queries ...SmartQuery) ([]QueryResponse, error) {
-	grpcConn, err := grpc.Dial(
-		oc.QueryRpc,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	defer grpcConn.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	g, _ := errgroup.WithContext(ctx)
-
-	queryClient := wasmtypes.NewQueryClient(grpcConn)
-
-	var responses []QueryResponse
-	var mut sync.Mutex
-	for _, query := range queries {
-		func(queryMap SmartQuery) {
-			g.Go(func() error {
-				queryResponse, err := queryClient.SmartContractState(ctx, &queryMap.QueryMsg)
-				if err != nil {
-					return err
-				}
-
-				mut.Lock()
-				responses = append(responses, QueryResponse{QueryType: queryMap.QueryType, QueryResponse: *queryResponse})
-				mut.Unlock()
-
-				return nil
-			})
-		}(query)
-	}
-
-	err = g.Wait()
-	return responses, err
-}
-
 // CreateClientContext creates an SDK client Context instance used for transaction
 // generation, signing and broadcasting.
 func (oc RelayerClient) CreateClientContext() (client.Context, error) {
@@ -278,19 +210,20 @@ func (oc RelayerClient) CreateClientContext() (client.Context, error) {
 		keyringInput = os.Stdin
 	}
 
-	kr, err := keyring.New("relayer", oc.KeyringBackend, oc.KeyringDir, keyringInput, oc.Encoding.Marshaler)
+	kr, err := keyring.New(appName, oc.KeyringBackend, oc.KeyringDir, keyringInput, oc.Encoding.Marshaler)
 	if err != nil {
 		return client.Context{}, err
 	}
 
-	httpClient, err := tmjsonclient.DefaultHTTPClient(oc.TMRPC)
+	rpc := oc.getRPC()
+	httpClient, err := tmjsonclient.DefaultHTTPClient(rpc)
 	if err != nil {
 		return client.Context{}, err
 	}
 
 	httpClient.Timeout = oc.RPCTimeout
 
-	tmRPC, err := rpchttp.NewWithClient(oc.TMRPC, "/websocket", httpClient)
+	tmRPC, err := rpchttp.NewWithClient(rpc, "/websocket", httpClient)
 	if err != nil {
 		return client.Context{}, err
 	}
@@ -310,7 +243,7 @@ func (oc RelayerClient) CreateClientContext() (client.Context, error) {
 		Codec:             oc.Encoding.Marshaler,
 		LegacyAmino:       oc.Encoding.Amino,
 		Input:             os.Stdin,
-		NodeURI:           oc.TMRPC,
+		NodeURI:           rpc,
 		Client:            tmRPC,
 		Keyring:           kr,
 		FromAddress:       oc.RelayerAddr,
@@ -329,12 +262,7 @@ func (oc RelayerClient) CreateClientContext() (client.Context, error) {
 
 // CreateTxFactory creates an SDK Factory instance used for transaction
 // generation, signing and broadcasting.
-func (oc RelayerClient) CreateTxFactory() (tx.Factory, error) {
-	clientCtx, err := oc.CreateClientContext()
-	if err != nil {
-		return tx.Factory{}, err
-	}
-
+func (oc RelayerClient) CreateTxFactory(clientCtx *client.Context) (tx.Factory, error) {
 	txFactory := tx.Factory{}.
 		WithAccountRetriever(clientCtx.AccountRetriever).
 		WithChainID(oc.ChainID).
@@ -348,17 +276,9 @@ func (oc RelayerClient) CreateTxFactory() (tx.Factory, error) {
 	return txFactory, nil
 }
 
-func GetChainTimestamp(clientCtx client.Context) (time.Time, error) {
-	node, err := clientCtx.GetNode()
-	if err != nil {
-		return time.Time{}, err
-	}
+func (oc *RelayerClient) getRPC() (rpc string) {
+	rpc = oc.TMRPC[oc.index]
+	oc.index = (oc.index + 1) % len(oc.TMRPC)
 
-	status, err := node.Status(context.Background())
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	blockTime := status.SyncInfo.LatestBlockTime
-	return blockTime, nil
+	return
 }

@@ -13,6 +13,12 @@ pub enum ContractError {
     #[error("Unauthorized: {msg}")]
     Unauthorized { msg: String },
 
+    #[error("Unauthorized Relayer : {msg}")]
+    UnauthorizedRelayer { msg: String },
+
+    #[error("No Active Relayer found")]
+    RelayerNotFound {},
+
     #[error("Median is disabled")]
     MedianDisabled {},
 
@@ -21,4 +27,7 @@ pub enum ContractError {
 
     #[error("Cannot migrate from unsupported version: {previous_version}")]
     CannotMigrateVersion { previous_version: String },
+
+    #[error("Trigger request disabled")]
+    TriggerRequestDisabled {},
 }

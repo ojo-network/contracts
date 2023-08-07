@@ -27,7 +27,7 @@ func (o *Orchestrator) initWasmd() error {
 		return err
 	}
 
-	o.wasmChain = NewChain("test-wasm")
+	o.WasmChain = NewChain("test-wasm")
 
 	o.wasmdResource, err = o.dockerPool.RunWithOptions(
 		&dockertest.RunOptions{
@@ -35,9 +35,10 @@ func (o *Orchestrator) initWasmd() error {
 			Repository: WASMD_IMAGE_REPO,
 			NetworkID:  o.dockerNetwork.Network.ID,
 			Env: []string{
-				fmt.Sprintf("E2E_WASMD_CHAIN_ID=%s", o.wasmChain.chainId),
-				fmt.Sprintf("E2E_WASMD_VAL_MNEMONIC=%s", o.wasmChain.val_mnemonic),
-				fmt.Sprintf("E2E_WASMD_VAL_ADDRESSS=%s", o.wasmChain.address),
+				fmt.Sprintf("E2E_WASMD_CHAIN_ID=%s", o.WasmChain.chainId),
+				fmt.Sprintf("E2E_WASMD_VAL_MNEMONIC=%s", o.WasmChain.valMnemonic),
+				fmt.Sprintf("E2E_WASMD_VAL_ADDRESSS=%s", o.WasmChain.Address),
+				fmt.Sprintf("E2E_WASMD_USER_MNEMONIC=%s", o.WasmChain.userMnemonic),
 			},
 			ExtraHosts:   []string{"host.docker.internal:host-gateway"},
 			PortBindings: map[docker.Port][]docker.PortBinding{},
@@ -133,7 +134,7 @@ func (o *Orchestrator) execWasmCmd(command []string) (err error) {
 		if strings.Contains(errOutput, "gas estimate") {
 			return nil
 		}
-		err = fmt.Errorf("error executing command %s", strings.Join(command, " "))
+		err = fmt.Errorf("error executing command %s with error %s", strings.Join(command, " "), errOutput)
 	}
 
 	return err
@@ -151,34 +152,33 @@ func (o *Orchestrator) setGrpcEndpoint() (err error) {
 	return
 }
 
-func (o *Orchestrator) setContractAddress() error {
+func (o *Orchestrator) getContractAddress(codeID uint64) (string, error) {
 	grpcConn, err := grpc.Dial(
 		o.QueryRpc,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	defer grpcConn.Close()
 
 	queryClient := wasmtypes.NewQueryClient(grpcConn)
-	msg := wasmtypes.QueryContractsByCodeRequest{CodeId: 1}
+	msg := wasmtypes.QueryContractsByCodeRequest{CodeId: codeID}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
 	resp, err := queryClient.ContractsByCode(ctx, &msg)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	if len(resp.Contracts[0]) == 0 {
-		return fmt.Errorf("contract not found")
+	if len(resp.Contracts) == 0 {
+		return "", fmt.Errorf("contract not found")
 	}
 
-	o.ContractAddress = resp.Contracts[0]
-	return nil
+	return resp.Contracts[0], nil
 }
 
 func (o *Orchestrator) deployAndInitContract() error {
@@ -193,8 +193,8 @@ func (o *Orchestrator) addRelayerToContract(contractAddress, valAddress string) 
 	msg := []string{
 		"wasmd", "tx", "wasm", "execute", contractAddress, addMsg,
 		"--from=val", "-b=block", "--gas-prices=0.25stake", "--keyring-backend=test", "--gas=auto", "--gas-adjustment=1.3", "-y",
-		fmt.Sprintf("--chain-id=%s", o.wasmChain.chainId),
-		fmt.Sprintf("--home=/data/%s", o.wasmChain.chainId),
+		fmt.Sprintf("--chain-id=%s", o.WasmChain.chainId),
+		fmt.Sprintf("--home=/data/%s", o.WasmChain.chainId),
 	}
 
 	return o.execWasmCmd(msg)
