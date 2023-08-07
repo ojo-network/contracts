@@ -58,6 +58,7 @@ type Median struct {
 	Timestamp string
 }
 
+// NewPriceService returns instance of new price service
 func NewPriceService(
 	logger zerolog.Logger,
 	queryRPCS []string,
@@ -78,6 +79,7 @@ func NewPriceService(
 	}
 }
 
+// Start starts price service that updates prices on each event tick from ojo rpc
 func (p *PriceService) Start(ctx context.Context) error {
 	for {
 		select {
@@ -93,6 +95,7 @@ func (p *PriceService) Start(ctx context.Context) error {
 	}
 }
 
+// setDenomPrices sets rates, median and deviations prices
 func (p *PriceService) setDenomPrices(ctx context.Context) error {
 	if p.queryRetries > p.maxQueryRetries {
 		p.queryRetries = 0
@@ -120,8 +123,8 @@ func (p *PriceService) setDenomPrices(ctx context.Context) error {
 	defer cancel()
 
 	queryResponse, err := queryClient.ExchangeRates(ctx, &oracletypes.QueryExchangeRates{})
-	// assuming an issue with rpc if exchange rates are empty
 
+	// assuming an issue with rpc if exchange rates are empty
 	if err != nil || queryResponse.ExchangeRates.Empty() {
 		p.logger.Debug().Msg("error querying exchange rates")
 		p.increment()
@@ -211,6 +214,7 @@ func (p *PriceService) setDenomPrices(ctx context.Context) error {
 	return g.Wait()
 }
 
+// GetPrices returns rate for denoms
 func (p *PriceService) GetPrices(denoms []string) map[string]Price {
 	p.mut.Lock()
 	exchangeRates := p.exchangeRates
@@ -229,6 +233,7 @@ func (p *PriceService) GetPrices(denoms []string) map[string]Price {
 	return rates
 }
 
+// GetMedians returns medians for denoms
 func (p *PriceService) GetMedians(denoms []string) map[string]Median {
 	p.mut.Lock()
 	exchangeRates := p.medianRates
@@ -247,6 +252,7 @@ func (p *PriceService) GetMedians(denoms []string) map[string]Median {
 	return rates
 }
 
+// GetDeviations returns deviations for denoms
 func (p *PriceService) GetDeviations(denoms []string) map[string]Deviation {
 	p.mut.Lock()
 	exchangeRates := p.deviationRates

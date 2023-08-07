@@ -26,6 +26,7 @@ type EventSubscribe struct {
 	Tick           chan struct{}
 }
 
+// NewBlockHeightSubscription returns a new EventSubscribe for block height update
 func NewBlockHeightSubscription(
 	ctx context.Context,
 	logger zerolog.Logger,

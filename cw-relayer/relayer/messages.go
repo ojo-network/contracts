@@ -7,6 +7,7 @@ import (
 )
 
 type (
+	// CallbackData for price relay support
 	CallbackData struct {
 		RequestID    string `json:"request_id"`
 		Symbol       string `json:"symbol"`
@@ -15,6 +16,7 @@ type (
 		CallbackData []byte `json:"callback_data"`
 	}
 
+	// CallbackDataHistorical for Median and Deviation relay support
 	CallbackDataHistorical struct {
 		RequestID    string   `json:"request_id"`
 		Symbol       string   `json:"symbol"`
@@ -23,11 +25,13 @@ type (
 		CallbackData []byte   `json:"callback_data"`
 	}
 
+	// Ping msg type relayer uptime ping
 	Ping struct {
 		Ping struct{} `json:"relayer_ping"`
 	}
 )
 
+// genMsg generates a wasmtype MsgExecuteContract msg with a particular callback signature according to a contract request
 func genMsg(relayerAddress, contractAddress, callbackSig string, msg any) (*wasmtypes.MsgExecuteContract, error) {
 	execute := make(map[string]interface{})
 	execute[callbackSig] = msg
@@ -45,6 +49,7 @@ func genMsg(relayerAddress, contractAddress, callbackSig string, msg any) (*wasm
 	}, nil
 }
 
+// genPingMsg generates a wasmtype MsgExecuteContract msg for relayer ping
 func genPingMsg(relayerAddress, contractAddress string) (*wasmtypes.MsgExecuteContract, error) {
 	ping := Ping{Ping: struct{}{}}
 	msgData, err := json.Marshal(ping)

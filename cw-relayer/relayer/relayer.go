@@ -12,7 +12,7 @@ import (
 	"github.com/ojo-network/cw-relayer/relayer/client"
 )
 
-// Relayer defines a structure that queries prices from ojo and publishes prices to wasm contract.
+// Relayer defines a structure that published prices as callback to wasm contracts
 type Relayer struct {
 	logger zerolog.Logger
 	closer *psync.Closer
@@ -56,6 +56,7 @@ func New(
 	}
 }
 
+// Start starts the relayer service
 func (r *Relayer) Start(ctx context.Context) error {
 	ticker := time.NewTicker(r.tickDuration)
 	for {
@@ -77,6 +78,7 @@ func (r *Relayer) Start(ctx context.Context) error {
 	}
 }
 
+// processRequests generates callback and callback historical data based on requests and sends it for broadcast to bundler
 func (r *Relayer) processRequests(ctx context.Context, requests map[string][]client.PriceRequest) error {
 	denomList := make([]string, len(requests))
 	i := 0
@@ -86,6 +88,8 @@ func (r *Relayer) processRequests(ctx context.Context, requests map[string][]cli
 	}
 
 	g, _ := errgroup.WithContext(ctx)
+
+	// for handling price requests
 	g.Go(func() error {
 		prices := r.ps.GetPrices(denomList)
 		for denom, reqs := range requests {
@@ -118,7 +122,7 @@ func (r *Relayer) processRequests(ctx context.Context, requests map[string][]cli
 		return nil
 	})
 
-	// Go routine for handling medians
+	// for handling median requests
 	g.Go(func() error {
 		medians := r.ps.GetMedians(denomList)
 		for denom, reqs := range requests {
@@ -151,7 +155,7 @@ func (r *Relayer) processRequests(ctx context.Context, requests map[string][]cli
 		return nil
 	})
 
-	// Go routine for handling deviations
+	// for handling deviations requests
 	g.Go(func() error {
 		deviations := r.ps.GetDeviations(denomList)
 		for denom, reqs := range requests {

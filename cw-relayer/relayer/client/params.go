@@ -6,6 +6,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/std"
 )
 
+// MakeEncodingConfig encoding config to support wasm msgs
 func MakeEncodingConfig() wasmparams.EncodingConfig {
 	encodingConfig := wasmparams.MakeEncodingConfig()
 	std.RegisterLegacyAminoCodec(encodingConfig.Amino)

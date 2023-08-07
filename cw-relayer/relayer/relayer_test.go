@@ -64,6 +64,7 @@ func (rts *RelayerTestSuite) SetupClientRequest() {
 	}
 }
 
+// SetupMockPriceService, generates mock prices for denom list
 func (rts *RelayerTestSuite) SetupMockPriceService() *PriceService {
 	rts.mut.Lock()
 	defer rts.mut.Unlock()

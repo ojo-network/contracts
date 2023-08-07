@@ -44,6 +44,7 @@ type (
 	}
 )
 
+// NewContractSubscribe subscribes to wasm-price-feed event emitted by price feed contract for a particular relayer address
 func NewContractSubscribe(
 	nodeURL []string,
 	contractAddress string,
@@ -69,8 +70,7 @@ func NewContractSubscribe(
 	return contractSubscribe, nil
 }
 
-// Subscribe listens to new blocks being made
-// and updates the chain height.
+// Subscribe listens to wasm-price-feed events emitted from the block and parses it into PriceRequest
 func (cs *ContractSubscribe) Subscribe(
 	ctx context.Context,
 ) error {
@@ -137,6 +137,7 @@ func (cs *ContractSubscribe) GetPriceRequest() map[string][]PriceRequest {
 	return priceRequests
 }
 
+// parseEvents parses events into PriceRequest
 func parseEvents(attrs []abcitypes.EventAttribute) (priceRequest []PriceRequest, err error) {
 	for i := 0; i < len(attrs); i += 9 {
 		req := PriceRequest{}

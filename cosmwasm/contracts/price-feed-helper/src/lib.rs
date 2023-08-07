@@ -92,6 +92,7 @@ pub mod RequestRelay {
     }
 }
 
+// Helper module provides various utility functions to assist with handling oracle requests like oracle submessage generation and reply handling.
 pub mod helper {
     use crate::RequestRelay::{
         RequestDeviationData, RequestMedianData, RequestRateData, RequestType,
@@ -105,6 +106,7 @@ pub mod helper {
         pub symbol: String,
     }
 
+    // Constructs a SubMsg for the oracle based on the request type
     pub fn oracle_submessage(
         oracle_address: String,
         symbol: String,
@@ -160,6 +162,7 @@ pub mod helper {
         return msg;
     }
 
+    // Extracts the request ID and symbol from the oracle submessage reply
     pub fn id_and_symbol_from_reply(reply: &SubMsgResponse) -> StdResult<OracleReply> {
         let event = reply
             .events
@@ -195,6 +198,7 @@ pub mod helper {
     }
 }
 
+// Verify module provides query functionality to validate if an address is a valid relayer.
 pub mod verify {
     use cosmwasm_schema::cw_serde;
     use cosmwasm_std::{DepsMut, Env, StdResult};
@@ -207,7 +211,7 @@ pub mod verify {
     pub fn is_relayer(
         deps: &DepsMut,
         _: &Env,
-        contract_address: String,
+        oracle_address: String,
         sender: String,
     ) -> StdResult<bool> {
         let is_relayer_query_msg = QueryMsg::IsRelayer {
@@ -215,7 +219,7 @@ pub mod verify {
         };
 
         deps.querier
-            .query_wasm_smart(contract_address, &is_relayer_query_msg)
+            .query_wasm_smart(oracle_address, &is_relayer_query_msg)
     }
 }
 #[allow(non_snake_case)]

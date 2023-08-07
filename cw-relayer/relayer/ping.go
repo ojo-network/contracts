@@ -39,6 +39,7 @@ func NewUptimePing(
 	return check
 }
 
+// StartPing starts the ping msg broadcast service at regular intervals
 func (c *UptimeCheck) StartPing(ctx context.Context, duration time.Duration) error {
 	c.logger.Info().Msg("uptime check service started ...")
 	for {
@@ -53,6 +54,7 @@ func (c *UptimeCheck) StartPing(ctx context.Context, duration time.Duration) err
 	}
 }
 
+// sendPing sends a ping message to price feed contract
 func (c *UptimeCheck) sendPing() error {
 	msg, err := genPingMsg(c.relayerAddress, c.contractAddress)
 	if err != nil {

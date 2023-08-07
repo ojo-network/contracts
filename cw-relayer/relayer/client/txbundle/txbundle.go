@@ -13,6 +13,8 @@ import (
 	"github.com/ojo-network/cw-relayer/relayer/client"
 )
 
+// Txbundle is a struct that holds the necessary data and settings
+// for bundling and broadcasting transactions.
 type Txbundle struct {
 	maxLimitPerTx   int64
 	logger          zerolog.Logger
@@ -33,6 +35,8 @@ type Txbundle struct {
 	PingChan          chan types.Msg
 }
 
+// NewTxBundler initializes the Txbundle struct with the provided parameters and creates a client context,
+// a transaction factory and a service client if estimateAndBundle is set to true.
 func NewTxBundler(
 	logger zerolog.Logger,
 	maxLimitPerTx,
@@ -85,6 +89,10 @@ func NewTxBundler(
 	return txbundle, nil
 }
 
+// Bundler is a method on the Txbundle struct. It constantly listens for incoming messages
+// and either directly broadcasts them or adds them to the bundle based on the estimateAndBundle setting.
+// Bundles are either broadcasted when the time limit is exceeded, the total gas threshold is reached or
+// when the total number of transactions in the bundle reaches the maximum limit.
 func (b *Txbundle) Bundler(ctx context.Context) error {
 	ticker := time.NewTicker(b.timeoutDuration)
 	for {
