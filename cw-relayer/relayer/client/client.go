@@ -206,7 +206,7 @@ func (oc RelayerClient) BroadcastTx(timeoutDuration time.Duration, nextBlockHeig
 				hash = resp.TxHash
 			}
 
-			oc.logger.Debug().
+			oc.logger.Error().
 				Err(err).
 				Int64("max_height", maxBlockHeight).
 				Int64("last_check_height", lastCheckHeight).
