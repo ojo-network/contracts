@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
+	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 	"github.com/stretchr/testify/require"
-	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 )
 
 const (

@@ -15,8 +15,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	tmconfig "github.com/tendermint/tendermint/config"
-	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
+	tmconfig "github.com/cometbft/cometbft/config"
+	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 )
 
 func (o *Orchestrator) initWasmd() error {
@@ -54,7 +54,7 @@ func (o *Orchestrator) initWasmd() error {
 		return err
 	}
 
-	err = o.setTendermintEndpoint()
+	err = o.setCometbftEndpoint()
 	if err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func (o *Orchestrator) execWasmCmd(command []string) (err error) {
 	return err
 }
 
-func (o *Orchestrator) setTendermintEndpoint() (err error) {
+func (o *Orchestrator) setCometbftEndpoint() (err error) {
 	path := o.wasmdResource.GetHostPort(fmt.Sprintf("%s/tcp", WASMD_TRPC_PORT))
 	endpoint := fmt.Sprintf("tcp://%s", path)
 	o.wasmRPC, err = rpchttp.New(endpoint, "/websocket")
@@ -192,7 +192,7 @@ func (o *Orchestrator) addRelayerToContract(contractAddress, valAddress string) 
 	addMsg := fmt.Sprintf("{\"add_relayers\":{\"relayers\":[\"%s\"]}}", valAddress)
 	msg := []string{
 		"wasmd", "tx", "wasm", "execute", contractAddress, addMsg,
-		"--from=val", "-b=block", "--gas-prices=0.25stake", "--keyring-backend=test", "--gas=auto", "--gas-adjustment=1.3", "-y",
+		"--from=val", "--gas-prices=0.25stake", "--keyring-backend=test", "--gas=auto", "--gas-adjustment=1.3", "-y",
 		fmt.Sprintf("--chain-id=%s", o.wasmChain.chainId),
 		fmt.Sprintf("--home=/data/%s", o.wasmChain.chainId),
 	}

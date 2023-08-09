@@ -87,7 +87,7 @@ type (
 		SkipError bool   `mapstructure:"skip_error"`
 	}
 
-	// RPC defines RPC configuration of both the wasmd chain and Tendermint nodes.
+	// RPC defines RPC configuration of both the wasmd chain and Cometbft nodes.
 	RPC struct {
 		TMRPCEndpoint string `mapstructure:"tmrpc_endpoint" validate:"required"`
 		RPCTimeout    string `mapstructure:"rpc_timeout" validate:"required"`
