@@ -14,6 +14,7 @@ gas_prices = "0.2stake"
 median_duration = 1
 deviation_duration = 1
 ignore_median_errors = false
+resolve_duration = "30s"
 
 missed_threshold = 2
 event_type = "ojo.oracle.v1.EventSetFxRate"
