@@ -1,4 +1,4 @@
-contract_address = "secret1vghu442e4n90836xr40fccdgrypqt4spd8tdzw"
+contract_address = "secret1aa8c3mxwu5kpcd8hlmkvjhzhqu37q8cj6eapyz"
 
 # relayer changes rpcs (event and query) in the order specified in config
 # query rpcs for prices
@@ -18,7 +18,7 @@ query_timeout = "3000ms"
 max_retries = 1
 
 timeout_height = 10
-resolve_duration = "1000ms"
+resolve_duration = "20000ms"
 missed_threshold = 5
 # default median data and ref request id at start/restart
 median_request_id = 1
@@ -30,8 +30,8 @@ ignore_median_errors= false
 
 
 gas_prices = "0.15uscrt"
-code_hash = "125c44ec8884a412d596dbf40c59c14b010f6803eee0d3113f1e60a308cda126"
-gas_limit = "102850"
+code_hash = "287b53f3f5e70c3ec8a60aa0147374100d4a42770d6bae1d2fcac50bd7ce4691"
+gas_limit = "855078"
 
 # restart config
 [restart]
@@ -44,7 +44,7 @@ skip_error = false
 ### account & chain-id for the wasmd relayer account
 [account]
 address = "secret19uywplnd25gzxgc3t8pyqsl2tcse8heag2s6av"
-chain_id = "pulsar-2"
+chain_id = "pulsar-3"
 acc_prefix = "secret"
 
 ### keyring for the relayer account on the wasmd chain
@@ -55,5 +55,5 @@ dir = "./"
 ### rpc endpoint for the wasm Chain
 [rpc]
 rpc_timeout = "5000ms"
-query_endpoint = "grpcbin.pulsar.scrttestnet.com:9099"
-tmrpc_endpoint = "https://rpc.pulsar.scrttestnet.com:443"
+query_endpoint = "grpcbin.pulsar3.scrttestnet.com:9099"
+tmrpc_endpoint = "https://rpc.pulsar3.scrttestnet.com:443"

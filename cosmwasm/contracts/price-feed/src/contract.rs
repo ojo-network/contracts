@@ -143,9 +143,7 @@ fn execute_relay(
     // Checks if sender is a relayer
     let sender_addr = &info.sender;
     if !query_is_relayer(deps.as_ref(), sender_addr)? {
-        return Err(ContractError::Unauthorized {
-            msg: String::from("Sender is not a relayer"),
-        });
+        return Err(ContractError::UnauthorizedRelayer {});
     }
 
     // Saves price data
@@ -175,9 +173,7 @@ fn execute_relay_historical_median(
     // Checks if sender is a relayer
     let sender_addr = &info.sender;
     if !query_is_relayer(deps.as_ref(), sender_addr)? {
-        return Err(ContractError::Unauthorized {
-            msg: String::from("Sender is not a relayer"),
-        });
+        return Err(ContractError::UnauthorizedRelayer {});
     }
 
     if !MEDIANSTATUS.load(deps.storage)? {
@@ -212,9 +208,7 @@ fn execute_force_relay(
     let sender_addr = &info.sender;
 
     if !query_is_relayer(deps.as_ref(), sender_addr)? {
-        return Err(ContractError::Unauthorized {
-            msg: String::from("Sender is not a relayer"),
-        });
+        return Err(ContractError::UnauthorizedRelayer {});
     }
 
     for (symbol, rate) in symbol_rates {
@@ -238,9 +232,7 @@ fn execute_force_relay_historical_median(
     let sender_addr = &info.sender;
 
     if !query_is_relayer(deps.as_ref(), sender_addr)? {
-        return Err(ContractError::Unauthorized {
-            msg: String::from("Sender is not a relayer"),
-        });
+        return Err(ContractError::UnauthorizedRelayer {});
     }
 
     for (symbol, rates) in symbol_rates {
@@ -264,9 +256,7 @@ fn execute_relay_historical_deviation(
     // Checks if sender is a relayer
     let sender_addr = &info.sender;
     if !query_is_relayer(deps.as_ref(), sender_addr)? {
-        return Err(ContractError::Unauthorized {
-            msg: String::from("Sender is not a relayer"),
-        });
+        return Err(ContractError::UnauthorizedRelayer {});
     }
 
     // Saves price data
@@ -297,9 +287,7 @@ fn execute_force_relay_historical_deviation(
     // Checks if sender is a relayer
     let sender_addr = &info.sender;
     if !query_is_relayer(deps.as_ref(), sender_addr)? {
-        return Err(ContractError::Unauthorized {
-            msg: String::from("Sender is not a relayer"),
-        });
+        return Err(ContractError::UnauthorizedRelayer {});
     }
 
     // Saves price data
@@ -379,9 +367,7 @@ fn query_reference_data_bulk(
 
 fn assert_admin(config_admin: &Addr, account: &Addr) -> Result<(), ContractError> {
     if config_admin != account {
-        return Err(ContractError::Admin {
-            msg: String::from("ADMIN ONLY"),
-        });
+        return Err(ContractError::UnauthorizedAdmin {});
     }
 
     Ok(())
@@ -539,12 +525,7 @@ mod tests {
             let err = execute(deps.as_mut(), env, info, msg);
             assert_eq!(err.is_err(), true);
 
-            assert_eq!(
-                err.err().unwrap(),
-                ContractError::Admin {
-                    msg: String::from("ADMIN ONLY"),
-                }
-            )
+            assert_eq!(err.unwrap_err(), ContractError::UnauthorizedAdmin {})
         }
 
         #[test]
@@ -610,12 +591,7 @@ mod tests {
             let msg = ExecuteMsg::MedianStatus { status: true };
 
             let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-            assert_eq!(
-                err,
-                ContractError::Admin {
-                    msg: String::from("ADMIN ONLY"),
-                }
-            )
+            assert_eq!(err, ContractError::UnauthorizedAdmin {})
         }
 
         #[test]
@@ -634,12 +610,7 @@ mod tests {
                 relayers: vec![String::from("relayer_1")],
             };
             let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-            assert_eq!(
-                err,
-                ContractError::Admin {
-                    msg: String::from("ADMIN ONLY"),
-                }
-            )
+            assert_eq!(err, ContractError::UnauthorizedAdmin {})
         }
 
         #[test]
@@ -687,12 +658,7 @@ mod tests {
             let msg = RemoveRelayers { relayers };
             let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
-            assert_eq!(
-                err,
-                ContractError::Admin {
-                    msg: String::from("ADMIN ONLY"),
-                }
-            );
+            assert_eq!(err, ContractError::UnauthorizedAdmin {});
         }
 
         #[test]
@@ -1146,12 +1112,7 @@ mod tests {
                 request_id: Uint64::zero(),
             };
             let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-            assert_eq!(
-                err,
-                ContractError::Unauthorized {
-                    msg: String::from("Sender is not a relayer")
-                }
-            );
+            assert_eq!(err, ContractError::UnauthorizedRelayer {});
         }
 
         #[test]
@@ -1242,12 +1203,7 @@ mod tests {
                 request_id: Uint64::zero(),
             };
             let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-            assert_eq!(
-                err,
-                ContractError::Unauthorized {
-                    msg: String::from("Sender is not a relayer")
-                }
-            );
+            assert_eq!(err, ContractError::UnauthorizedRelayer {});
         }
     }
 
@@ -1276,12 +1232,7 @@ mod tests {
 
             assert_eq!(is_admin.is_err(), true,);
 
-            assert_eq!(
-                is_admin.err().unwrap(),
-                ContractError::Admin {
-                    msg: String::from("ADMIN ONLY"),
-                }
-            )
+            assert_eq!(is_admin.err().unwrap(), ContractError::UnauthorizedAdmin {})
         }
 
         #[test]
