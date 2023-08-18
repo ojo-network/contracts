@@ -7,11 +7,11 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
-    #[error("Unauthorized: {msg}")]
-    Admin { msg: String },
+    #[error("Unauthorized: sender is not an admin")]
+    UnauthorizedAdmin {},
 
-    #[error("Unauthorized: {msg}")]
-    Unauthorized { msg: String },
+    #[error("Unauthorized: sender is not relayer")]
+    UnauthorizedRelayer {},
 
     #[error("Median is disabled")]
     MedianDisabled {},

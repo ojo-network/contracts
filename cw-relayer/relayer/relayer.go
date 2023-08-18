@@ -475,8 +475,8 @@ func (r *Relayer) tick(ctx context.Context) error {
 		executeMsgs[i] = &executeMsg
 	}
 
-	logs.Msg("broadcasting execute to contract")
-	if err := r.relayerClient.BroadcastTx(*clientCtx, nextBlockHeight, r.timeoutHeight, executeMsgs...); err != nil {
+	logs.Msg("broadcasting tx")
+	if err := r.relayerClient.BroadcastTx(*clientCtx, r.resolveDuration, nextBlockHeight, r.timeoutHeight, executeMsgs...); err != nil {
 		r.missedCounter += 1
 		return err
 	}

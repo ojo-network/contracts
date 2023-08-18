@@ -1,3 +1,5 @@
-cosmwasm/artifacts
-cosmwasm/target
+cosmwasm/*
 cw-relayer/build
+
+# ide files
+.idea

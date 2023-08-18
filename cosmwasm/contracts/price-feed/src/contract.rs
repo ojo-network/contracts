@@ -1,6 +1,9 @@
 use crate::errors::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg,QueryMsg};
-use crate::state::{RefData, RefStore, ReferenceData, WhitelistedRelayers, ADMIN, RELAYERS, RefMedianData, RefMedianStore, MEDIANSTATUS, RefDeviationStore};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::state::{
+    RefData, RefDeviationData, RefDeviationStore, RefMedianData, RefMedianStore, RefStore,
+    ReferenceData, WhitelistedRelayers, ADMIN, MEDIANSTATUS, RELAYERS,
+};
 use cosmwasm_std::{
     entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
     StdResult, Uint256, Uint64,
@@ -21,7 +24,7 @@ pub fn instantiate(
     let admin = info.sender;
 
     ADMIN.save(deps.storage, &admin.clone())?;
-    MEDIANSTATUS.save(deps.storage,&true)?;
+    MEDIANSTATUS.save(deps.storage, &true)?;
 
     Ok(Response::default())
 }
@@ -140,9 +143,7 @@ fn execute_relay(
     // Checks if sender is a relayer
     let sender_addr = &info.sender;
     if !query_is_relayer(deps.as_ref(), sender_addr)? {
-        return Err(ContractError::Unauthorized {
-            msg: String::from("Sender is not a relayer"),
-        });
+        return Err(ContractError::UnauthorizedRelayer {});
     }
 
     // Saves price data
@@ -172,9 +173,7 @@ fn execute_relay_historical_median(
     // Checks if sender is a relayer
     let sender_addr = &info.sender;
     if !query_is_relayer(deps.as_ref(), sender_addr)? {
-        return Err(ContractError::Unauthorized {
-            msg: String::from("Sender is not a relayer"),
-        });
+        return Err(ContractError::UnauthorizedRelayer {});
     }
 
     if !MEDIANSTATUS.load(deps.storage)? {
@@ -209,9 +208,7 @@ fn execute_force_relay(
     let sender_addr = &info.sender;
 
     if !query_is_relayer(deps.as_ref(), sender_addr)? {
-        return Err(ContractError::Unauthorized {
-            msg: String::from("Sender is not a relayer"),
-        });
+        return Err(ContractError::UnauthorizedRelayer {});
     }
 
     for (symbol, rate) in symbol_rates {
@@ -235,9 +232,7 @@ fn execute_force_relay_historical_median(
     let sender_addr = &info.sender;
 
     if !query_is_relayer(deps.as_ref(), sender_addr)? {
-        return Err(ContractError::Unauthorized {
-            msg: String::from("Sender is not a relayer"),
-        });
+        return Err(ContractError::UnauthorizedRelayer {});
     }
 
     for (symbol, rates) in symbol_rates {
@@ -254,20 +249,18 @@ fn execute_force_relay_historical_median(
 fn execute_relay_historical_deviation(
     deps: DepsMut,
     info: MessageInfo,
-    symbol_rates: Vec<(String, Uint64)>,
+    symbol_rates: Vec<(String, Vec<Uint64>)>,
     resolve_time: Uint64,
     request_id: Uint64,
 ) -> Result<Response, ContractError> {
     // Checks if sender is a relayer
     let sender_addr = &info.sender;
     if !query_is_relayer(deps.as_ref(), sender_addr)? {
-        return Err(ContractError::Unauthorized {
-            msg: String::from("Sender is not a relayer"),
-        });
+        return Err(ContractError::UnauthorizedRelayer {});
     }
 
     // Saves price data
-    for (symbol, rate) in symbol_rates {
+    for (symbol, rates) in symbol_rates {
         if let Some(existing_refdata) = RefDeviationStore::load(deps.storage, &symbol) {
             if existing_refdata.resolve_time >= resolve_time {
                 continue;
@@ -277,7 +270,7 @@ fn execute_relay_historical_deviation(
         RefDeviationStore::save(
             deps.storage,
             &symbol,
-            &RefData::new(rate, resolve_time, request_id),
+            &RefDeviationData::new(rates, resolve_time, request_id),
         )?
     }
 
@@ -287,24 +280,22 @@ fn execute_relay_historical_deviation(
 fn execute_force_relay_historical_deviation(
     deps: DepsMut,
     info: MessageInfo,
-    symbol_rates: Vec<(String, Uint64)>,
+    symbol_rates: Vec<(String, Vec<Uint64>)>,
     resolve_time: Uint64,
     request_id: Uint64,
 ) -> Result<Response, ContractError> {
     // Checks if sender is a relayer
     let sender_addr = &info.sender;
     if !query_is_relayer(deps.as_ref(), sender_addr)? {
-        return Err(ContractError::Unauthorized {
-            msg: String::from("Sender is not a relayer"),
-        });
+        return Err(ContractError::UnauthorizedRelayer {});
     }
 
     // Saves price data
-    for (symbol, rate) in symbol_rates {
+    for (symbol, rates) in symbol_rates {
         RefDeviationStore::save(
             deps.storage,
             &symbol,
-            &RefData::new(rate, resolve_time, request_id),
+            &RefDeviationData::new(rates, resolve_time, request_id),
         )?
     }
 
@@ -376,9 +367,7 @@ fn query_reference_data_bulk(
 
 fn assert_admin(config_admin: &Addr, account: &Addr) -> Result<(), ContractError> {
     if config_admin != account {
-        return Err(ContractError::Admin {
-            msg: String::from("ADMIN ONLY"),
-        });
+        return Err(ContractError::UnauthorizedAdmin {});
     }
 
     Ok(())
@@ -387,13 +376,13 @@ fn assert_admin(config_admin: &Addr, account: &Addr) -> Result<(), ContractError
 // can only support USD
 fn query_median_ref(deps: Deps, symbol: &str) -> StdResult<RefMedianData> {
     if !MEDIANSTATUS.load(deps.storage)? {
-        return Err(StdError::generic_err ("MEDIAN DISABLED"));
+        return Err(StdError::generic_err("MEDIAN DISABLED"));
     }
 
     if symbol == "USD" {
         Ok(RefMedianData::new(vec![E9], Uint64::MAX, Uint64::zero()))
     } else {
-       let data = RefMedianStore::load(deps.storage, symbol);
+        let data = RefMedianStore::load(deps.storage, symbol);
         data.ok_or(StdError::not_found("std_reference::state::RefData"))
     }
 }
@@ -405,16 +394,16 @@ fn query_median_ref_data_bulk(deps: Deps, symbols: &[String]) -> StdResult<Vec<R
         .collect()
 }
 
-fn query_deviation_ref(deps: Deps, symbol: &str) -> StdResult<RefData> {
+fn query_deviation_ref(deps: Deps, symbol: &str) -> StdResult<RefDeviationData> {
     if symbol == "USD" {
-        Ok(RefData::new(E0, Uint64::MAX, Uint64::zero()))
+        Ok(RefDeviationData::new(vec![E0], Uint64::MAX, Uint64::zero()))
     } else {
         let data = RefDeviationStore::load(deps.storage, symbol);
         data.ok_or(StdError::not_found("std_reference::state::RefData"))
     }
 }
 
-fn query_deviation_ref_bulk(deps: Deps, symbols: &[String]) -> StdResult<Vec<RefData>> {
+fn query_deviation_ref_bulk(deps: Deps, symbols: &[String]) -> StdResult<Vec<RefDeviationData>> {
     symbols
         .iter()
         .map(|symbol| query_deviation_ref(deps, symbol))
@@ -502,7 +491,10 @@ mod tests {
 
         // use cw_controllers::AdminError;
 
-        use crate::msg::ExecuteMsg::{AddRelayers, ForceRelay, Relay,RelayHistoricalMedian,RelayHistoricalDeviation, RemoveRelayers, UpdateAdmin, ForceRelayHistoricalMedian,ForceRelayHistoricalDeviation};
+        use crate::msg::ExecuteMsg::{
+            AddRelayers, ForceRelay, ForceRelayHistoricalDeviation, ForceRelayHistoricalMedian,
+            Relay, RelayHistoricalDeviation, RelayHistoricalMedian, RemoveRelayers, UpdateAdmin,
+        };
 
         use super::*;
 
@@ -533,12 +525,7 @@ mod tests {
             let err = execute(deps.as_mut(), env, info, msg);
             assert_eq!(err.is_err(), true);
 
-            assert_eq!(
-                err.err().unwrap(),
-                ContractError::Admin {
-                    msg: String::from("ADMIN ONLY"),
-                }
-            )
+            assert_eq!(err.unwrap_err(), ContractError::UnauthorizedAdmin {})
         }
 
         #[test]
@@ -604,12 +591,7 @@ mod tests {
             let msg = ExecuteMsg::MedianStatus { status: true };
 
             let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-            assert_eq!(
-                err,
-                ContractError::Admin {
-                    msg: String::from("ADMIN ONLY"),
-                }
-            )
+            assert_eq!(err, ContractError::UnauthorizedAdmin {})
         }
 
         #[test]
@@ -628,12 +610,7 @@ mod tests {
                 relayers: vec![String::from("relayer_1")],
             };
             let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-            assert_eq!(
-                err,
-                ContractError::Admin {
-                    msg: String::from("ADMIN ONLY"),
-                }
-            )
+            assert_eq!(err, ContractError::UnauthorizedAdmin {})
         }
 
         #[test]
@@ -681,12 +658,7 @@ mod tests {
             let msg = RemoveRelayers { relayers };
             let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
-            assert_eq!(
-                err,
-                ContractError::Admin {
-                    msg: String::from("ADMIN ONLY"),
-                }
-            );
+            assert_eq!(err, ContractError::UnauthorizedAdmin {});
         }
 
         #[test]
@@ -942,10 +914,7 @@ mod tests {
             // Check if relay was successful
             let err = query_median_ref_data_bulk(deps.as_ref(), &symbols.clone()).unwrap_err();
 
-            assert_eq!(
-                err,
-                StdError::generic_err ("MEDIAN DISABLED")
-            );
+            assert_eq!(err, StdError::generic_err("MEDIAN DISABLED"));
         }
 
         #[test]
@@ -1027,14 +996,19 @@ mod tests {
                 .into_iter()
                 .map(|s| s.to_string())
                 .collect::<Vec<String>>();
-            let rates = [1000, 2000, 3000]
+            let deviations = [1000, 2000, 3000]
                 .iter()
                 .map(|r| Uint64::new(*r))
                 .collect::<Vec<Uint64>>();
 
+            let symbol_rates: Vec<(String, Vec<Uint64>)> = symbols
+                .iter()
+                .zip(std::iter::repeat(deviations.clone()))
+                .map(|(s, r)| (s.to_owned(), r))
+                .collect();
+
             let msg = RelayHistoricalDeviation {
-                symbol_rates: zip(symbols.clone(), rates.clone())
-                    .collect::<Vec<(String, Uint64)>>(),
+                symbol_rates: symbol_rates.clone(),
                 resolve_time: Uint64::from(10u64),
                 request_id: Uint64::one(),
             };
@@ -1044,13 +1018,9 @@ mod tests {
             let reference_datas =
                 query_deviation_ref_bulk(deps.as_ref(), &symbols.clone()).unwrap();
 
-            let retrieved_rates = reference_datas
-                .clone()
-                .iter()
-                .map(|r| r.rate)
-                .collect::<Vec<Uint64>>();
-
-            assert_eq!(retrieved_rates, rates);
+            for (expected, actual) in symbol_rates.iter().zip(reference_datas.iter()) {
+                assert_eq!(expected.1, actual.rates)
+            }
         }
 
         #[test]
@@ -1072,9 +1042,14 @@ mod tests {
                 .map(|r| Uint64::new(*r))
                 .collect::<Vec<Uint64>>();
 
+            let symbol_rates: Vec<(String, Vec<Uint64>)> = symbols
+                .iter()
+                .zip(std::iter::repeat(deviations.clone()))
+                .map(|(s, r)| (s.to_owned(), r))
+                .collect();
+
             let msg = ForceRelayHistoricalDeviation {
-                symbol_rates: zip(symbols.clone(), deviations.clone())
-                    .collect::<Vec<(String, Uint64)>>(),
+                symbol_rates: symbol_rates.clone(),
                 resolve_time: Uint64::from(100u64),
                 request_id: Uint64::from(2u64),
             };
@@ -1088,9 +1063,14 @@ mod tests {
                 .map(|r| Uint64::new(*r))
                 .collect::<Vec<Uint64>>();
 
+            let forced_deviation_symbol_rates: Vec<(String, Vec<Uint64>)> = symbols
+                .iter()
+                .zip(std::iter::repeat(forced_deviations.clone()))
+                .map(|(s, r)| (s.to_owned(), r))
+                .collect();
+
             let msg = ForceRelayHistoricalDeviation {
-                symbol_rates: zip(symbols.clone(), forced_deviations.clone())
-                    .collect::<Vec<(String, Uint64)>>(),
+                symbol_rates: forced_deviation_symbol_rates.clone(),
                 resolve_time: Uint64::from(10u64),
                 request_id: Uint64::zero(),
             };
@@ -1100,13 +1080,12 @@ mod tests {
             let reference_datas =
                 query_deviation_ref_bulk(deps.as_ref(), &symbols.clone()).unwrap();
 
-            let retrieved_rates = reference_datas
-                .clone()
+            for (expected, actual) in forced_deviation_symbol_rates
                 .iter()
-                .map(|r| r.rate)
-                .collect::<Vec<Uint64>>();
-
-            assert_eq!(retrieved_rates, forced_deviations);
+                .zip(reference_datas.iter())
+            {
+                assert_eq!(expected.1, actual.rates)
+            }
         }
 
         #[test]
@@ -1133,12 +1112,7 @@ mod tests {
                 request_id: Uint64::zero(),
             };
             let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-            assert_eq!(
-                err,
-                ContractError::Unauthorized {
-                    msg: String::from("Sender is not a relayer")
-                }
-            );
+            assert_eq!(err, ContractError::UnauthorizedRelayer {});
         }
 
         #[test]
@@ -1229,23 +1203,15 @@ mod tests {
                 request_id: Uint64::zero(),
             };
             let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-            assert_eq!(
-                err,
-                ContractError::Unauthorized {
-                    msg: String::from("Sender is not a relayer")
-                }
-            );
+            assert_eq!(err, ContractError::UnauthorizedRelayer {});
         }
     }
 
     mod query {
+        use crate::msg::QueryMsg::{GetRef, GetReferenceData, GetReferenceDataBulk};
+        use cosmwasm_std::from_binary;
         use std::iter::zip;
         use std::ops::Mul;
-
-        use cosmwasm_std::from_binary;
-        use cosmwasm_std::OverflowOperation::Add;
-
-        use crate::msg::QueryMsg::{GetRef, GetReferenceData, GetReferenceDataBulk};
 
         use super::*;
 
@@ -1266,12 +1232,7 @@ mod tests {
 
             assert_eq!(is_admin.is_err(), true,);
 
-            assert_eq!(
-                is_admin.err().unwrap(),
-                ContractError::Admin {
-                    msg: String::from("ADMIN ONLY"),
-                }
-            )
+            assert_eq!(is_admin.err().unwrap(), ContractError::UnauthorizedAdmin {})
         }
 
         #[test]
