@@ -10,11 +10,10 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/sync/errgroup"
-	"google.golang.org/grpc/credentials/insecure"
-
 	wasmparams "github.com/CosmWasm/wasmd/app/params"
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
+	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
+	tmjsonclient "github.com/cometbft/cometbft/rpc/jsonrpc/client"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/rpc"
@@ -25,9 +24,9 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/rs/zerolog"
-	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
-	tmjsonclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type (
@@ -123,7 +122,7 @@ func NewRelayerClient(
 
 	chainHeight, err := NewChainHeight(
 		ctx,
-		clientCtx.Client,
+		tmRPC,
 		relayerClient.logger,
 		blockHeight,
 		blockTime,

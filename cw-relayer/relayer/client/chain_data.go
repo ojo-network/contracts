@@ -7,10 +7,12 @@ import (
 	"sync"
 	"time"
 
+	tmrpcclient "github.com/cometbft/cometbft/rpc/client"
+	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
+	tmctypes "github.com/cometbft/cometbft/rpc/core/types"
+	tmjsonclient "github.com/cometbft/cometbft/rpc/jsonrpc/client"
+	tmtypes "github.com/cometbft/cometbft/types"
 	"github.com/rs/zerolog"
-	tmrpcclient "github.com/tendermint/tendermint/rpc/client"
-	tmctypes "github.com/tendermint/tendermint/rpc/core/types"
-	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -36,13 +38,23 @@ type ChainHeight struct {
 // starts a new goroutine subscribed to EventNewBlockHeader.
 func NewChainHeight(
 	ctx context.Context,
-	rpcClient tmrpcclient.Client,
+	rpc string,
 	logger zerolog.Logger,
 	initialHeight int64,
 	initialTimeStamp time.Time,
 ) (*ChainHeight, error) {
 	if initialHeight < 1 {
 		return nil, fmt.Errorf("expected positive initial block height")
+	}
+
+	httpClient, err := tmjsonclient.DefaultHTTPClient(rpc)
+	if err != nil {
+		return nil, err
+	}
+
+	rpcClient, err := rpchttp.NewWithClient(rpc, "/websocket", httpClient)
+	if err != nil {
+		return nil, err
 	}
 
 	if !rpcClient.IsRunning() {

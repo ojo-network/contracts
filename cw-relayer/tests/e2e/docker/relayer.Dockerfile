@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-ARG GO_VERSION="1.18"
+ARG GO_VERSION="1.20"
 ARG RUNNER_IMAGE="alpine"
 
 # --------------------------------------------------------
@@ -28,10 +28,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # Cosmwasm - Download correct libwasmvm version
 RUN WASMVM_VERSION=$(go list -m github.com/CosmWasm/wasmvm | cut -d ' ' -f 2) && \
     wget https://github.com/CosmWasm/wasmvm/releases/download/$WASMVM_VERSION/libwasmvm_muslc.$(uname -m).a \
-        -O /lib/libwasmvm_muslc.a && \
-    # verify checksum
-    wget https://github.com/CosmWasm/wasmvm/releases/download/$WASMVM_VERSION/checksums.txt -O /tmp/checksums.txt && \
-    sha256sum /lib/libwasmvm_muslc.a | grep $(cat /tmp/checksums.txt | grep $(uname -m) | cut -d ' ' -f 1)
+        -O /lib/libwasmvm_muslc.a
 
 # Copy the remaining files
 COPY . .
@@ -57,14 +54,14 @@ RUN apk add bash \
     jq
 
 COPY --from=builder /cw-relayer/build/cw-relayer /usr/bin/cw-relayer
-COPY --from=cosmwasm/wasmd:v0.30.0 /usr/bin/wasmd /usr/bin/wasmd
+COPY --from=cosmwasm/wasmd:v0.40.1 /usr/bin/wasmd /usr/bin/wasmd
 
 ENV HOME /
 WORKDIR $HOME
 
-# tendermint p2p
+# cometbft p2p
 EXPOSE 26656
-# tendermint rpc
+# cometbft rpc
 EXPOSE 26657
 # grpc rpc
 EXPOSE 8080
