@@ -19,7 +19,7 @@ pub const MEDIANREFDATA: Map<&str, RefMedianData> = Map::new("medianrefdata");
 pub const MEDIANSTATUS: Item<bool> = Item::new("medianstatus");
 
 // Used to store Deviation data
-pub const DEVIATIONDATA: Map<&str, RefData> = Map::new("deviationdata");
+pub const DEVIATIONDATA: Map<&str, RefDeviationData> = Map::new("deviationdata");
 
 #[cw_serde]
 pub struct RefData {
@@ -54,6 +54,26 @@ pub struct RefMedianData {
 impl RefMedianData {
     pub fn new(rates: Vec<Uint64>, resolve_time: Uint64, request_id: Uint64) -> Self {
         RefMedianData {
+            rates,
+            resolve_time,
+            request_id,
+        }
+    }
+}
+
+#[cw_serde]
+pub struct RefDeviationData {
+    // Deviation Rates of an asset relative to USD
+    pub rates: Vec<Uint64>,
+    // The resolve time of the request ID
+    pub resolve_time: Uint64,
+    // The request ID where the rate was derived from
+    pub request_id: Uint64,
+}
+
+impl RefDeviationData {
+    pub fn new(rates: Vec<Uint64>, resolve_time: Uint64, request_id: Uint64) -> Self {
+        RefDeviationData {
             rates,
             resolve_time,
             request_id,

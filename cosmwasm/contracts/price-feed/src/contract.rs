@@ -8,8 +8,8 @@ use semver::Version;
 use crate::errors::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::{
-    RefData, RefMedianData, ReferenceData, ADMIN, DEVIATIONDATA, MEDIANREFDATA, MEDIANSTATUS,
-    REFDATA, RELAYERS,
+    RefData, RefDeviationData, RefMedianData, ReferenceData, ADMIN, DEVIATIONDATA, MEDIANREFDATA,
+    MEDIANSTATUS, REFDATA, RELAYERS,
 };
 
 const E0: Uint64 = Uint64::zero();
@@ -288,7 +288,7 @@ fn execute_force_relay_historical_median(
 fn execute_relay_historical_deviation(
     deps: DepsMut,
     info: MessageInfo,
-    symbol_rates: Vec<(String, Uint64)>,
+    symbol_rates: Vec<(String, Vec<Uint64>)>,
     resolve_time: Uint64,
     request_id: Uint64,
 ) -> Result<Response, ContractError> {
@@ -301,7 +301,7 @@ fn execute_relay_historical_deviation(
     }
 
     // Saves price data
-    for (symbol, rate) in symbol_rates {
+    for (symbol, rates) in symbol_rates {
         if let Some(existing_refdata) = DEVIATIONDATA.may_load(deps.storage, &symbol)? {
             if existing_refdata.resolve_time >= resolve_time {
                 continue;
@@ -311,7 +311,7 @@ fn execute_relay_historical_deviation(
         DEVIATIONDATA.save(
             deps.storage,
             &symbol,
-            &RefData::new(rate, resolve_time, request_id),
+            &RefDeviationData::new(rates, resolve_time, request_id),
         )?
     }
 
@@ -321,7 +321,7 @@ fn execute_relay_historical_deviation(
 fn execute_force_relay_historical_deviation(
     deps: DepsMut,
     info: MessageInfo,
-    symbol_rates: Vec<(String, Uint64)>,
+    symbol_rates: Vec<(String, Vec<Uint64>)>,
     resolve_time: Uint64,
     request_id: Uint64,
 ) -> Result<Response, ContractError> {
@@ -334,11 +334,11 @@ fn execute_force_relay_historical_deviation(
     }
 
     // Saves price data
-    for (symbol, rate) in symbol_rates {
+    for (symbol, rates) in symbol_rates {
         DEVIATIONDATA.save(
             deps.storage,
             &symbol,
-            &RefData::new(rate, resolve_time, request_id),
+            &RefDeviationData::new(rates, resolve_time, request_id),
         )?
     }
 
@@ -409,7 +409,7 @@ fn query_reference_data_bulk(
 // can only support USD
 fn query_median_ref(deps: Deps, symbol: &str) -> StdResult<RefMedianData> {
     if !MEDIANSTATUS.load(deps.storage)? {
-        return Err(StdError::generic_err ("MEDIAN DISABLED"));
+        return Err(StdError::generic_err("MEDIAN DISABLED"));
     }
 
     if symbol == "USD" {
@@ -426,15 +426,15 @@ fn query_median_ref_data_bulk(deps: Deps, symbols: &[String]) -> StdResult<Vec<R
         .collect()
 }
 
-fn query_deviation_ref(deps: Deps, symbol: &str) -> StdResult<RefData> {
+fn query_deviation_ref(deps: Deps, symbol: &str) -> StdResult<RefDeviationData> {
     if symbol == "USD" {
-        Ok(RefData::new(E0, Uint64::MAX, Uint64::zero()))
+        Ok(RefDeviationData::new(vec![E0], Uint64::MAX, Uint64::zero()))
     } else {
         DEVIATIONDATA.load(deps.storage, symbol)
     }
 }
 
-fn query_deviation_ref_bulk(deps: Deps, symbols: &[String]) -> StdResult<Vec<RefData>> {
+fn query_deviation_ref_bulk(deps: Deps, symbols: &[String]) -> StdResult<Vec<RefDeviationData>> {
     symbols
         .iter()
         .map(|symbol| query_deviation_ref(deps, symbol))
@@ -925,10 +925,7 @@ mod tests {
             // Check if relay was successful
             let err = query_median_ref_data_bulk(deps.as_ref(), &symbols.clone()).unwrap_err();
 
-            assert_eq!(
-                err,
-                StdError::generic_err ("MEDIAN DISABLED")
-            );
+            assert_eq!(err, StdError::generic_err("MEDIAN DISABLED"));
         }
 
         #[test]
@@ -1015,9 +1012,14 @@ mod tests {
                 .map(|r| Uint64::new(*r))
                 .collect::<Vec<Uint64>>();
 
+            let symbol_rates: Vec<(String, Vec<Uint64>)> = symbols
+                .iter()
+                .zip(std::iter::repeat(rates.clone()))
+                .map(|(s, r)| (s.to_owned(), r))
+                .collect();
+
             let msg = RelayHistoricalDeviation {
-                symbol_rates: zip(symbols.clone(), rates.clone())
-                    .collect::<Vec<(String, Uint64)>>(),
+                symbol_rates: symbol_rates.clone(),
                 resolve_time: Uint64::from(10u64),
                 request_id: Uint64::one(),
             };
@@ -1027,13 +1029,9 @@ mod tests {
             let reference_datas =
                 query_deviation_ref_bulk(deps.as_ref(), &symbols.clone()).unwrap();
 
-            let retrieved_rates = reference_datas
-                .clone()
-                .iter()
-                .map(|r| r.rate)
-                .collect::<Vec<Uint64>>();
-
-            assert_eq!(retrieved_rates, rates);
+            for (expected, actual) in symbol_rates.iter().zip(reference_datas.iter()) {
+                assert_eq!(expected.1, actual.rates)
+            }
         }
 
         #[test]
@@ -1050,14 +1048,19 @@ mod tests {
                 .into_iter()
                 .map(|s| s.to_string())
                 .collect::<Vec<String>>();
-            let deviations = [1000, 2000, 3000]
+            let rates = [1000, 2000, 3000]
                 .iter()
                 .map(|r| Uint64::new(*r))
                 .collect::<Vec<Uint64>>();
 
+            let symbol_rates: Vec<(String, Vec<Uint64>)> = symbols
+                .iter()
+                .zip(std::iter::repeat(rates.clone()))
+                .map(|(s, r)| (s.to_owned(), r))
+                .collect();
+
             let msg = ForceRelayHistoricalDeviation {
-                symbol_rates: zip(symbols.clone(), deviations.clone())
-                    .collect::<Vec<(String, Uint64)>>(),
+                symbol_rates: symbol_rates.clone(),
                 resolve_time: Uint64::from(100u64),
                 request_id: Uint64::from(2u64),
             };
@@ -1071,9 +1074,14 @@ mod tests {
                 .map(|r| Uint64::new(*r))
                 .collect::<Vec<Uint64>>();
 
+            let symbol_rates: Vec<(String, Vec<Uint64>)> = symbols
+                .iter()
+                .zip(std::iter::repeat(forced_deviations.clone()))
+                .map(|(s, r)| (s.to_owned(), r))
+                .collect();
+
             let msg = ForceRelayHistoricalDeviation {
-                symbol_rates: zip(symbols.clone(), forced_deviations.clone())
-                    .collect::<Vec<(String, Uint64)>>(),
+                symbol_rates: symbol_rates.clone(),
                 resolve_time: Uint64::from(10u64),
                 request_id: Uint64::zero(),
             };
@@ -1083,13 +1091,9 @@ mod tests {
             let reference_datas =
                 query_deviation_ref_bulk(deps.as_ref(), &symbols.clone()).unwrap();
 
-            let retrieved_rates = reference_datas
-                .clone()
-                .iter()
-                .map(|r| r.rate)
-                .collect::<Vec<Uint64>>();
-
-            assert_eq!(retrieved_rates, forced_deviations);
+            for (expected, actual) in symbol_rates.iter().zip(reference_datas.iter()) {
+                assert_eq!(expected.1, actual.rates)
+            }
         }
 
         #[test]
