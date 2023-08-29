@@ -6,7 +6,7 @@ require (
 	github.com/CosmWasm/wasmd v0.0.0-00010101000000-000000000000
 	github.com/cosmos/cosmos-sdk v0.46.12
 	github.com/cosmos/go-bip39 v1.0.0
-	github.com/go-playground/validator/v10 v10.14.0
+	github.com/go-playground/validator/v10 v10.15.2
 	github.com/golangci/golangci-lint v1.52.2
 	github.com/ojo-network/ojo v0.1.3
 	github.com/ory/dockertest/v3 v3.10.0
