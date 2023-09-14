@@ -29,7 +29,7 @@ median_duration = 1
 deviation_duration=1
 
 # resolve duration is the estimated delay between price updates on the contract
-resolve_duration = "1000ms"
+resolve_duration = "6000ms"
 missed_threshold = 2
 
 # default median data and ref request id at start/restart

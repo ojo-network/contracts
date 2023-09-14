@@ -180,7 +180,7 @@ func (oc RelayerClient) BroadcastTx(timeoutDuration time.Duration, nextBlockHeig
 
 		if latestBlockHeight <= lastCheckHeight {
 			if time.Since(start).Seconds() >= timeoutDuration.Seconds() {
-				return fmt.Errorf("timeout duration exceeded")
+				return fmt.Errorf("timeout duration exceeded, last check height = %v", lastCheckHeight)
 			}
 
 			continue
