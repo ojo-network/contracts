@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/CosmWasm/wasmd v0.0.0-00010101000000-000000000000
+	github.com/cometbft/cometbft v0.37.1
 	github.com/cosmos/cosmos-sdk v0.46.12
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/go-playground/validator/v10 v10.14.0
