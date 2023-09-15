@@ -48,6 +48,8 @@ type (
 		GasAdjustment     float64
 		KeyringPassphrase string
 		ChainHeight       *ChainHeight
+		feeGranter        sdk.AccAddress
+		feeGrantEnabled   bool
 	}
 
 	passReader struct {
@@ -80,6 +82,7 @@ func NewRelayerClient(
 	accPrefix string,
 	gasAdjustment float64,
 	GasPrices string,
+	granter string,
 ) (RelayerClient, error) {
 	config := sdk.GetConfig()
 	config.SetBech32PrefixForAccount(accPrefix, accPrefix+sdk.PrefixPublic)
@@ -104,6 +107,16 @@ func NewRelayerClient(
 		GasAdjustment:     gasAdjustment,
 		GasPrices:         GasPrices,
 		QueryRpc:          queryEndpoint,
+	}
+
+	if len(granter) > 0 {
+		feeGranterAddr, err := sdk.AccAddressFromBech32(granter)
+		if err != nil {
+			return RelayerClient{}, err
+		}
+
+		relayerClient.feeGranter = feeGranterAddr
+		relayerClient.feeGrantEnabled = true
 	}
 
 	clientCtx, err := relayerClient.CreateClientContext()
@@ -349,6 +362,10 @@ func (oc RelayerClient) CreateTxFactory() (tx.Factory, error) {
 		WithKeybase(clientCtx.Keyring).
 		WithSignMode(signing.SignMode_SIGN_MODE_DIRECT).
 		WithSimulateAndExecute(true)
+
+	if oc.feeGrantEnabled {
+		txFactory = txFactory.WithFeeGranter(oc.feeGranter)
+	}
 
 	return txFactory, nil
 }
