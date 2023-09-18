@@ -48,6 +48,7 @@ type (
 		GasAdjustment     float64
 		KeyringPassphrase string
 		ChainHeight       *ChainHeight
+		feeGranter        sdk.AccAddress
 	}
 
 	passReader struct {
@@ -80,6 +81,7 @@ func NewRelayerClient(
 	accPrefix string,
 	gasAdjustment float64,
 	GasPrices string,
+	granter string,
 ) (RelayerClient, error) {
 	config := sdk.GetConfig()
 	config.SetBech32PrefixForAccount(accPrefix, accPrefix+sdk.PrefixPublic)
@@ -109,6 +111,17 @@ func NewRelayerClient(
 	clientCtx, err := relayerClient.CreateClientContext()
 	if err != nil {
 		return RelayerClient{}, err
+	}
+
+	if len(granter) > 0 {
+		feeGranterAddr, err := sdk.AccAddressFromBech32(granter)
+		if err != nil {
+			return RelayerClient{}, err
+		}
+
+		relayerClient.feeGranter = feeGranterAddr
+	} else {
+		relayerClient.feeGranter = clientCtx.GetFeeGranterAddress()
 	}
 
 	blockHeight, err := rpc.GetChainHeight(clientCtx)
@@ -189,7 +202,7 @@ func (oc RelayerClient) BroadcastTx(timeoutDuration time.Duration, nextBlockHeig
 		// set last check height to latest block height
 		lastCheckHeight = latestBlockHeight
 
-		resp, err := BroadcastTx(clientCtx, factory, msgs...)
+		resp, err := BroadcastTx(oc.feeGranter, clientCtx, factory, msgs...)
 		if resp != nil && resp.Code != 0 {
 			telemetry.IncrCounter(1, "failure", "tx", "code")
 			oc.logger.Error().Msg(resp.String())
@@ -348,7 +361,8 @@ func (oc RelayerClient) CreateTxFactory() (tx.Factory, error) {
 		WithGasPrices(oc.GasPrices).
 		WithKeybase(clientCtx.Keyring).
 		WithSignMode(signing.SignMode_SIGN_MODE_DIRECT).
-		WithSimulateAndExecute(true)
+		WithSimulateAndExecute(true).
+		WithFeeGranter(oc.feeGranter)
 
 	return txFactory, nil
 }

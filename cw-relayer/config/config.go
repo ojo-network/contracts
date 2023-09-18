@@ -29,10 +29,11 @@ var (
 type (
 	// Config defines all necessary cw-relayer configuration parameters.
 	Config struct {
-		Account Account       `mapstructure:"account" validate:"required,gt=0,dive,required"`
-		Keyring Keyring       `mapstructure:"keyring" validate:"required,gt=0,dive,required"`
-		RPC     RPC           `mapstructure:"rpc" validate:"required,gt=0,dive,required"`
-		Restart RestartConfig `mapstructure:"restart" validate:"required"`
+		Account  Account        `mapstructure:"account" validate:"required,gt=0,dive,required"`
+		Keyring  Keyring        `mapstructure:"keyring" validate:"required,gt=0,dive,required"`
+		RPC      RPC            `mapstructure:"rpc" validate:"required,gt=0,dive,required"`
+		Restart  RestartConfig  `mapstructure:"restart" validate:"required"`
+		FeeGrant FeeGrantConfig `mapstructure:"fee_grant" validate:"dive"`
 
 		ProviderTimeout string `mapstructure:"provider_timeout"`
 		ContractAddress string `mapstructure:"contract_address"`
@@ -85,6 +86,10 @@ type (
 		AutoID    bool   `mapstructure:"auto_id"`
 		Denom     string `mapstructure:"denom"`
 		SkipError bool   `mapstructure:"skip_error"`
+	}
+
+	FeeGrantConfig struct {
+		Granter string `mapstructure:"granter" validate:"omitempty,required"`
 	}
 
 	// RPC defines RPC configuration of both the wasmd chain and Tendermint nodes.
@@ -159,6 +164,8 @@ func ParseConfig(configPath string) (Config, error) {
 	if cfg.MaxRetries == 0 {
 		cfg.MaxRetries = defaultRetries
 	}
+
+	fmt.Println()
 
 	return cfg, cfg.Validate()
 }
