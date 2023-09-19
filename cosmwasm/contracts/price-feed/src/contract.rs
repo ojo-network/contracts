@@ -4,7 +4,6 @@ use cosmwasm_std::{
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
-
 use crate::errors::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::{
@@ -57,10 +56,11 @@ pub fn execute(
         ExecuteMsg::AddRelayers { relayers } => execute_add_relayers(deps, info, relayers),
         ExecuteMsg::RemoveRelayers { relayers } => execute_remove_relayers(deps, info, relayers),
         ExecuteMsg::Relay {
-            symbol_rates,
+            symbols,
+            rates,
             resolve_time,
             request_id,
-        } => execute_relay(deps, info, symbol_rates, resolve_time, request_id),
+        } => execute_relay(deps, info, symbols, rates, resolve_time, request_id),
         ExecuteMsg::ForceRelay {
             symbol_rates,
             resolve_time,
@@ -167,7 +167,8 @@ fn execute_remove_relayers(
 fn execute_relay(
     deps: DepsMut,
     info: MessageInfo,
-    symbol_rates: Vec<(String, Uint64)>,
+    symbols: Vec<String>,
+    rates: Vec<Uint256>,
     resolve_time: Uint64,
     request_id: Uint64,
 ) -> Result<Response, ContractError> {
@@ -179,18 +180,32 @@ fn execute_relay(
         });
     }
 
-    // Saves price data
-    for (symbol, rate) in symbol_rates {
-        if let Some(existing_refdata) = REFDATA.may_load(deps.storage, &symbol)? {
-            if existing_refdata.resolve_time >= resolve_time {
-                continue;
+    for i in 0..rates.len() {
+        let symbol_rates = rates[i].to_le_bytes();
+        let index=i*4;
+        for j in index..index+4{
+            if j >= symbols.len(){
+                // No more symbols left update
+                break;
             }
+
+            let rate= Uint64::from(symbol_rates[j]);
+            if rate.is_zero(){
+                
+            }
+
+            if let Some(existing_refdata) = REFDATA.may_load(deps.storage, &symbols[i + j])? {
+                if existing_refdata.resolve_time >= resolve_time {
+                    continue;
+                }
+            }
+
+            REFDATA.save(
+                deps.storage,
+                &symbols[i + j],
+                &RefData::new(rate, resolve_time, request_id),
+            )?
         }
-        REFDATA.save(
-            deps.storage,
-            &symbol,
-            &RefData::new(rate, resolve_time, request_id),
-        )?
     }
 
     Ok(Response::default().add_attribute("action", "execute_relay"))
