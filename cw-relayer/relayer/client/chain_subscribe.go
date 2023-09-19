@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
+	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
+	tmctypes "github.com/cometbft/cometbft/rpc/core/types"
+	tmjsonclient "github.com/cometbft/cometbft/rpc/jsonrpc/client"
+	tmtypes "github.com/cometbft/cometbft/types"
 	"github.com/rs/zerolog"
-	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
-	tmctypes "github.com/tendermint/tendermint/rpc/core/types"
-	tmjsonclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
-	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -69,7 +69,7 @@ func NewBlockHeightSubscription(
 	return newEvent, nil
 }
 
-// setNewEventChan subscribes to tendermint rpc for a specific event
+// setNewEventChan subscribes to cometbft rpc for a specific event
 func (event *EventSubscribe) setNewEventChan(ctx context.Context) error {
 	event.logger.Info().Str("new rpc", event.rpcAddress[event.index]).Msg("connecting to rpc")
 	httpClient, err := tmjsonclient.DefaultHTTPClient(event.rpcAddress[event.index])
@@ -101,7 +101,7 @@ func (event *EventSubscribe) setNewEventChan(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, event.timeout)
 	defer cancel()
 
-	// tendermint overrides subscriber param
+	// cometbft overrides subscriber param
 	newSubscription, err := rpcClient.Subscribe(ctx, "", queryType)
 	if err != nil {
 		return err
