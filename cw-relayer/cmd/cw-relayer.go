@@ -143,6 +143,7 @@ func cwRelayerCmdHandler(cmd *cobra.Command, args []string) error {
 		cfg.Account.AccPrefix,
 		cfg.GasAdjustment,
 		cfg.GasPrices,
+		cfg.FeeGrant.Granter,
 	)
 	if err != nil {
 		return err
