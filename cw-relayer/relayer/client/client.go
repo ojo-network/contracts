@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"sync"
 	"time"
@@ -74,12 +75,12 @@ func NewRelayerClient(
 		return RelayerClient{}, err
 	}
 
-	block, err := ethClient.BlockByNumber(ctx, big.NewInt(int64(blockHeight)))
+	block, err := ethClient.HeaderByNumber(ctx, big.NewInt(int64(blockHeight)))
 	if err != nil {
-		return RelayerClient{}, err
+		return RelayerClient{}, fmt.Errorf("unable to retrieve block info")
 	}
 
-	blockTime := block.Time()
+	blockTime := block.Time
 	chainHeight, err := NewChainHeight(
 		ctx,
 		RPC,
@@ -233,9 +234,7 @@ func (oc RelayerClient) BroadcastTx(nextBlockHeight, timeoutHeight uint64, rates
 			}
 
 			if err != nil {
-				var (
-					hash string
-				)
+				var hash string
 				if resp != nil {
 					hash = resp.Hash().String()
 				}
