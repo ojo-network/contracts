@@ -1,7 +1,7 @@
 #!/bin/bash
-BINARY=wasmd
+BINARY=injectived
 CHAIN_DIR=./data
-CHAINID_1="wasm-test"
+CHAINID_1="injective-1"
 VAL_MNEMONIC_1="copper push brief egg scan entry inform record adjust fossil boss egg comic alien upon aspect dry avoid interest fury window hint race symptom"
 DEMO_MNEMONIC_1="pony glide frown crisp unfold lawn cup loan trial govern usual matrix theory wash fresh address pioneer between meadow visa buffalo keep gallery swear"
 RELAY_MNEMONIC_1="alley afraid soup fall idea toss can goose become valve initial strong forward bright dish figure check leopard decide warfare hub unusual join cart"
@@ -30,9 +30,9 @@ echo $DEMO_MNEMONIC_1 | $BINARY keys add demowallet1 --home $CHAIN_DIR/$CHAINID_
 echo $DEMO_MNEMONIC_1 | $BINARY keys add demowallet1 --home $CHAIN_DIR/$CHAINID_1 --keyring-dir=./cw-relayer --recover --keyring-backend=test
 echo $RELAY_MNEMONIC_1 | $BINARY keys add rly1 --home $CHAIN_DIR/$CHAINID_1 --recover --keyring-backend=test
 
-$BINARY genesis add-genesis-account $($BINARY --home $CHAIN_DIR/$CHAINID_1 keys show val1 --keyring-backend test -a) 100000000000000000000000000stake --home $CHAIN_DIR/$CHAINID_1
-$BINARY genesis add-genesis-account $($BINARY --home $CHAIN_DIR/$CHAINID_1 keys show demowallet1 --keyring-backend test -a) 100000000000000000000000000stake  --home $CHAIN_DIR/$CHAINID_1
-$BINARY genesis add-genesis-account $($BINARY --home $CHAIN_DIR/$CHAINID_1 keys show rly1 --keyring-backend test -a) 100000000000000000000000000stake  --home $CHAIN_DIR/$CHAINID_1
+$BINARY add-genesis-account $($BINARY --home $CHAIN_DIR/$CHAINID_1 keys show val1 --keyring-backend test -a) 100000000000000000000000000stake --home $CHAIN_DIR/$CHAINID_1 --chain-id=$CHAINID_1
+$BINARY add-genesis-account $($BINARY --home $CHAIN_DIR/$CHAINID_1 keys show demowallet1 --keyring-backend test -a) 100000000000000000000000000stake  --home $CHAIN_DIR/$CHAINID_1 --chain-id=$CHAINID_1
+$BINARY add-genesis-account $($BINARY --home $CHAIN_DIR/$CHAINID_1 keys show rly1 --keyring-backend test -a) 100000000000000000000000000stake  --home $CHAIN_DIR/$CHAINID_1 --chain-id=$CHAINID_1
 
 sed -i -e 's/enable = false/enable = true/g' $CHAIN_DIR/$CHAINID_1/config/app.toml
 sed -i -e 's/pruning = "default"/pruning = "everything"/g' $CHAIN_DIR/$CHAINID_1/config/app.toml
@@ -40,6 +40,6 @@ sed -i 's/"time_iota_ms": "1000"/"time_iota_ms": "10"/'$CHAIN_DIR/$CHAINID_1/con
 
 
 echo "Creating and collecting gentx..."
-$BINARY genesis gentx val1 1000000000000000000000stake  --home $CHAIN_DIR/$CHAINID_1 --chain-id $CHAINID_1 --keyring-backend test
+$BINARY gentx val1 1000000000000000000000stake  --home $CHAIN_DIR/$CHAINID_1 --chain-id $CHAINID_1 --keyring-backend test
 
-$BINARY genesis collect-gentxs --home $CHAIN_DIR/$CHAINID_1
+$BINARY collect-gentxs --home $CHAIN_DIR/$CHAINID_1
