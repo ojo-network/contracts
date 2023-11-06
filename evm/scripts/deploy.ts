@@ -1,8 +1,10 @@
 import { ethers } from "hardhat";
 
 async function main() {
+  const [deployer, relayer] = await ethers.getSigners();
+
   const Oracle = await ethers.getContractFactory("PriceFeed");
-  const oracle = await Oracle.deploy();
+  const oracle = await Oracle.deploy(relayer.address);
 
   await oracle.deployed();
 
@@ -11,7 +13,11 @@ async function main() {
   );
 
   console.log(
-    `deployer address ${(await ethers.getSigners())[0].address}`
+    `deployer address ${deployer.address}`
+  )
+
+  console.log(
+    `relayer address ${relayer.address}`
   )
 }
 
