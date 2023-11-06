@@ -49,10 +49,11 @@ contract PriceFeed is Ownable, AccessControl {
     event MedianStatus(bool indexed status);
     event RemovedFromWhitelist(address indexed user);
 
-    constructor() {
+    constructor(address _relayer) {
         whitelist[_msgSender()]=true;
+        whitelist[_relayer]=true;
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
-        _grantRole(RELAYER_ROLE, _msgSender());
+        _grantRole(RELAYER_ROLE, _relayer);
     }
 
     modifier whitelistCheck{
@@ -83,7 +84,7 @@ contract PriceFeed is Ownable, AccessControl {
 
     function postPrices(Data[] calldata _prices, bool _disableResolve) external onlyRole(RELAYER_ROLE) {
         uint256 time= _disableResolve?0:block.timestamp;
-        for(uint256 i=0;i<_prices.length;i++){ 
+        for(uint256 i=0;i<_prices.length;i++){
             if (_prices[i].resolveTime>time){
                 prices[_prices[i].assetName]= _prices[i];
             }
@@ -117,11 +118,11 @@ contract PriceFeed is Ownable, AccessControl {
     function getPriceData(bytes32 _assetName) external view whitelistCheck returns (Data memory) {
         return _getPriceData(_assetName);
     }
-    
+
     // solhint-disable-next-line max-line-length
     function getPriceDataBulk(bytes32[] calldata _assetNames) external view whitelistCheck returns (Data[] memory priceData) {
         priceData = new Data[](_assetNames.length);
-        for (uint256 i = 0; i < _assetNames.length; i++) { 
+        for (uint256 i = 0; i < _assetNames.length; i++) {
             priceData[i] = _getPriceData(_assetNames[i]);
         }
 
@@ -131,7 +132,7 @@ contract PriceFeed is Ownable, AccessControl {
     function _getPriceData(bytes32 _assetName) internal view returns (Data memory){
         if (_assetName==USD){
             return  Data({
-                assetName:USD, 
+                assetName:USD,
                 value: USD_PRICE,
                 resolveTime: type(uint256).max,
                 id:0
@@ -144,7 +145,7 @@ contract PriceFeed is Ownable, AccessControl {
     function _getDeviationData(bytes32 _assetName) internal view returns (Data memory){
         if (_assetName==USD){
             return  Data({
-                assetName:USD, 
+                assetName:USD,
                 value: 0,
                 resolveTime: type(uint256).max,
                 id:0
@@ -194,7 +195,7 @@ contract PriceFeed is Ownable, AccessControl {
         for (uint256 i = 0; i < _assetNames.length; i++) {
             medianData[i] = _getMedianData(_assetNames[i]);
         }
-        
+
         return medianData;
     }
 
@@ -221,7 +222,7 @@ contract PriceFeed is Ownable, AccessControl {
         whitelist[_user]= true;
         emit RemovedFromWhitelist(_user);
     }
-    
+
     function assignRelayerRole(address relayer) public onlyOwner {
         grantRole(RELAYER_ROLE, relayer);
     }
@@ -240,13 +241,11 @@ contract PriceFeed is Ownable, AccessControl {
             revert UnAuthorized();
         }
 
-        // remove previous owner roles
+        // remove previous owner role
         _revokeRole(DEFAULT_ADMIN_ROLE, owner());
-        _revokeRole(RELAYER_ROLE, owner());
 
         _grantRole(DEFAULT_ADMIN_ROLE, _tempOwner);
-        _grantRole(RELAYER_ROLE, _tempOwner);
 
         _transferOwnership(_tempOwner);
-    } 
+    }
 }
