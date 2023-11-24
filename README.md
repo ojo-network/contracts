@@ -14,7 +14,7 @@ The relayer will be a golang-based implementation to upload pricing information 
 ## Contract Deployments
 
 | Chain             | Contract Address                                                   | Admin Address                               | Relayer Address                                | Relayer Release Binary          |
-| ----------------- |:------------------------------------------------------------------:| -------------------------------------------:| ----------------------------------------------:| -------------------------------:|
+| -----------------:| ------------------------------------------------------------------:| -------------------------------------------:| ----------------------------------------------:| -------------------------------:|
 | Archway Mainnet   | archway1c4nn5dl24fls0gspcuakuk8qtgpsmygxvq3jf5ua9tfxe78vg60s6jzndv |                                             | archway1ner6kc63xl903wrv2n8p9mtun79gegjl6wtgen | cw-relayer-v0.1.7-alpha2        |
 | Comdex Mainnet    | comdex1d9w3v30r26xuckatahmeelut92jl6uc8suzmlpp0dm08drwlskjscvg83a  |                                             | comdex1nmps9c8j4zfzu572nv9fdlr3y40wm4ae88s8wy  | cw-relayer-v0.1.7-alpha1        |
 | Comdex Testnet    | comdex1wn625s4jcmvk0szpl85rj5azkfc6suyvf75q6vrddscjdphtve8s6z5fs0  |                                             |                                                |                                 |
