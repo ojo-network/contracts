@@ -12,7 +12,7 @@ require (
 	github.com/ojo-network/ojo v0.1.3
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/rs/zerolog v1.30.0
-	github.com/spf13/cobra v1.7.0
+	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.8.4
 	github.com/tendermint/tendermint v0.34.27
