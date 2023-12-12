@@ -88,7 +88,7 @@ bulk variant returns `Vec<ReferenceData>`
 ```rust
 pub struct ReferenceData {
     // Pair rate e.g. rate of BTC/USD
-    pub rate: Uint256,
+    pub rate: Uint64,
     // Unix time of when the base asset was last updated. e.g. Last update time of BTC in Unix time
     pub last_updated_base: Uint64,
     // Unix time of when the quote asset was last updated. e.g. Last update time of USD in Unix time

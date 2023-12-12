@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
-    StdResult, Uint256, Uint64,
+    StdResult, Uint64,
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
@@ -14,7 +14,6 @@ use crate::state::{
 
 const E0: Uint64 = Uint64::zero();
 const E9: Uint64 = Uint64::new(1_000_000_000u64);
-const E18: Uint256 = Uint256::from_u128(1_000_000_000_000_000_000u128);
 
 // Version Info
 const CONTRACT_NAME: &str = "ojo-price-feeds";
@@ -388,9 +387,9 @@ fn query_reference_data(deps: Deps, symbol_pair: &(String, String)) -> StdResult
     let quote = query_ref(deps, &symbol_pair.1)?;
 
     Ok(ReferenceData::new(
-        Uint256::from(base.rate)
-            .checked_mul(E18)?
-            .checked_div(Uint256::from(quote.rate))?,
+        Uint64::from(base.rate)
+            .checked_mul(E9)?
+            .checked_div(Uint64::from(quote.rate))?,
         base.resolve_time,
         quote.resolve_time,
     ))
@@ -444,7 +443,7 @@ fn query_deviation_ref_bulk(deps: Deps, symbols: &[String]) -> StdResult<Vec<Ref
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{Addr, Uint256};
+    use cosmwasm_std::{Addr};
 
     use crate::msg::ExecuteMsg::{AddRelayers, Relay};
 
@@ -712,14 +711,14 @@ mod tests {
             let retrieved_rates = reference_datas
                 .clone()
                 .into_iter()
-                .map(|rd| rd.rate / Uint256::from(E9))
-                .collect::<Vec<Uint256>>();
+                .map(|rd| rd.rate)
+                .collect::<Vec<Uint64>>();
             assert_eq!(
                 retrieved_rates,
                 rates
                     .iter()
-                    .map(|r| Uint256::from(*r))
-                    .collect::<Vec<Uint256>>()
+                    .map(|r| Uint64::from(*r))
+                    .collect::<Vec<Uint64>>()
             );
         }
 
@@ -776,14 +775,14 @@ mod tests {
             let retrieved_rates = reference_datas
                 .clone()
                 .into_iter()
-                .map(|rd| rd.rate / Uint256::from(E9))
-                .collect::<Vec<Uint256>>();
+                .map(|rd| rd.rate)
+                .collect::<Vec<Uint64>>();
             assert_eq!(
                 retrieved_rates,
                 rates
                     .iter()
-                    .map(|r| Uint256::from(*r))
-                    .collect::<Vec<Uint256>>()
+                    .map(|r| Uint64::from(*r))
+                    .collect::<Vec<Uint64>>()
             );
         }
 
@@ -849,12 +848,12 @@ mod tests {
             let retrieved_rates = reference_datas
                 .clone()
                 .into_iter()
-                .map(|rd| rd.rate / Uint256::from(E9))
-                .collect::<Vec<Uint256>>();
+                .map(|rd| rd.rate)
+                .collect::<Vec<Uint64>>();
             let expected_rates = vec![99999, 2, 3]
                 .iter()
-                .map(|r| Uint256::from(*r as u128))
-                .collect::<Vec<Uint256>>();
+                .map(|r| Uint64::from(*r as u64))
+                .collect::<Vec<Uint64>>();
             assert_eq!(retrieved_rates, expected_rates);
         }
 
@@ -1181,14 +1180,14 @@ mod tests {
             .unwrap();
             let retrieved_rates = reference_datas
                 .into_iter()
-                .map(|rd| rd.rate / Uint256::from(E9))
-                .collect::<Vec<Uint256>>();
+                .map(|rd| rd.rate)
+                .collect::<Vec<Uint64>>();
             assert_eq!(
                 retrieved_rates,
                 forced_rates
                     .iter()
-                    .map(|r| Uint256::from(*r))
-                    .collect::<Vec<Uint256>>()
+                    .map(|r| Uint64::from(*r))
+                    .collect::<Vec<Uint64>>()
             );
         }
 
@@ -1328,7 +1327,7 @@ mod tests {
             assert_eq!(
                 from_binary::<ReferenceData>(&binary_res).unwrap(),
                 ReferenceData::new(
-                    Uint256::from(rate[0]).mul(Uint256::from(E9)),
+                    Uint64::from(rate[0]),
                     Uint64::from(100u64),
                     Uint64::MAX,
                 )
@@ -1386,7 +1385,7 @@ mod tests {
                 .iter()
                 .map(|r| {
                     ReferenceData::new(
-                        Uint256::from(*r).mul(Uint256::from(E9)),
+                        Uint64::from(*r),
                         Uint64::from(100u64),
                         Uint64::MAX,
                     )

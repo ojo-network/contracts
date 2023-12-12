@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Uint256, Uint64};
+use cosmwasm_std::{Addr, Uint64};
 use cw_controllers::Admin;
 use cw_storage_plus::{Item, Map};
 
@@ -84,7 +84,7 @@ impl RefDeviationData {
 #[cw_serde]
 pub struct ReferenceData {
     // Pair rate e.g. rate of BTC/USD
-    pub rate: Uint256,
+    pub rate: Uint64,
     // Unix time of when the base asset was last updated. e.g. Last update time of BTC in Unix time
     pub last_updated_base: Uint64,
     // Unix time of when the quote asset was last updated. e.g. Last update time of USD in Unix time
@@ -92,7 +92,7 @@ pub struct ReferenceData {
 }
 
 impl ReferenceData {
-    pub fn new(rate: Uint256, last_updated_base: Uint64, last_updated_quote: Uint64) -> Self {
+    pub fn new(rate: Uint64, last_updated_base: Uint64, last_updated_quote: Uint64) -> Self {
         ReferenceData {
             rate,
             last_updated_base,

@@ -1,20 +1,23 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ReferenceData",
+  "title": "RefMedianData",
   "type": "object",
   "required": [
-    "last_updated_base",
-    "last_updated_quote",
-    "rate"
+    "rates",
+    "request_id",
+    "resolve_time"
   ],
   "properties": {
-    "last_updated_base": {
+    "rates": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Uint64"
+      }
+    },
+    "request_id": {
       "$ref": "#/definitions/Uint64"
     },
-    "last_updated_quote": {
-      "$ref": "#/definitions/Uint64"
-    },
-    "rate": {
+    "resolve_time": {
       "$ref": "#/definitions/Uint64"
     }
   },

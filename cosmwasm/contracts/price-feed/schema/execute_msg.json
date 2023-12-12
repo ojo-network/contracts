@@ -26,6 +26,27 @@
     {
       "type": "object",
       "required": [
+        "median_status"
+      ],
+      "properties": {
+        "median_status": {
+          "type": "object",
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "add_relayers"
       ],
       "properties": {
@@ -116,6 +137,96 @@
     {
       "type": "object",
       "required": [
+        "relay_historical_median"
+      ],
+      "properties": {
+        "relay_historical_median": {
+          "type": "object",
+          "required": [
+            "request_id",
+            "resolve_time",
+            "symbol_rates"
+          ],
+          "properties": {
+            "request_id": {
+              "$ref": "#/definitions/Uint64"
+            },
+            "resolve_time": {
+              "$ref": "#/definitions/Uint64"
+            },
+            "symbol_rates": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/Uint64"
+                    }
+                  }
+                ],
+                "maxItems": 2,
+                "minItems": 2
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "relay_historical_deviation"
+      ],
+      "properties": {
+        "relay_historical_deviation": {
+          "type": "object",
+          "required": [
+            "request_id",
+            "resolve_time",
+            "symbol_rates"
+          ],
+          "properties": {
+            "request_id": {
+              "$ref": "#/definitions/Uint64"
+            },
+            "resolve_time": {
+              "$ref": "#/definitions/Uint64"
+            },
+            "symbol_rates": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/Uint64"
+                    }
+                  }
+                ],
+                "maxItems": 2,
+                "minItems": 2
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "force_relay"
       ],
       "properties": {
@@ -143,6 +254,96 @@
                   },
                   {
                     "$ref": "#/definitions/Uint64"
+                  }
+                ],
+                "maxItems": 2,
+                "minItems": 2
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "force_relay_historical_median"
+      ],
+      "properties": {
+        "force_relay_historical_median": {
+          "type": "object",
+          "required": [
+            "request_id",
+            "resolve_time",
+            "symbol_rates"
+          ],
+          "properties": {
+            "request_id": {
+              "$ref": "#/definitions/Uint64"
+            },
+            "resolve_time": {
+              "$ref": "#/definitions/Uint64"
+            },
+            "symbol_rates": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/Uint64"
+                    }
+                  }
+                ],
+                "maxItems": 2,
+                "minItems": 2
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "force_relay_historical_deviation"
+      ],
+      "properties": {
+        "force_relay_historical_deviation": {
+          "type": "object",
+          "required": [
+            "request_id",
+            "resolve_time",
+            "symbol_rates"
+          ],
+          "properties": {
+            "request_id": {
+              "$ref": "#/definitions/Uint64"
+            },
+            "resolve_time": {
+              "$ref": "#/definitions/Uint64"
+            },
+            "symbol_rates": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/Uint64"
+                    }
                   }
                 ],
                 "maxItems": 2,
