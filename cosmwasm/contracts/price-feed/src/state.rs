@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Uint64};
+use cosmwasm_std::{Addr, Uint256, Uint64};
 use cw_controllers::Admin;
 use cw_storage_plus::{Item, Map};
 
@@ -24,7 +24,7 @@ pub const DEVIATIONDATA: Map<&str, RefDeviationData> = Map::new("deviationdata")
 #[cw_serde]
 pub struct RefData {
     // Rate of an asset relative to USD (deviation of assets when used with deviation queries)
-    pub rate: Uint64,
+    pub rate: Uint256,
     // The resolve time of the request ID
     pub resolve_time: Uint64,
     // The request ID where the rate was derived from
@@ -32,7 +32,7 @@ pub struct RefData {
 }
 
 impl RefData {
-    pub fn new(rate: Uint64, resolve_time: Uint64, request_id: Uint64) -> Self {
+    pub fn new(rate: Uint256, resolve_time: Uint64, request_id: Uint64) -> Self {
         RefData {
             rate,
             resolve_time,
@@ -44,7 +44,7 @@ impl RefData {
 #[cw_serde]
 pub struct RefMedianData {
     // Median Rates of an asset relative to USD
-    pub rates: Vec<Uint64>,
+    pub rates: Vec<Uint256>,
     // The resolve time of the request ID
     pub resolve_time: Uint64,
     // The request ID where the rate was derived from
@@ -52,7 +52,7 @@ pub struct RefMedianData {
 }
 
 impl RefMedianData {
-    pub fn new(rates: Vec<Uint64>, resolve_time: Uint64, request_id: Uint64) -> Self {
+    pub fn new(rates: Vec<Uint256>, resolve_time: Uint64, request_id: Uint64) -> Self {
         RefMedianData {
             rates,
             resolve_time,
@@ -64,7 +64,7 @@ impl RefMedianData {
 #[cw_serde]
 pub struct RefDeviationData {
     // Deviation Rates of an asset relative to USD
-    pub rates: Vec<Uint64>,
+    pub rates: Vec<Uint256>,
     // The resolve time of the request ID
     pub resolve_time: Uint64,
     // The request ID where the rate was derived from
@@ -72,7 +72,7 @@ pub struct RefDeviationData {
 }
 
 impl RefDeviationData {
-    pub fn new(rates: Vec<Uint64>, resolve_time: Uint64, request_id: Uint64) -> Self {
+    pub fn new(rates: Vec<Uint256>, resolve_time: Uint64, request_id: Uint64) -> Self {
         RefDeviationData {
             rates,
             resolve_time,
@@ -84,7 +84,7 @@ impl RefDeviationData {
 #[cw_serde]
 pub struct ReferenceData {
     // Pair rate e.g. rate of BTC/USD
-    pub rate: Uint64,
+    pub rate: Uint256,
     // Unix time of when the base asset was last updated. e.g. Last update time of BTC in Unix time
     pub last_updated_base: Uint64,
     // Unix time of when the quote asset was last updated. e.g. Last update time of USD in Unix time
@@ -92,7 +92,7 @@ pub struct ReferenceData {
 }
 
 impl ReferenceData {
-    pub fn new(rate: Uint64, last_updated_base: Uint64, last_updated_quote: Uint64) -> Self {
+    pub fn new(rate: Uint256, last_updated_base: Uint64, last_updated_quote: Uint64) -> Self {
         ReferenceData {
             rate,
             last_updated_base,

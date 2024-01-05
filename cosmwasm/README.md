@@ -88,11 +88,11 @@ bulk variant returns `Vec<ReferenceData>`
 ```rust
 pub struct ReferenceData {
     // Pair rate e.g. rate of BTC/USD
-    pub rate: Uint64,
+    pub rate: Uint256,
     // Unix time of when the base asset was last updated. e.g. Last update time of BTC in Unix time
-    pub last_updated_base: Uint64,
+    pub last_updated_base: Uint256,
     // Unix time of when the quote asset was last updated. e.g. Last update time of USD in Unix time
-    pub last_updated_quote: Uint64,
+    pub last_updated_quote: Uint256,
 }
 ```
 
@@ -194,11 +194,11 @@ bulk variant returns `Vec<RefDeviationData>`
 ```rust
 pub struct RefDeviationData {
   // Deviation Rates of an asset relative to USD
-  pub rates: Vec<Uint64>,
+  pub rates: Vec<Uint256>,
   // The resolve time of the request ID
-  pub resolve_time: Uint64,
+  pub resolve_time: Uint256,
   // The request ID where the rate was derived from
-  pub request_id: Uint64,
+  pub request_id: Uint256,
 }
 ```
 
