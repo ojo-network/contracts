@@ -1,15 +1,18 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "RefData",
+  "title": "RefDeviationData",
   "type": "object",
   "required": [
-    "rate",
+    "rates",
     "request_id",
     "resolve_time"
   ],
   "properties": {
-    "rate": {
-      "$ref": "#/definitions/Uint256"
+    "rates": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Uint256"
+      }
     },
     "request_id": {
       "$ref": "#/definitions/Uint64"

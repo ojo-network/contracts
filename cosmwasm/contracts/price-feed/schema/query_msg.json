@@ -18,6 +18,19 @@
     {
       "type": "object",
       "required": [
+        "median_status"
+      ],
+      "properties": {
+        "median_status": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "is_relayer"
       ],
       "properties": {
@@ -114,6 +127,96 @@
                 ],
                 "maxItems": 2,
                 "minItems": 2
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "get_median_ref"
+      ],
+      "properties": {
+        "get_median_ref": {
+          "type": "object",
+          "required": [
+            "symbol"
+          ],
+          "properties": {
+            "symbol": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "get_median_ref_data_bulk"
+      ],
+      "properties": {
+        "get_median_ref_data_bulk": {
+          "type": "object",
+          "required": [
+            "symbols"
+          ],
+          "properties": {
+            "symbols": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "get_deviation_ref"
+      ],
+      "properties": {
+        "get_deviation_ref": {
+          "type": "object",
+          "required": [
+            "symbol"
+          ],
+          "properties": {
+            "symbol": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "get_deviation_ref_bulk"
+      ],
+      "properties": {
+        "get_deviation_ref_bulk": {
+          "type": "object",
+          "required": [
+            "symbols"
+          ],
+          "properties": {
+            "symbols": {
+              "type": "array",
+              "items": {
+                "type": "string"
               }
             }
           },
