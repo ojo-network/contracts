@@ -356,12 +356,12 @@ func (oc RelayerClient) CreateTxFactory() (tx.Factory, error) {
 		WithAccountRetriever(clientCtx.AccountRetriever).
 		WithChainID(oc.ChainID).
 		WithTxConfig(clientCtx.TxConfig).
-		WithGasAdjustment(oc.GasAdjustment).
+		WithGas(2000000).
 		WithGasPrices(oc.GasPrices).
 		WithKeybase(clientCtx.Keyring).
 		WithSignMode(signing.SignMode_SIGN_MODE_DIRECT).
-		WithSimulateAndExecute(true).
-		WithFeeGranter(oc.feeGranter)
+		WithFeeGranter(oc.feeGranter).
+		WithSimulateAndExecute(true)
 
 	return txFactory, nil
 }

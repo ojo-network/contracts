@@ -29,11 +29,11 @@ var (
 type (
 	// Config defines all necessary cw-relayer configuration parameters.
 	Config struct {
-		Account  Account        `mapstructure:"account" validate:"required,gt=0,dive,required"`
-		Keyring  Keyring        `mapstructure:"keyring" validate:"required,gt=0,dive,required"`
-		RPC      RPC            `mapstructure:"rpc" validate:"required,gt=0,dive,required"`
+		Account  Account        `mapstructure:"account" validate:"required"`
+		Keyring  Keyring        `mapstructure:"keyring" validate:"required"`
+		RPC      RPC            `mapstructure:"rpc" validate:"required"`
 		Restart  RestartConfig  `mapstructure:"restart" validate:"required"`
-		FeeGrant FeeGrantConfig `mapstructure:"fee_grant" validate:"dive"`
+		FeeGrant FeeGrantConfig `mapstructure:"fee_grant"`
 
 		ProviderTimeout string `mapstructure:"provider_timeout"`
 		ContractAddress string `mapstructure:"contract_address"`
