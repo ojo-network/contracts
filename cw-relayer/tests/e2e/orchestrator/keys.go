@@ -29,7 +29,7 @@ func createMemoryKeyFromMnemonic(mnemonic string) (sdk.AccAddress, error) {
 
 	encodingConfig := wasmparams.MakeEncodingConfig()
 
-	kb, err := keyring.New("testnet", keyring.BackendMemory, "", nil, encodingConfig.Marshaler)
+	kb, err := keyring.New("testnet", keyring.BackendMemory, "", nil, encodingConfig.Codec)
 	if err != nil {
 		return nil, err
 	}

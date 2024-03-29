@@ -8,7 +8,7 @@ max_tick_timeout = "1m"
 query_timeout = "5000ms"
 max_retries = 1
 
-gas_adjustment = 1.5
+gas = 1.5
 timeout_height = 10
 gas_prices = "0.2stake"
 median_duration = 1

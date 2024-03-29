@@ -19,13 +19,6 @@ func BroadcastTx(feeGranter sdk.AccAddress, clientCtx client.Context, txf tx.Fac
 		return nil, err
 	}
 
-	_, adjusted, err := tx.CalculateGas(clientCtx, txf, msgs...)
-	if err != nil {
-		return nil, err
-	}
-
-	txf = txf.WithGas(adjusted)
-
 	unsignedTx, err := txf.BuildUnsignedTx(msgs...)
 	if err != nil {
 		return nil, err
