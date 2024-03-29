@@ -59,8 +59,8 @@ type (
 		// if true, would ignore any errors when querying median or deviations
 		IgnoreMedianErrors bool `mapstructure:"ignore_median_errors"`
 
-		GasAdjustment float64 `mapstructure:"gas_adjustment" validate:"required"`
-		GasPrices     string  `mapstructure:"gas_prices" validate:"required"`
+		Gas       float64 `mapstructure:"gas" validate:"required"`
+		GasPrices string  `mapstructure:"gas_prices" validate:"required"`
 
 		// query rpc for ojo node
 		QueryRPCS     []string `mapstructure:"query_rpcs" validate:"required"`

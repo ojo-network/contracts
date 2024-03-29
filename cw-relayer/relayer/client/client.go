@@ -45,7 +45,7 @@ type (
 		RelayerAddrString string
 		Encoding          wasmparams.EncodingConfig
 		GasPrices         string
-		GasAdjustment     float64
+		Gas               float64
 		KeyringPassphrase string
 		ChainHeight       *ChainHeight
 		feeGranter        sdk.AccAddress
@@ -79,7 +79,7 @@ func NewRelayerClient(
 	rpcTimeout time.Duration,
 	RelayerAddrString string,
 	accPrefix string,
-	gasAdjustment float64,
+	gas float64,
 	GasPrices string,
 	granter string,
 ) (RelayerClient, error) {
@@ -103,7 +103,7 @@ func NewRelayerClient(
 		RelayerAddr:       RelayerAddr,
 		RelayerAddrString: RelayerAddrString,
 		Encoding:          MakeEncodingConfig(),
-		GasAdjustment:     gasAdjustment,
+		Gas:               gas,
 		GasPrices:         GasPrices,
 		QueryRpc:          queryEndpoint,
 	}
@@ -356,7 +356,7 @@ func (oc RelayerClient) CreateTxFactory() (tx.Factory, error) {
 		WithAccountRetriever(clientCtx.AccountRetriever).
 		WithChainID(oc.ChainID).
 		WithTxConfig(clientCtx.TxConfig).
-		WithGas(2000000).
+		WithGas(uint64(oc.Gas)).
 		WithGasPrices(oc.GasPrices).
 		WithKeybase(clientCtx.Keyring).
 		WithSignMode(signing.SignMode_SIGN_MODE_DIRECT).

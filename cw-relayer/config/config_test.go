@@ -24,7 +24,7 @@ func TestValidate(t *testing.T) {
 				TMRPCEndpoint: "http://localhost:26657",
 				RPCTimeout:    "100ms",
 			},
-			GasAdjustment:   1.5,
+			Gas:             15,
 			ContractAddress: "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0phg4d",
 		}
 	}
@@ -54,7 +54,7 @@ func TestParseConfig_Valid(t *testing.T) {
 	defer os.Remove(tmpFile.Name())
 
 	content := []byte(`
-gas_adjustment = 1.5
+gas = 15
 contract_address = "wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0phg4d"
 gas_prices = "0.00025stake"
 query_rpcs = ["http://localhost:26657"]
