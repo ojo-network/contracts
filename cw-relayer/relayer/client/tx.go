@@ -13,7 +13,7 @@ import (
 // Note, BroadcastTx is copied from the SDK except it removes a few unnecessary
 // things like prompting for confirmation and printing the response. Instead,
 // we return the TxResponse.
-func BroadcastTx(clientCtx client.Context, txf tx.Factory, msgs ...sdk.Msg) (*sdk.TxResponse, error) {
+func BroadcastTx(feeGranter sdk.AccAddress, clientCtx client.Context, txf tx.Factory, msgs ...sdk.Msg) (*sdk.TxResponse, error) {
 	txf, err := prepareFactory(clientCtx, txf)
 	if err != nil {
 		return nil, err
@@ -31,7 +31,7 @@ func BroadcastTx(clientCtx client.Context, txf tx.Factory, msgs ...sdk.Msg) (*sd
 		return nil, err
 	}
 
-	unsignedTx.SetFeeGranter(clientCtx.GetFeeGranterAddress())
+	unsignedTx.SetFeeGranter(feeGranter)
 
 	if err = tx.Sign(txf, clientCtx.GetFromName(), unsignedTx, true); err != nil {
 		return nil, err
