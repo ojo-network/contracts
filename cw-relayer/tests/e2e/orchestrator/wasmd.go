@@ -15,8 +15,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	tmconfig "github.com/tendermint/tendermint/config"
-	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
+	tmconfig "github.com/cometbft/cometbft/config"
+	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 )
 
 func (o *Orchestrator) initWasmd() error {
@@ -112,7 +112,6 @@ func (o *Orchestrator) execWasmCmd(command []string) (err error) {
 		User:         "root",
 		Cmd:          command,
 	})
-
 	if err != nil {
 		return
 	}
@@ -123,7 +122,6 @@ func (o *Orchestrator) execWasmCmd(command []string) (err error) {
 		OutputStream: &outBuf,
 		ErrorStream:  &errBuf,
 	})
-
 	if err != nil {
 		return
 	}

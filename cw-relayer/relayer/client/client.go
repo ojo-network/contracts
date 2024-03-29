@@ -15,6 +15,8 @@ import (
 
 	wasmparams "github.com/CosmWasm/wasmd/app/params"
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
+	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
+	tmjsonclient "github.com/cometbft/cometbft/rpc/jsonrpc/client"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/rpc"
@@ -25,8 +27,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/rs/zerolog"
-	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
-	tmjsonclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 	"google.golang.org/grpc"
 )
 
@@ -249,7 +249,6 @@ func (oc RelayerClient) BroadcastContractQuery(ctx context.Context, timeout time
 		oc.QueryRpc,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
-
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +295,7 @@ func (oc RelayerClient) CreateClientContext() (client.Context, error) {
 		keyringInput = os.Stdin
 	}
 
-	kr, err := keyring.New("relayer", oc.KeyringBackend, oc.KeyringDir, keyringInput, oc.Encoding.Marshaler)
+	kr, err := keyring.New("relayer", oc.KeyringBackend, oc.KeyringDir, keyringInput, oc.Encoding.Codec)
 	if err != nil {
 		return client.Context{}, err
 	}
@@ -325,7 +324,7 @@ func (oc RelayerClient) CreateClientContext() (client.Context, error) {
 		BroadcastMode:     flags.BroadcastSync,
 		TxConfig:          oc.Encoding.TxConfig,
 		AccountRetriever:  authtypes.AccountRetriever{},
-		Codec:             oc.Encoding.Marshaler,
+		Codec:             oc.Encoding.Codec,
 		LegacyAmino:       oc.Encoding.Amino,
 		Input:             os.Stdin,
 		NodeURI:           oc.TMRPC,
