@@ -42,7 +42,7 @@ jobs:
           tar -zcvf cosmwasm-artifacts-${{ env.RELEASE_VERSION }}.tar.gz cosmwasm/artifacts
       - name: Release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             cosmwasm-artifacts-${{ env.RELEASE_VERSION }}.tar.gz
