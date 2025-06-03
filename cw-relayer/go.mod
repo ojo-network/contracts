@@ -1,6 +1,6 @@
 module github.com/ojo-network/cw-relayer
 
-go 1.19
+go 1.23.0
 
 require (
 	github.com/CosmWasm/wasmd v0.0.0-00010101000000-000000000000
@@ -16,7 +16,7 @@ require (
 	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.8.4
 	github.com/tendermint/tendermint v0.34.27
-	golang.org/x/sync v0.5.0
+	golang.org/x/sync v0.14.0
 	google.golang.org/grpc v1.59.0
 	gopkg.in/yaml.v3 v3.0.1
 )
