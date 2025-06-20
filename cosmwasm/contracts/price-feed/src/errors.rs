@@ -16,6 +16,9 @@ pub enum ContractError {
     #[error("Median is disabled")]
     MedianDisabled {},
 
+    #[error("Invalid rates")]
+    InvalidRates {},
+
     #[error("Cannot migrate from different contract type: {previous_contract}")]
     CannotMigrate { previous_contract: String },
 

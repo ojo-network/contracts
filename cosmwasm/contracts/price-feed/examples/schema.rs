@@ -4,7 +4,7 @@ use std::fs::create_dir_all;
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
 use std_reference::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use std_reference::state::{RefData, RefMedianData, ReferenceData,RefDeviationData};
+use std_reference::state::{RefData, RefDeviationData, RefMedianData, ReferenceData};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();

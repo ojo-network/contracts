@@ -1,6 +1,6 @@
+use crate::state::{RefData, RefDeviationData, RefMedianData, ReferenceData};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint64;
-use crate::state::{RefData,RefDeviationData,RefMedianData,ReferenceData};
+use cosmwasm_std::{Uint256, Uint64};
 
 #[cw_serde]
 pub struct InstantiateMsg {}
@@ -37,7 +37,9 @@ pub enum ExecuteMsg {
         // e.g.
         // BTC = 19,343.34, ETH = 1,348.57
         // symbol_rates ≡ <("BTC", 19343340000000), ("ETH", 1348570000000)>
-        symbol_rates: Vec<(String, Uint64)>,
+        symbols: Vec<String>,
+
+        rates: Vec<Uint256>,
         // Resolve time of request on Ojo in Unix timestamp
         resolve_time: Uint64,
         // Request ID of the results on Ojo
