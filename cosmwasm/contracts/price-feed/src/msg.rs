@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint64;
+use cosmwasm_std::{Uint256, Uint64};
 use crate::state::{RefData,RefDeviationData,RefMedianData,ReferenceData};
 
 #[cw_serde]
@@ -37,7 +37,7 @@ pub enum ExecuteMsg {
         // e.g.
         // BTC = 19,343.34, ETH = 1,348.57
         // symbol_rates ≡ <("BTC", 19343340000000), ("ETH", 1348570000000)>
-        symbol_rates: Vec<(String, Uint64)>,
+        symbol_rates: Vec<(String, Uint256)>,
         // Resolve time of request on Ojo in Unix timestamp
         resolve_time: Uint64,
         // Request ID of the results on Ojo
@@ -50,7 +50,7 @@ pub enum ExecuteMsg {
         // e.g.
         // BTC = 19,343.34, ETH = 1,348.57
         // symbol_rates ≡ <("BTC", 19343340000000), ("ETH", 1348570000000)>
-        symbol_rates: Vec<(String, Vec<Uint64>)>,
+        symbol_rates: Vec<(String, Vec<Uint256>)>,
         // Resolve time of request on Ojo in Unix timestamp
         resolve_time: Uint64,
         // Request ID of the results on Ojo
@@ -58,26 +58,26 @@ pub enum ExecuteMsg {
     },
     // Relays a vector of symbols and their corresponding deviation rates
     RelayHistoricalDeviation {
-        symbol_rates: Vec<(String, Vec<Uint64>)>,
+        symbol_rates: Vec<(String, Vec<Uint256>)>,
         resolve_time: Uint64,
         // Request ID of the results on Ojo
         request_id: Uint64,
     },
     // Same as Relay but without the resolve_time guard
     ForceRelay {
-        symbol_rates: Vec<(String, Uint64)>,
+        symbol_rates: Vec<(String, Uint256)>,
         resolve_time: Uint64,
         request_id: Uint64,
     },
     // Same as RelayHistoricalMedian but without the resolve_time guard
     ForceRelayHistoricalMedian {
-        symbol_rates: Vec<(String, Vec<Uint64>)>,
+        symbol_rates: Vec<(String, Vec<Uint256>)>,
         resolve_time: Uint64,
         request_id: Uint64,
     },
     // Same as RelayHistoricalDeviation but without the resolve_time guard
     ForceRelayHistoricalDeviation {
-        symbol_rates: Vec<(String, Vec<Uint64>)>,
+        symbol_rates: Vec<(String, Vec<Uint256>)>,
         resolve_time: Uint64,
         // Request ID of the results on Ojo
         request_id: Uint64,

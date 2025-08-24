@@ -23,7 +23,7 @@ import (
 
 var (
 	// RateFactor is used to convert ojo prices to contract-compatible values.
-	RateFactor   = types.NewDec(10).Power(9)
+	RateFactor   = types.NewDec(10).Power(18)
 	noRates      = fmt.Errorf("no rates found")
 	noMedians    = fmt.Errorf("median deviations empty")
 	noDeviations = fmt.Errorf("deviation deviations empty")
